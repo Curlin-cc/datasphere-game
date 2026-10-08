@@ -7,7 +7,7 @@
   - [x] Gedächtnis-Dateien angelegt (AI_CONTEXT, PLAN, STATUS, DECISIONS)
   - [x] App-Gerüst (Vite + TypeScript, Grundlayout mit Navigation, Topbar, Missions-Panel, Hell/Dunkel)
   - [x] DuckDB-WASM + SQL-Editor mit Ergebnistabelle und Autovervollständigung
-  - [ ] Datengenerator Stadtwerke Rheinau
+  - [x] Datengenerator Stadtwerke Rheinau (`src/data/generator.ts`, Doku `docs/DATA.md`)
   - [ ] Prüf-Engine (Ergebnis, Struktur, Review)
   - [ ] Spielstand (localStorage + Export/Import)
   - [ ] Deployment auf GitHub Pages (Workflow liegt bereit, Pages muss in den Repo-Einstellungen auf „GitHub Actions“ gestellt werden)
@@ -20,5 +20,6 @@
 
 | Datum | Was passiert ist |
 | --- | --- |
+| 2026-10-08 | Datengenerator: 7 Tabellen in RHN_IN (Verträge, Rechnungen, Tarife, Netzgebiete, Ablesungen, CRM, Schlüssel-Mapping), Fehler eingebaut, im Browser getestet (Start ca. 2,4 s) |
 | 2026-10-08 | App-Gerüst gebaut: Layout, DuckDB im Browser, SQL-Editor, Vorschau-Mission Kapitel 0 mit Tipps, kleine Vorschau-Daten in RHN_IN |
 | 2026-10-08 | Planung abgeschlossen, Repo angelegt, Gedächtnis-Dateien erstellt |

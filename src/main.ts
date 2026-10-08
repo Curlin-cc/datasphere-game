@@ -1,6 +1,6 @@
 import './styles.css';
 import { initDb, exec, runSql, listObjects } from './db';
-import { SEED_SQL } from './seed';
+import { generateDataset, datasetToSql } from './data/generator';
 import { createSqlEditor, type SqlEditor } from './editor';
 import { CHAPTERS, RANKS, GLOSSARY } from './content/chapters';
 
@@ -314,7 +314,7 @@ function renderMission() {
         <div><b>Jana Weber</b><span>Senior Data Architect, your mentor</span></div>
       </div>
       <div class="ticket-body">
-        <p>Welcome aboard! IT already loaded the first billing extract into our inbound space.</p>
+        <p>Welcome aboard! IT already loaded the first extracts from billing, metering and the CRM into our inbound space.</p>
         <p>Before we model anything: how many contracts do we have per grid area? Something about the grid areas looks off to me. Tell me what you find.</p>
       </div>
     </div>
@@ -349,7 +349,8 @@ async function boot() {
   app.innerHTML = `<div class="boot">Starting the training tenant…</div>`;
   try {
     await initDb();
-    await exec(SEED_SQL);
+    // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
+    for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
     renderFrame();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

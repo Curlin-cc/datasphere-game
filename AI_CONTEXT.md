@@ -44,14 +44,15 @@ AI_CONTEXT.md        ← du bist hier
 docs/PLAN.md         ← vollständiger Plan (Kapitel, Mechaniken, Architektur)
 docs/STATUS.md       ← Checkliste + Session-Log
 docs/DECISIONS.md    ← Architektur-Entscheidungen
+docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen
 src/main.ts          ← App-Rahmen, Views (Home, Space Mgmt, Data Builder, Glossary, gesperrte Views), Missions-Panel
 src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces = DuckDB-Schemas)
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
-src/seed.ts          ← kleine Vorschau-Daten (RHN_IN.BILLING_CONTRACTS, METER_READINGS), wird vom Generator ersetzt
+src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 content/missions/    ← eine JSON-Datei pro Mission (noch nicht angelegt)
-scripts/             ← Datengenerator (noch nicht angelegt)
+scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
 
 ## Konventionen
@@ -64,10 +65,11 @@ scripts/             ← Datengenerator (noch nicht angelegt)
 ## Aktueller Stand
 
 Phase 1 (Fundament) läuft. App-Gerüst steht: Layout, DuckDB im Browser, SQL-Editor mit Ergebnistabelle,
-eine Vorschau-Mission (Kapitel 0) mit Tipps, aber ohne automatische Prüfung. Lokal starten: `npm install`, `npm run dev`.
+eine Vorschau-Mission (Kapitel 0) mit Tipps, aber ohne automatische Prüfung. Datengenerator fertig:
+7 Tabellen in `RHN_IN` mit eingebauten Fehlern, Details in `docs/DATA.md`. Lokal starten: `npm install`, `npm run dev`.
 
 ## Nächster Schritt
 
-1. Datengenerator für Stadtwerke Rheinau (fester Seed, eingebaute Fehler: Dubletten, kWh/MWh, Altsystem-Schlüssel)
-2. Missions-Format (`content/missions/*.json`) + Prüf-Engine (Ergebnis, Struktur, Review)
-3. Spielstand in localStorage + Export/Import, XP-Abzug für Tipps
+1. Missions-Format (`content/missions/*.json`) + Prüf-Engine (Ergebnis, Struktur, Review)
+2. Spielstand in localStorage + Export/Import, XP-Abzug für Tipps
+3. Kapitel-0-Missionen auf die neuen Daten schreiben (Zahlen aus `docs/DATA.md`)

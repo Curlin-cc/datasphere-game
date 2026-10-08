@@ -4,6 +4,9 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Testdaten werden beim Start im Browser erzeugt (fester Seed), nicht als Dateien eingecheckt | Repo bleibt klein, Daten immer passend zum Code; Ladezeit < 1 s |
+| 2026-10-08 | Geschäftliches „Heute“ = 2026-07-15 | Ergibt offene, bezahlte und überfällige Rechnungen für Forderungs-Missionen |
+| 2026-10-08 | Regionen: NORTH = Netzgebiete NORTH + EAST, SOUTH = SOUTH + WEST | Grundlage für Data Access Controls in Kapitel 8 |
 | 2026-10-08 | Projektgedächtnis als Markdown im Repo statt Knowledge-Graph-Tool | Tools wie claude-mem laufen nur lokal mit Claude Code; Projekt zu klein für Graph |
 | 2026-10-08 | Standard-SQL via DuckDB-WASM, HANA-Unterschiede als Info-Karten | Kein HANA im Browser verfügbar; Konzepte wichtiger als Dialekt |
 | 2026-10-08 | Spieltexte komplett Englisch | Entspricht der echten Datasphere-Oberfläche |

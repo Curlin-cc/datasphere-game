@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "data:report": "node scripts/data-report.ts"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
