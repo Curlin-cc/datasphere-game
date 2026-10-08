@@ -44,7 +44,12 @@ AI_CONTEXT.md        ← du bist hier
 docs/PLAN.md         ← vollständiger Plan (Kapitel, Mechaniken, Architektur)
 docs/STATUS.md       ← Checkliste + Session-Log
 docs/DECISIONS.md    ← Architektur-Entscheidungen
-src/                 ← App-Code (noch nicht angelegt)
+src/main.ts          ← App-Rahmen, Views (Home, Space Mgmt, Data Builder, Glossary, gesperrte Views), Missions-Panel
+src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces = DuckDB-Schemas)
+src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
+src/seed.ts          ← kleine Vorschau-Daten (RHN_IN.BILLING_CONTRACTS, METER_READINGS), wird vom Generator ersetzt
+src/content/chapters.ts ← Kapitel, Ränge, Glossar
+src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 content/missions/    ← eine JSON-Datei pro Mission (noch nicht angelegt)
 scripts/             ← Datengenerator (noch nicht angelegt)
 ```
@@ -58,9 +63,11 @@ scripts/             ← Datengenerator (noch nicht angelegt)
 
 ## Aktueller Stand
 
-Phase 1 (Fundament) begonnen: Planung abgeschlossen, Gedächtnis-Dateien angelegt. Noch kein App-Code.
+Phase 1 (Fundament) läuft. App-Gerüst steht: Layout, DuckDB im Browser, SQL-Editor mit Ergebnistabelle,
+eine Vorschau-Mission (Kapitel 0) mit Tipps, aber ohne automatische Prüfung. Lokal starten: `npm install`, `npm run dev`.
 
 ## Nächster Schritt
 
-App-Gerüst anlegen: Vite + TypeScript, DuckDB-WASM laden, ein SQL-Editor mit Ergebnistabelle,
-Grundlayout (Navigation links, Arbeitsbereich Mitte, Missions-Panel rechts).
+1. Datengenerator für Stadtwerke Rheinau (fester Seed, eingebaute Fehler: Dubletten, kWh/MWh, Altsystem-Schlüssel)
+2. Missions-Format (`content/missions/*.json`) + Prüf-Engine (Ergebnis, Struktur, Review)
+3. Spielstand in localStorage + Export/Import, XP-Abzug für Tipps

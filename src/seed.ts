@@ -1,0 +1,54 @@
+/**
+ * Small preview dataset so the SQL editor has something to query.
+ * Will be replaced by the seeded data generator (see docs/STATUS.md).
+ * Each space is a DuckDB schema.
+ */
+export const SEED_SQL = `
+CREATE SCHEMA IF NOT EXISTS RHN_IN;
+
+CREATE OR REPLACE TABLE RHN_IN.BILLING_CONTRACTS (
+  CONTRACT_ID  VARCHAR,
+  CUSTOMER_ID  VARCHAR,
+  GRID_AREA    VARCHAR,
+  TARIFF       VARCHAR,
+  START_DATE   DATE,
+  SRC_SYS_ID   VARCHAR
+);
+
+INSERT INTO RHN_IN.BILLING_CONTRACTS VALUES
+  ('C-10001', 'K-501', 'NORTH', 'POWER_BASIC',  DATE '2023-01-01', 'S4U'),
+  ('C-10002', 'K-502', 'NORTH', 'POWER_GREEN',  DATE '2023-03-15', 'S4U'),
+  ('C-10003', 'K-503', 'SOUTH', 'GAS_COMFORT',  DATE '2022-11-01', 'S4U'),
+  ('C-10004', 'K-504', 'SOUTH', 'POWER_BASIC',  DATE '2024-02-01', 'S4U'),
+  ('C-10005', 'K-505', 'EAST',  'POWER_GREEN',  DATE '2024-06-01', 'S4U'),
+  ('C-10006', 'K-506', 'EAST',  'GAS_COMFORT',  DATE '2021-09-01', 'S4U'),
+  ('C-10007', 'K-501', 'NORTH', 'GAS_COMFORT',  DATE '2023-01-01', 'S4U'),
+  ('C-10008', 'K-507', 'SOUTH', 'POWER_HEAT',   DATE '2025-01-01', 'S4U'),
+  ('A-778',   'OLD-09', 'Süd',  'STROM_BASIS',  DATE '2019-05-01', 'LEGACY'),
+  ('A-779',   'OLD-11', 'Nord', 'GAS_KOMFORT',  DATE '2018-10-01', 'LEGACY');
+
+CREATE OR REPLACE TABLE RHN_IN.METER_READINGS (
+  METER_ID      VARCHAR,
+  CONTRACT_ID   VARCHAR,
+  READING_DATE  DATE,
+  VALUE         DECIMAL(12,3),
+  UNIT          VARCHAR,
+  SRC_SYS_ID    VARCHAR
+);
+
+INSERT INTO RHN_IN.METER_READINGS VALUES
+  ('M-9001', 'C-10001', DATE '2025-12-31', 2840.000, 'kWh', 'MDM'),
+  ('M-9002', 'C-10002', DATE '2025-12-31', 1975.500, 'kWh', 'MDM'),
+  ('M-9003', 'C-10003', DATE '2025-12-31',   14.210, 'MWh', 'MDM'),
+  ('M-9004', 'C-10004', DATE '2025-12-31', 3310.000, 'kWh', 'MDM'),
+  ('M-9005', 'C-10005', DATE '2025-12-31', 2105.250, 'kWh', 'MDM'),
+  ('M-9006', 'C-10006', DATE '2025-12-31',   18.900, 'MWh', 'MDM'),
+  ('M-9007', 'C-10007', DATE '2025-12-31', 11250.000, 'kWh', 'MDM'),
+  ('M-9008', 'C-10008', DATE '2025-12-31', 6020.000, 'kWh', 'MDM'),
+  ('M-9001', 'C-10001', DATE '2026-06-30', 1390.000, 'kWh', 'MDM'),
+  ('M-9002', 'C-10002', DATE '2026-06-30',  960.750, 'kWh', 'MDM'),
+  ('M-9003', 'C-10003', DATE '2026-06-30',    5.130, 'MWh', 'MDM'),
+  ('M-9004', 'C-10004', DATE '2026-06-30', 1702.000, 'kWh', 'MDM'),
+  ('M-9004', 'C-10004', DATE '2026-06-30', 1702.000, 'kWh', 'MDM'),
+  ('M-9006', 'C-10006', DATE '2026-06-30',    7.450, 'MWh', 'MDM');
+`;
