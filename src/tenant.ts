@@ -9,6 +9,8 @@
  *  - Objects of a space cannot be used in another space unless they are shared with it
  */
 
+import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
+
 export interface Space {
   id: string;
   name: string;
@@ -31,6 +33,9 @@ export interface TenantState {
   shares: Share[];
   /** Space the Data Builder works in. */
   activeSpace: string;
+  /** Scoped roles and who has which role where (chapter 2). */
+  roles: ScopedRole[];
+  assignments: Assignment[];
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
@@ -41,6 +46,8 @@ export function defaultTenant(): TenantState {
     spaces: [{ id: 'RHN_IN', name: 'Rheinau Inbound', diskGB: 40, memoryGB: 8, priority: 3, system: true }],
     shares: [],
     activeSpace: 'RHN_IN',
+    roles: [],
+    assignments: [],
   };
 }
 
@@ -141,6 +148,7 @@ export function sanitizeTenant(data: unknown): TenantState {
     (s) => s && typeof s.object === 'string' && typeof s.to === 'string' && ids.has(s.to) && ids.has(s.object.split('.')[0]),
   );
   if (typeof d.activeSpace === 'string' && ids.has(d.activeSpace)) t.activeSpace = d.activeSpace;
+  Object.assign(t, sanitizeSecurity(d, ids));
   return t;
 }
 

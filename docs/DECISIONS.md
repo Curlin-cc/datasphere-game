@@ -4,6 +4,10 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Rollenmodell vereinfacht: DW Administrator global, 5 Vorlagen für Scoped Roles, Zuweisung = Rolle + Spaces aus dem Scope; Rollentexte vereinfacht, gegen SAP Help nachprüfen (help.sap.com im Chat nicht abrufbar) | Konzept lernen statt Privilegien-Matrix |
+| 2026-10-08 | Eine Scoped Role pro Funktion (dezentraler Ansatz), Spaces je Nutzer | SAP-Community-Empfehlung gegen Rollenwildwuchs |
+| 2026-10-08 | Prüfung je Person über effektive Rechte (Vorlage@Space) mit „need“ und „allow“ | Namen der Rollen egal; zulässige Varianten (Calin auch Modeler, Lena auch Modeler in IN) |
+| 2026-10-08 | Playtests als Playwright-Skripte im Repo | Jede Mission mit richtiger und falscher Lösung reproduzierbar prüfen |
 | 2026-10-08 | Repo bleibt privat; getestet wird als privates claude.ai-Artifact, kein GitHub Pages | Wunsch von Curlin |
 | 2026-10-08 | Space-Regeln wie SAP (learning.sap.com, Stand 08.10.2026): ID max. 20 Zeichen A–Z/0–9/_, nicht änderbar; Name max. 30; Priorität 1–5; neue Spaces 2 GB Disk / 1 GB In-Memory | Echtes Verhalten lernen |
 | 2026-10-08 | Tenant-Kapazität 128 GB Disk / 32 GB In-Memory, RHN_IN 40/8 mit Priorität 3 | Ergibt eine Rechenaufgabe mit Reserve in c01-m02 |

@@ -296,6 +296,71 @@ GROUP BY c.TARIFF;`,
         <p>A <b>fact</b> holds numbers you add up, a <b>dimension</b> describes them. You build both in chapter 6.</p>`,
     },
   ],
+  'c02-m01': [
+    {
+      title: 'Chapter 2: Users and roles',
+      body: `<p>Spaces separate the data. Roles decide what people may <b>do</b> with it, and where.</p>
+        <p>From this chapter on, only the first hint is free. The others cost XP, so read the tutorials carefully.</p>`,
+    },
+    {
+      title: 'Templates',
+      view: 'security',
+      target: '#templates',
+      body: `<p>SAP Datasphere ships role <b>templates</b>. Each describes a job: run a space, load data, build models, look at models, or consume reports.</p>
+        <p>Read the cards: what can each one do, and what not?</p>`,
+    },
+    {
+      title: 'Global versus scoped',
+      target: '.role-cards',
+      body: `<p><b>DW Administrator</b> is a <b>global</b> role: it applies to the whole tenant.</p>
+        <p>All other roles are <b>scoped</b>: a template plus a <b>scope</b>, the list of spaces the role can be used in.
+        When a user gets the role, you choose which of those spaces they get it for.</p>`,
+    },
+    {
+      title: 'Create a scoped role',
+      target: '#create-role',
+      body: `<p>This button opens the form: role name, template, scope. The ticket asks for one role per function, so five roles in total.</p>
+        <p>Think layer by layer: in which spaces does this function happen at all?</p>`,
+    },
+  ],
+  'c02-m02': [
+    {
+      title: 'The people',
+      view: 'security',
+      target: '.tabs',
+      body: `<p>Switch to the <b>Users</b> tab. Eight people need access, each with a short description of their job.</p>`,
+    },
+    {
+      title: 'Least privilege',
+      body: `<p>The rule for this mission: <b>least privilege</b>. Everyone gets the smallest set of rights that lets them do their job.</p>
+        <ul>
+          <li>Someone who only reads reports in SAP Analytics Cloud does not need to open Datasphere: <b>Consumer</b>.</li>
+          <li>Someone who must look at models without changing them: <b>Viewer</b>.</li>
+          <li>Someone who builds: <b>Modeler</b>, in the spaces where they build.</li>
+        </ul>`,
+    },
+    {
+      title: 'Assigning roles',
+      target: '#security-body',
+      body: `<p><b>Edit roles</b> opens a dialog per person. Tick a role's spaces to assign it; untick to remove.</p>
+        <p>The check gives you feedback per person: missing rights and rights that are too much.</p>`,
+    },
+  ],
+  'c02-m03': [
+    {
+      title: 'Joiners, movers, leavers',
+      target: '.ticket',
+      body: `<p>Access is not a one-time job. People join, change teams and leave. Each change needs two steps:
+        give what the new job needs, and take away what the old job needed.</p>`,
+    },
+    {
+      title: 'Delegation',
+      view: 'security',
+      target: '#security-body',
+      body: `<p>In a real tenant the space administrator of a space can manage its members without the tenant owner.
+        That keeps the tenant owner from becoming a bottleneck.</p>`,
+    },
+  ],
 };
 
 /**
@@ -501,5 +566,25 @@ GROUP BY CITY;`,
     [
       { title: 'Check part by part', target: '#questions', body: `<p>For each option, check prefix, layer code, type code and the name part. One wrong part rules it out.</p>` },
     ],
+  ],
+  'c02-m01': [
+    [ { title: 'Role templates', view: 'security', target: '#templates', body: `<p>Five templates. Each card says what the role may do and what not.</p>` } ],
+    [
+      { title: 'Create', view: 'security', target: '#create-role', body: `<p>Name it <code>RHN_</code> plus the function, pick the template, tick the scope spaces.</p>` },
+      { title: 'Check the list', target: '#role-list', body: `<p>Five roles, one per template. Compare each scope with the ticket.</p>` },
+    ],
+    [ { title: 'Global or scoped', view: 'security', target: '.role-cards', body: `<p>Which role card says "Global role"?</p>` } ],
+  ],
+  'c02-m02': [
+    [ { title: 'Users tab', view: 'security', target: '.tabs', body: `<p>Open <b>Users</b>. The middle column says what each person does.</p>` } ],
+    [
+      { title: 'One person at a time', view: 'security', target: '#security-body', body: `<p>Press <b>Edit roles</b>, tick the spaces for the role that matches the job. Reports in SAC only: Consumer. Reading models: Viewer.</p>` },
+    ],
+    [ { title: 'Risk', target: '#questions', body: `<p>What is the worst that can happen with each extra right?</p>` } ],
+  ],
+  'c02-m03': [
+    [ { title: 'The new colleague', view: 'security', target: '#security-body', body: `<p>Nina is in the user list now. Give her the role and space she needs, nothing more.</p>` } ],
+    [ { title: 'The mover', view: 'security', target: '#security-body', body: `<p>Edit Tim: tick the new space, untick the old one.</p>` } ],
+    [ { title: 'Two questions', target: '#questions', body: `<p>Which template manages members? And which tool filters rows, not functions?</p>` } ],
   ],
 };

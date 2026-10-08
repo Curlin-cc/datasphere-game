@@ -54,12 +54,15 @@ src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete,
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
-src/content/missions/ ← Missionen je Kapitel (`c00.ts`, `c01.ts`), Reihenfolge in `index.ts`
+src/content/missions/ ← Missionen je Kapitel (`c00.ts`, `c01.ts`, `c02.ts`), Reihenfolge in `index.ts`
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result/structure/question/rule), Review-Regeln, XP
 src/missions/engine.ts ← Prüf-Engine: führt letzte Anweisung im Editor aus, vergleicht mit Musterlösung(en), `diagnose` für typische Fehler
 src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound)
 src/progress.ts      ← Spielstand v3 (je Mission + Tenant), Ränge (RANK_XP), Export/Import
-src/tenant.ts        ← Tenant: Spaces (Storage, Priorität), Shares, aktiver Space, Sharing-Sperre `accessError`
+src/tenant.ts        ← Tenant: Spaces (Storage, Priorität), Shares, aktiver Space, Sharing-Sperre `accessError`, Rollen/Zuweisungen
+src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scoped Roles, `effectiveAccess`
+src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
+tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
@@ -74,18 +77,20 @@ scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerpr
 
 ## Aktueller Stand
 
-Phase 1 (Fundament) fertig. Kapitel 0 (Onboarding) und Kapitel 1 (Space Concept) sind spielbar, je 4 Missionen mit
+Phase 1 und 2 fertig. Kapitel 0 (Onboarding), 1 (Space Concept) und 2 (Users & Roles) sind spielbar, 11 Missionen mit
 automatischer Prüfung, Fragen, Review, XP und Rängen, Spielstand mit Export/Import. Kapitel 1 bringt das Tenant-Modell:
 Spaces anlegen, Storage und Priorität, Objekte zwischen Spaces teilen; der Data Builder arbeitet immer in einem aktiven Space.
+Kapitel 2 bringt die Security-Ansicht: Scoped Roles anlegen und Personas zuweisen.
 Achtung: Views, die der Spieler per SQL anlegt, leben nur in DuckDB und sind nach dem Neuladen weg – vor Kapitel 4/5 lösen. Datengenerator: 7 Tabellen in
 `RHN_IN` mit eingebauten Fehlern, Details in `docs/DATA.md`. Lokal starten: `npm install`, `npm run dev`.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
-`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`, im Browser mit richtiger und falscher Lösung durchspielen.
+`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`, Playtest-Skript in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 2 (Users & Roles): Security-Ansicht mit 8 Personas, Rollen (DW Administrator, Space Administrator,
-   Integrator, Modeler, Viewer, Consumer) und Scoped Roles je Space; Prüfung per `rule`-Checks (Least Privilege)
-2. Vom Spieler angelegte Objekte (CREATE VIEW/TABLE) im Spielstand speichern und beim Start wieder anlegen
+1. Vom Spieler angelegte Objekte (CREATE VIEW/TABLE, Shares darauf) im Spielstand speichern und beim Start wieder anlegen –
+   Voraussetzung für Kapitel 3–5
+2. Kapitel 3 (Data Integration): Connections, Remote vs. Local Table, Replication Flow (Initial/Delta), CSV-Upload;
+   Best Practice `SRC_SYS_ID` beim Laden setzen (CRM-Export hat keine). Data Integration Monitor freischalten
 3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges

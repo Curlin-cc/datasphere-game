@@ -92,4 +92,24 @@ export const GLOSSARY: GlossaryTerm[] = [
     text: 'A team agreement on object names, e.g. RHN_<layer>_<type>_<NAME>. Datasphere does not enforce it; reviews do.',
     realTenant: 'Technical name and business name of each object in the Data Builder.',
   },
+  {
+    term: 'Global role',
+    text: 'A role that applies to the whole tenant, such as DW Administrator. Give it to very few people.',
+    realTenant: 'Security > Roles, standard roles.',
+  },
+  {
+    term: 'Scoped role',
+    text: 'A role built from a template (Space Administrator, Integrator, Modeler, Viewer, Consumer) plus a scope of spaces. Each user gets it for some or all of those spaces.',
+    realTenant: 'Security > Roles > create a scoped role.',
+  },
+  {
+    term: 'Least privilege',
+    text: 'Everyone gets exactly the rights their job needs, no more. Movers lose their old rights when they get new ones.',
+    realTenant: 'Security > Authorization Overview shows who can do what where.',
+  },
+  {
+    term: 'Space administrator',
+    text: 'Runs a space: members, settings and objects. Lets the tenant owner delegate day-to-day access requests.',
+    realTenant: 'Space Management > your space > Users.',
+  },
 ];
