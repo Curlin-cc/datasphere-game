@@ -67,4 +67,29 @@ export const GLOSSARY: GlossaryTerm[] = [
     text: 'A view defined in SQL. In Datasphere you can write plain SQL or SQLScript; this game uses standard SQL.',
     realTenant: 'Data Builder > New SQL View.',
   },
+  {
+    term: 'Space ID',
+    text: 'The technical name of a space: up to 20 characters, capital letters, digits and underscores. It cannot be changed after the space is created. The space name is for people and can be changed.',
+    realTenant: 'Space Management > Create.',
+  },
+  {
+    term: 'Space storage',
+    text: 'Each space gets a share of the tenant\'s disk and in-memory storage. In-memory is faster and more expensive; give it to data that is read often.',
+    realTenant: 'Space Management > your space > Space Storage.',
+  },
+  {
+    term: 'Space priority',
+    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 5 (highest). Reporting usually ranks above loading.',
+    realTenant: 'Space Management > your space > Workload Management.',
+  },
+  {
+    term: 'Sharing',
+    text: 'An object of one space can be shared with other spaces. They can read it as a source, but the data stays where it is and can only be changed in its own space.',
+    realTenant: 'Data Builder > open the object > Share.',
+  },
+  {
+    term: 'Naming convention',
+    text: 'A team agreement on object names, e.g. RHN_<layer>_<type>_<NAME>. Datasphere does not enforce it; reviews do.',
+    realTenant: 'Technical name and business name of each object in the Data Builder.',
+  },
 ];

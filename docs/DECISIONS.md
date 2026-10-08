@@ -4,6 +4,12 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Repo bleibt privat; getestet wird als privates claude.ai-Artifact, kein GitHub Pages | Wunsch von Curlin |
+| 2026-10-08 | Space-Regeln wie SAP (learning.sap.com, Stand 08.10.2026): ID max. 20 Zeichen A–Z/0–9/_, nicht änderbar; Name max. 30; Priorität 1–5; neue Spaces 2 GB Disk / 1 GB In-Memory | Echtes Verhalten lernen |
+| 2026-10-08 | Tenant-Kapazität 128 GB Disk / 32 GB In-Memory, RHN_IN 40/8 mit Priorität 3 | Ergibt eine Rechenaufgabe mit Reserve in c01-m02 |
+| 2026-10-08 | Data Builder arbeitet immer in einem aktiven Space; Abfragen auf fremde Spaces nur über Sharing, neue Objekte nur im aktiven Space | Echtes Space-Konzept spürbar machen |
+| 2026-10-08 | Space anlegen per Formular statt SQL | Entspricht der echten Oberfläche; SQL bleibt fürs Modellieren |
+| 2026-10-08 | Neuer Prüftyp `rule` (Funktion auf dem Tenant-Zustand) | Storage-, Prioritäts- und Sharing-Regeln sind keine Abfrageergebnisse |
 | 2026-10-08 | Missionen als TypeScript-Module (`src/content/missions/*.ts`) statt JSON | Typprüfung beim Build, mehrzeiliges SQL und HTML ohne Escaping; Format bleibt rein datengetrieben |
 | 2026-10-08 | Ergebnisprüfung ignoriert Spaltennamen und -reihenfolge, Zeilenreihenfolge nur bei `ordered` | Bewertet wird das Ergebnis, nicht der Schreibstil |
 | 2026-10-08 | Typische Fehler werden als eigene Abfragen (`diagnose`) hinterlegt und gezielt erklärt | Konkretes Feedback statt „falsch“, ohne die Lösung zu verraten |

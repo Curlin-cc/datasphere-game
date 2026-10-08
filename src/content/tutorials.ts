@@ -189,6 +189,113 @@ GROUP BY c.TARIFF;`,
         Both answers are accepted here.</p>`,
     },
   ],
+  'c01-m01': [
+    {
+      title: 'Chapter 1: Space concept',
+      body: `<p>Welcome to chapter 1. Until now you worked in one space that IT prepared. Now you design the landscape yourself.</p>
+        <p>A <b>space</b> is an isolated area in the tenant: its own members, its own storage, its own priority, its own objects.
+        Objects in one space are invisible to the others until you share them.</p>`,
+    },
+    {
+      title: 'Space Management',
+      view: 'spaces',
+      target: '#space-list',
+      body: `<p>This list shows every space with its storage and priority. Right now there is only <b>RHN_IN</b>, the inbound space.</p>
+        <p>The layer column comes from the space ID: our convention ends inbound spaces in <code>_IN</code>, harmonization in <code>_HARM</code>, reporting in <code>_REP</code>.</p>`,
+    },
+    {
+      title: 'Tenant capacity',
+      target: '.capacity',
+      body: `<p>All spaces share the tenant's disk and in-memory storage. The bars show how much is already given to spaces.</p>`,
+    },
+    {
+      title: 'Space ID and space name',
+      target: '#create-space',
+      body: `<p><b>Create space</b> opens a form with two names:</p>
+        <ul>
+          <li><b>Space name</b>: for people, up to 30 characters, can be changed any time.</li>
+          <li><b>Space ID</b>: the technical name, up to 20 characters, only <code>A–Z</code>, <code>0–9</code> and <code>_</code>.
+            It <b>cannot be changed</b> after the space is created.</li>
+        </ul>
+        <p>Typing the name suggests an ID. Check it before you press Create.</p>`,
+    },
+    {
+      title: 'Your turn',
+      target: '.ticket',
+      body: `<p>Create the two spaces the ticket asks for, then answer the question in the mission panel and press <b>Check my solution</b>.</p>
+        <p>Made a typo in an ID? Delete the space and create it again. That is what you would do in a real tenant too.</p>`,
+    },
+  ],
+  'c01-m02': [
+    {
+      title: 'Storage and priority',
+      target: '.ticket',
+      body: `<p>Jonas gives you the budget and a list of rules. This mission is about planning, not SQL: work out the numbers first, then edit the spaces.</p>`,
+    },
+    {
+      title: 'Disk and in-memory',
+      view: 'spaces',
+      target: '.capacity',
+      body: `<p><b>Disk</b> stores data. <b>In-memory</b> keeps data in RAM so it can be read very fast; it is smaller and more expensive.
+        A space can never have more in-memory than disk.</p>
+        <p>The tenant refuses assignments beyond its capacity, but the reserve IT wants is your job to keep.</p>`,
+    },
+    {
+      title: 'Priority',
+      target: '#space-list',
+      body: `<p>Priority goes from <b>1</b> (lowest) to <b>5</b> (highest). When the database is busy, statements from spaces with a higher priority are favored.</p>
+        <p>Use <b>Edit</b> in a row to change storage and priority. The space ID stays fixed.</p>`,
+    },
+    {
+      title: 'A planning trick',
+      body: `<p>Write the budget down before you click: capacity minus reserve minus what is already assigned is what you can hand out.
+        Then check the minimum each space needs. If the minimums fit, give the rest where it helps most.</p>`,
+    },
+  ],
+  'c01-m03': [
+    {
+      title: 'Spaces are walls',
+      target: '.ticket',
+      body: `<p>Data in one space is invisible to every other space. That is the point: a modeler in harmonization should not stumble over everything in inbound.</p>
+        <p>To let a layer build on the layer below, you <b>share</b> objects. The data stays where it is, nothing is copied.</p>`,
+    },
+    {
+      title: 'The active space',
+      view: 'builder',
+      target: '#space-select',
+      body: `<p>The Data Builder always works <b>in one space</b>. Choose it here; the top bar shows it too.</p>
+        <p>The repository on the left lists the objects of that space, and below them the objects <b>shared with</b> it.
+        Queries may only read those.</p>`,
+    },
+    {
+      title: 'Sharing an object',
+      target: '.objects',
+      body: `<p>In the space an object belongs to, the share icon next to it opens the sharing dialog. Tick the spaces that may read it.</p>
+        <p>A dot on the icon means the object is already shared somewhere.</p>`,
+    },
+    {
+      title: 'Layers in order',
+      body: `<p>The rule of the landscape: each layer reads from the layer directly below.</p>
+        <p><b>RHN_IN</b> → shared with → <b>RHN_HARM</b> → shared with → <b>RHN_REP</b></p>
+        <p>If reporting read inbound directly, the legacy grid areas from chapter 0 would land in the board's reports, uncleaned.</p>`,
+    },
+  ],
+  'c01-m04': [
+    {
+      title: 'Why names matter',
+      target: '.ticket',
+      body: `<p>A landscape grows to hundreds of objects. A good name tells you, without opening the object, which layer it lives in and what kind of object it is.</p>
+        <p>Datasphere does not enforce names. Teams agree on a convention and check it in reviews, like Calin does.</p>`,
+    },
+    {
+      title: 'Read a name in parts',
+      target: '#questions',
+      body: `<p>Split each name at the underscores and check part by part:</p>
+        <p><code>RHN</code> · <code>HA</code> · <code>V</code> · <code>CONSUMPTION</code><br>
+        company · layer · type · what it holds</p>
+        <p>A <b>fact</b> holds numbers you add up, a <b>dimension</b> describes them. You build both in chapter 6.</p>`,
+    },
+  ],
 };
 
 /**
@@ -338,6 +445,61 @@ GROUP BY CITY;`,
         target: '#questions',
         body: `<p>Which contracts had grid area values that do not look like the codes in GRID_AREAS?</p>`,
       },
+    ],
+  ],
+  'c01-m01': [
+    [
+      { title: 'Space Management', view: 'spaces', target: '#space-list', body: `<p>Here are all spaces. RHN_IN has 40 GB disk and 8 GB in-memory.</p>` },
+      { title: 'Capacity', target: '.capacity', body: `<p>The bars show how much of the tenant is already assigned.</p>` },
+    ],
+    [
+      { title: 'Create a space', view: 'spaces', target: '#create-space', body: `<p>Press <b>Create space</b>. Enter a name for people; check the suggested ID against the convention: <code>RHN_</code> plus the layer.</p>` },
+    ],
+    [
+      { title: 'Same again', view: 'spaces', target: '#create-space', body: `<p>One more space, this time for the reporting layer.</p>` },
+      { title: 'Check the list', target: '#space-list', body: `<p>The layer column should now show Inbound, Harmonization and Reporting.</p>` },
+    ],
+    [
+      { title: 'Think about people', target: '#questions', body: `<p>Who works in harmonization, who in reporting? What can you set per space?</p>` },
+    ],
+  ],
+  'c01-m02': [
+    [
+      { title: 'Do the maths', target: '.ticket', body: `<p>Disk: capacity − reserve − RHN_IN. In-memory: the same. Then compare with the minimums of HARM and REP.</p>` },
+    ],
+    [
+      { title: 'Edit a space', view: 'spaces', target: '#space-list', body: `<p>Press <b>Edit</b> in the RHN_HARM row. The form shows how much is still free in the tenant.</p>` },
+    ],
+    [
+      { title: 'Reporting first', view: 'spaces', target: '#space-list', body: `<p>RHN_REP needs the most in-memory of the two and a priority higher than every other space.</p>` },
+    ],
+    [
+      { title: 'The question', target: '#questions', body: `<p>Priority is about competition for resources at the same moment.</p>` },
+    ],
+  ],
+  'c01-m03': [
+    [
+      { title: 'Switch space', view: 'builder', target: '#space-select', body: `<p>Choose <b>RHN_HARM</b>. The repository is empty: nothing lives there yet.</p>` },
+      { title: 'Try it', target: '#editor', body: `<p>Run <code>SELECT * FROM RHN_IN.BILLING_CONTRACTS</code> and read the message in the result area.</p>` },
+    ],
+    [
+      { title: 'Back to inbound', view: 'builder', target: '#space-select', body: `<p>Switch to <b>RHN_IN</b>. Objects are shared from the space they belong to.</p>` },
+      { title: 'Share', target: '.objects', body: `<p>Click the share icon next to BILLING_CONTRACTS and tick RHN_HARM. Then the same for GRID_AREAS.</p>` },
+    ],
+    [
+      { title: 'Count from harmonization', view: 'builder', target: '#space-select', body: `<p>Switch to RHN_HARM again. The two tables now appear under "Shared with RHN_HARM".</p>` },
+      { title: 'Your join', target: '#editor', body: `<p>Write the region count from chapter 0 and run it here. Leave it in the editor for the check.</p>` },
+    ],
+    [
+      { title: 'Copies', target: '#questions', body: `<p>What happens to a copy when the inbound table changes tomorrow?</p>` },
+    ],
+  ],
+  'c01-m04': [
+    [
+      { title: 'The convention', target: '.ticket', body: `<p>Four parts: <code>RHN</code>, layer, type, name. Layer and type use short codes.</p>` },
+    ],
+    [
+      { title: 'Check part by part', target: '#questions', body: `<p>For each option, check prefix, layer code, type code and the name part. One wrong part rules it out.</p>` },
     ],
   ],
 };

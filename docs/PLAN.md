@@ -88,7 +88,7 @@ Fiori/Horizon-inspiriert, eigenständig. Hell- und Dunkelmodus. Nur Desktop.
 
 ## 6. Technik
 
-Statische Web-App ohne Server, GitHub Pages. Vite + TypeScript, DuckDB-WASM, CodeMirror 6.
+Statische Web-App ohne Server, getestet als privates claude.ai-Artifact. Vite + TypeScript, DuckDB-WASM, CodeMirror 6.
 Missionen als TypeScript-Daten (`src/content/missions/`, Typ in `src/missions/types.ts`), Grundidee:
 
 ```json

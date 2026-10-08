@@ -2,7 +2,7 @@
 
 ## Phasen
 
-- [ ] **Phase 1 – Fundament**
+- [x] **Phase 1 – Fundament**
   - [x] Plan erstellt und Entscheidungen getroffen
   - [x] Gedächtnis-Dateien angelegt (AI_CONTEXT, PLAN, STATUS, DECISIONS)
   - [x] App-Gerüst (Vite + TypeScript, Grundlayout mit Navigation, Topbar, Missions-Panel, Hell/Dunkel)
@@ -10,10 +10,10 @@
   - [x] Datengenerator Stadtwerke Rheinau (`src/data/generator.ts`, Doku `docs/DATA.md`)
   - [x] Prüf-Engine (Ergebnis, Struktur, Fragen, Review)
   - [x] Spielstand (localStorage + Export/Import)
-  - [ ] Deployment auf GitHub Pages (Workflow liegt bereit, Pages muss in den Repo-Einstellungen auf „GitHub Actions“ gestellt werden)
+  - [x] Testen als claude.ai-Artifact (`npm run build:artifact`); Repo bleibt privat, GitHub Pages entfällt
 - [ ] **Phase 2 – Prototyp:** Kapitel 0, 1, 2
   - [x] Kapitel 0: 4 Missionen spielbar (Rohdaten, Forderungen, Überfällig-Liste, Regionen-Join)
-  - [ ] Kapitel 1: Space Concept
+  - [x] Kapitel 1: Space Concept – 4 Missionen (Spaces anlegen, Storage/Priorität, Sharing, Namenskonvention)
   - [ ] Kapitel 2: Users & Roles
 - [ ] **Phase 3 – Datenstrecke:** Kapitel 3, 4, 5
 - [ ] **Phase 4 – Reporting:** Kapitel 6, 7, 8
@@ -23,6 +23,7 @@
 
 | Datum | Was passiert ist |
 | --- | --- |
+| 2026-10-08 | Kapitel 1 Space Concept: Tenant-Modell im Spielstand (`src/tenant.ts`: Spaces mit Disk/In-Memory/Priorität 1–5, Shares, aktiver Space), Space Management mit Anlegen/Bearbeiten/Löschen und Kapazitätsbalken, Space-Auswahl und Teilen-Dialog im Data Builder, Sharing-Sperre für Abfragen aus fremden Spaces, neuer Prüftyp `rule`. 4 Missionen mit Tutorials, Show-me-Touren und Glossar-Begriffen, headless durchgespielt (inkl. Fehlversuche), Kapitel 0 als Regressionstest erneut grün |
 | 2026-10-08 | Prüf-Engine (`src/missions/`): Ergebnisprüfung unabhängig von Spaltennamen/-reihenfolge, gezielte Fehlermeldungen (`diagnose`), Strukturprüfung, Fragen, Review-Regeln mit Bonus-XP. Spielstand v3 je Mission mit Export/Import/Neustart (`src/progress.ts`), Migration von v2. Kapitel 0 komplett: 4 Missionen mit Tutorials und Show-me-Touren, headless im Browser durchgespielt (richtige und typische falsche Lösungen) |
 | 2026-10-08 | Tipp-Stufen je Kapitel (`guidance` in chapters.ts): Kap. 0–1 alle Tipps offen, 2–4 nur erster Tipp frei, 5–10 alle kaufen, 11 keine. „Show me“-Schnelltutorial je Aufgabenschritt (`TASK_TOURS`) |
 | 2026-10-08 | Tutorial je Mission: Schritt-für-Schritt-Popup mit Spotlight (`src/tutorial.ts`, Inhalte `src/content/tutorials.ts`), öffnet beim ersten Start, „Show tutorial“ im Missions-Panel. Start mit 0 XP (Spielstand-Key v2) |

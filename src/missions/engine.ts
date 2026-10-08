@@ -1,6 +1,7 @@
 import { runSql, listObjects, type QueryResult } from '../db';
 import { review, type ReviewNote } from './review';
-import type { Mission, ResultCheck, StructureCheck, QuestionCheck } from './types';
+import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, RuleContext } from './types';
+import { accessError, type TenantState } from '../tenant';
 
 /**
  * Check engine: result check (result set vs. reference solution, independent of writing style),
@@ -24,6 +25,7 @@ export interface CheckInput {
   sql: string;
   /** Question ID → chosen option index. */
   answers: Record<string, number | undefined>;
+  tenant: TenantState;
 }
 
 export async function checkMission(mission: Mission, input: CheckInput): Promise<CheckReport> {
@@ -38,7 +40,9 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
     if (!query) playerError = 'The editor is empty. Write the query that answers the ticket, then check again.';
     else if (!/^\s*(select|with|from|values|\()/i.test(query))
       playerError = 'The last statement in the editor must be the query that answers the ticket (a SELECT).';
-    else {
+    else if ((playerError = accessError(query, input.tenant.activeSpace, input.tenant) ?? '')) {
+      /* the sharing guard explains what is missing */
+    } else {
       try {
         player = await runSql(query);
       } catch (err) {
@@ -49,9 +53,19 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
 
   for (const check of mission.checks) {
     if (check.type === 'result') {
-      outcomes.push(player ? await checkResult(check, player) : { label: check.label, ok: false, message: playerError });
+      if (player && check.space && input.tenant.activeSpace !== check.space) {
+        outcomes.push({
+          label: check.label,
+          ok: false,
+          message: `Your query ran in space ${input.tenant.activeSpace}. The ticket needs it to run in ${check.space}: switch the Data Builder to ${check.space}.`,
+        });
+      } else {
+        outcomes.push(player ? await checkResult(check, player) : { label: check.label, ok: false, message: playerError });
+      }
     } else if (check.type === 'structure') {
       outcomes.push(await checkStructure(check));
+    } else if (check.type === 'rule') {
+      outcomes.push(checkRule(check, { tenant: input.tenant }));
     } else {
       outcomes.push(checkQuestion(check, input.answers[check.id]));
     }
@@ -190,6 +204,13 @@ async function checkStructure(check: StructureCheck): Promise<CheckOutcome> {
   const missing = (check.columns ?? []).filter((c) => !have.has(c.toUpperCase()));
   if (missing.length) return { label: check.label, ok: false, message: `${check.object} is missing the column ${missing.join(', ')}.` };
   return { label: check.label, ok: true, message: `${check.space}.${check.object} is in place.` };
+}
+
+// ---------------------------------------------------------------- rule
+
+function checkRule(check: RuleCheck, ctx: RuleContext): CheckOutcome {
+  const problem = check.test(ctx);
+  return problem ? { label: check.label, ok: false, message: problem } : { label: check.label, ok: true, message: check.ok ?? 'Done.' };
 }
 
 // ---------------------------------------------------------------- question

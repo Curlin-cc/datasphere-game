@@ -12,6 +12,9 @@ import {
   loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, rankOf,
   exportProgress, importProgress, freshProgress, CLEAN_BONUS,
 } from './progress';
+import {
+  CAPACITY, NEW_SPACE_DEFAULTS, assigned, spaceIdError, storageError, accessError, sharedWith, isShared, round1, type Space,
+} from './tenant';
 
 type ViewId = 'home' | 'spaces' | 'builder' | 'security' | 'monitor' | 'glossary';
 
@@ -30,6 +33,8 @@ const NAV: NavItem[] = [
   { id: 'monitor', label: 'Data Integration Monitor', icon: '<path d="M2 12l3-4 3 2 3-5 3 3"/>', unlockChapter: 3 },
 ];
 const NAV_BOTTOM: NavItem[] = [{ id: 'glossary', label: 'Glossary', icon: '<path d="M4 2.5h7.5v11H4a1.5 1.5 0 010-3h7.5"/>' }];
+
+const LAYER_ORDER = ['in', 'ha', 'rep', undefined];
 
 /** Space name → layer key for colour coding. */
 function layerOf(space: string): 'in' | 'ha' | 'rep' | undefined {
@@ -57,6 +62,7 @@ const state = {
 const save = () => saveProgress(state.progress);
 const currentMission = () => missionById(state.progress.currentMission) ?? MISSIONS[0];
 const currentChapter = () => reachedChapter(state.progress);
+const tenant = () => state.progress.tenant;
 
 let editor: SqlEditor | null = null;
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -73,6 +79,7 @@ function renderFrame() {
       <header class="topbar">
         <span class="tenant">Stadtwerke Rheinau<small>training tenant</small></span>
         <span class="spacer"></span>
+        <span class="active-space" id="active-space" title="The space the Data Builder works in">${activeSpaceHtml()}</span>
         <span class="rank" id="rank" title="Earn XP by solving missions. Hints cost XP.">${rankHtml()}</span>
         <button class="icon-btn" id="guide-open" type="button">How to play</button>
         <button class="icon-btn" id="theme-toggle" type="button">Theme</button>
@@ -133,6 +140,11 @@ function openTutorial(missionId: string) {
       }
     }),
   );
+}
+
+function activeSpaceHtml() {
+  const id = tenant().activeSpace;
+  return `<small>Space</small><span class="chip" data-layer="${layerOf(id) ?? ''}">${esc(id)}</span>`;
 }
 
 function rankHtml() {
@@ -332,28 +344,180 @@ function afterProgressReplaced() {
   state.report = null;
   state.solved = null;
   state.sql = missionProgress(state.progress, state.progress.currentMission).sql ?? DEFAULT_SQL;
-  renderFrame();
+  // Recreate the imported spaces as schemas, then redraw.
+  Promise.all(tenant().spaces.map((sp) => exec(`CREATE SCHEMA IF NOT EXISTS "${sp.id}"`))).finally(renderFrame);
 }
 
 async function renderSpaces(main: HTMLElement) {
   const objects = await listObjects();
-  const spaces = [...new Set(objects.map((o) => o.schema))];
+  const t = tenant();
+  const canCreate = currentChapter() >= 1;
+  const used = assigned(t);
+  const bar = (label: string, used: number, cap: number) => `
+    <div class="capacity-item">
+      <div class="capacity-head"><b>${label}</b><span>${used} of ${cap} GB assigned, ${round1(cap - used)} GB free</span></div>
+      <div class="capacity-bar"><span style="width:${Math.min(100, (used / cap) * 100)}%"></span></div>
+    </div>`;
   main.innerHTML = `
     <h1 class="view-title">Space Management</h1>
-    <p class="view-lead">Each space has its own members, storage and objects. Creating spaces unlocks in chapter 1.
-      For now you can look at the one space IT prepared.</p>
+    <p class="view-lead">Each space has its own members, storage and priority. Objects in one space are invisible to the others
+      until you share them.${canCreate ? '' : ' Creating spaces unlocks in chapter 1. For now you can look at the space IT prepared.'}</p>
+    <section class="panel capacity" aria-label="Tenant capacity">
+      ${bar('Disk', used.diskGB, CAPACITY.diskGB)}
+      ${bar('In-memory', used.memoryGB, CAPACITY.memoryGB)}
+    </section>
     <div class="panel">
-      <table class="grid">
-        <thead><tr><th>Space</th><th>Layer</th><th>Objects</th></tr></thead>
-        <tbody>${spaces
-          .map((s) => {
-            const l = layerOf(s);
-            const name = l === 'in' ? 'Inbound' : l === 'ha' ? 'Harmonization' : l === 'rep' ? 'Reporting' : 'Unassigned';
-            return `<tr><td><span class="chip" data-layer="${l ?? ''}">${esc(s)}</span></td><td>${name}</td><td class="num">${objects.filter((o) => o.schema === s).length}</td></tr>`;
+      <div class="table-head">
+        <h3>Spaces</h3>
+        <span class="spacer"></span>
+        <button class="btn primary" type="button" id="create-space" ${canCreate ? '' : 'disabled title="Unlocks in chapter 1"'}>Create space</button>
+      </div>
+      <div class="table-scroll"><table class="grid" id="space-list">
+        <thead><tr><th>Space ID</th><th>Space name</th><th>Layer</th><th class="num">Disk</th><th class="num">In-memory</th><th class="num">Priority</th><th class="num">Objects</th><th></th></tr></thead>
+        <tbody>${[...t.spaces]
+          .sort((x, y) => LAYER_ORDER.indexOf(layerOf(x.id)) - LAYER_ORDER.indexOf(layerOf(y.id)) || x.id.localeCompare(y.id))
+          .map((sp) => {
+            const l = layerOf(sp.id);
+            const layer = l === 'in' ? 'Inbound' : l === 'ha' ? 'Harmonization' : l === 'rep' ? 'Reporting' : 'Unassigned';
+            const own = objects.filter((o) => o.schema === sp.id).length;
+            const sharedIn = sharedWith(t, sp.id).length;
+            return `<tr>
+              <td><span class="chip" data-layer="${l ?? ''}">${esc(sp.id)}</span></td>
+              <td>${esc(sp.name)}</td><td>${layer}</td>
+              <td class="num">${sp.diskGB} GB</td><td class="num">${sp.memoryGB} GB</td><td class="num">${sp.priority}</td>
+              <td class="num" title="${sharedIn} shared with this space">${own}${sharedIn ? ` <small class="muted">+${sharedIn} shared</small>` : ''}</td>
+              <td class="row-actions">${canCreate ? `<button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>` : ''}
+                ${canCreate && !sp.system ? `<button class="btn small link" type="button" data-delete="${esc(sp.id)}">Delete</button>` : ''}</td>
+            </tr>`;
           })
           .join('')}</tbody>
-      </table>
+      </table></div>
     </div>`;
+  main.querySelector('#create-space')?.addEventListener('click', () => openSpaceDialog());
+  main.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>
+    b.addEventListener('click', () => openSpaceDialog(t.spaces.find((x) => x.id === b.dataset.edit))),
+  );
+  main.querySelectorAll<HTMLButtonElement>('[data-delete]').forEach((b) =>
+    b.addEventListener('click', () => deleteSpace(b.dataset.delete!, objects.filter((o) => o.schema === b.dataset.delete).length)),
+  );
+}
+
+/** Small modal used by the space and share dialogs. Returns the dialog element and a close function. */
+function openDialog(title: string, body: string) {
+  document.querySelector('.guide-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'guide-overlay';
+  overlay.innerHTML = `<form class="guide panel dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title" novalidate>
+      <h2 id="dlg-title">${esc(title)}</h2>${body}</form>`;
+  document.body.append(overlay);
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e) => e.target === overlay && close());
+  overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', close);
+  return { form: overlay.querySelector<HTMLFormElement>('form')!, close };
+}
+
+function openSpaceDialog(existing?: Space) {
+  const t = tenant();
+  const v = existing ?? { id: '', name: '', ...NEW_SPACE_DEFAULTS };
+  const free = (k: 'diskGB' | 'memoryGB') => round1(CAPACITY[k] - assigned(t, existing?.id)[k]);
+  const { form, close } = openDialog(existing ? `Edit space ${existing.id}` : 'Create space', `
+    <p class="guide-lead">${existing ? 'The space ID cannot be changed. Name, storage and priority can.' : 'The space ID is the technical name. It cannot be changed later, so choose it carefully.'}</p>
+    <div class="form-grid">
+      <label>Space name <small>max. 30 characters, shown to business users</small>
+        <input name="name" maxlength="30" value="${esc(v.name)}" autocomplete="off"></label>
+      <label>Space ID <small>max. 20 characters: A–Z, 0–9, _</small>
+        <input name="id" maxlength="20" value="${esc(v.id)}" ${existing ? 'readonly' : ''} autocomplete="off" spellcheck="false"></label>
+      <label>Disk (GB) <small>${free('diskGB')} GB free in the tenant</small>
+        <input name="disk" type="number" min="0.1" step="0.1" value="${v.diskGB}"></label>
+      <label>In-memory (GB) <small>${free('memoryGB')} GB free in the tenant</small>
+        <input name="memory" type="number" min="0.1" step="0.1" value="${v.memoryGB}"></label>
+      <label>Priority <small>1 lowest, 5 highest</small>
+        <select name="priority">${[1, 2, 3, 4, 5].map((p) => `<option ${p === v.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+    </div>
+    <p class="form-error" role="alert"></p>
+    <div class="guide-actions">
+      <button class="btn link" type="button" data-act="cancel">Cancel</button>
+      <button class="btn primary" type="submit">${existing ? 'Save' : 'Create'}</button>
+    </div>`);
+  const field = (n: string) => form.querySelector<HTMLInputElement>(`[name="${n}"]`)!;
+  // Suggest the ID from the name, the way the real dialog does, until the player edits the ID.
+  let idTouched = !!existing;
+  field('id').addEventListener('input', () => {
+    idTouched = true;
+    field('id').value = field('id').value.toUpperCase();
+  });
+  field('name').addEventListener('input', () => {
+    if (!idTouched) field('id').value = field('name').value.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 20);
+  });
+  (existing ? field('name') : field('name')).focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sp: Space = {
+      id: field('id').value.trim(),
+      name: field('name').value.trim(),
+      diskGB: round1(Number(field('disk').value)),
+      memoryGB: round1(Number(field('memory').value)),
+      priority: Number(form.querySelector<HTMLSelectElement>('[name="priority"]')!.value),
+    };
+    const err =
+      (!sp.name ? 'Enter a space name.' : null) ?? (existing ? null : spaceIdError(sp.id, t)) ?? storageError(sp, t);
+    if (err) {
+      form.querySelector('.form-error')!.textContent = err;
+      return;
+    }
+    if (existing) Object.assign(existing, { name: sp.name, diskGB: sp.diskGB, memoryGB: sp.memoryGB, priority: sp.priority });
+    else {
+      await exec(`CREATE SCHEMA IF NOT EXISTS "${sp.id}"`);
+      t.spaces.push(sp);
+    }
+    save();
+    close();
+    renderFrame();
+  });
+}
+
+async function deleteSpace(id: string, objectCount: number) {
+  if (objectCount > 0) {
+    alert(`${id} still contains ${objectCount} objects. Delete them first.`);
+    return;
+  }
+  if (!confirm(`Delete space ${id}? Shares into this space are removed too.`)) return;
+  const t = tenant();
+  await exec(`DROP SCHEMA IF EXISTS "${id}"`);
+  t.spaces = t.spaces.filter((s) => s.id !== id);
+  t.shares = t.shares.filter((s) => s.to !== id && !s.object.startsWith(`${id}.`));
+  if (t.activeSpace === id) t.activeSpace = 'RHN_IN';
+  save();
+  renderFrame();
+}
+
+function openShareDialog(object: string) {
+  const t = tenant();
+  const owner = object.split('.')[0];
+  const targets = t.spaces.filter((s) => s.id !== owner);
+  const { form, close } = openDialog(`Share ${object.split('.')[1]}`, `
+    <p class="guide-lead">Shared objects can be read in the target space, as a source for its own views. The data stays in ${esc(owner)}, nothing is copied.</p>
+    <fieldset class="question share-targets"><legend>Share with these spaces</legend>
+      ${targets.map((s) => `<label><input type="checkbox" name="to" value="${esc(s.id)}" ${isShared(t, object, s.id) ? 'checked' : ''}>
+        <span class="chip" data-layer="${layerOf(s.id) ?? ''}">${esc(s.id)}</span> ${esc(s.name)}</label>`).join('')}
+    </fieldset>
+    <div class="guide-actions">
+      <button class="btn link" type="button" data-act="cancel">Cancel</button>
+      <button class="btn primary" type="submit">Save sharing</button>
+    </div>`);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const chosen = [...form.querySelectorAll<HTMLInputElement>('[name="to"]:checked')].map((i) => i.value);
+    t.shares = t.shares.filter((s) => s.object !== object).concat(chosen.map((to) => ({ object, to })));
+    save();
+    close();
+    refreshObjects();
+  });
 }
 
 function renderGlossary(main: HTMLElement) {
@@ -387,6 +551,8 @@ async function renderBuilder(main: HTMLElement) {
       </aside>
       <section class="work">
         <div class="toolbar">
+          ${tenant().spaces.length > 1 ? `<label class="space-select">Space
+            <select id="space-select">${tenant().spaces.map((sp) => `<option ${sp.id === tenant().activeSpace ? 'selected' : ''}>${esc(sp.id)}</option>`).join('')}</select></label>` : ''}
           <span class="obj-name">New SQL query</span>
           <button class="btn primary" id="run" type="button">Run</button>
           <span class="hint">Ctrl+Enter runs the query. Standard SQL, not HANA.</span>
@@ -402,6 +568,12 @@ async function renderBuilder(main: HTMLElement) {
   const run = () => runQuery();
   editor = createSqlEditor(document.querySelector('#editor')!, state.sql, run);
   document.querySelector('#run')!.addEventListener('click', run);
+  document.querySelector<HTMLSelectElement>('#space-select')?.addEventListener('change', (e) => {
+    tenant().activeSpace = (e.target as HTMLSelectElement).value;
+    save();
+    document.querySelector('#active-space')!.innerHTML = activeSpaceHtml();
+    refreshObjects();
+  });
   await refreshObjects();
   editor?.focus();
 }
@@ -409,19 +581,23 @@ async function renderBuilder(main: HTMLElement) {
 async function refreshObjects() {
   const host = document.querySelector<HTMLElement>('#object-list');
   if (!host) return;
+  const t = tenant();
+  const space = t.activeSpace;
   const objects = await listObjects();
-  const bySpace = new Map<string, typeof objects>();
-  objects.forEach((o) => bySpace.set(o.schema, [...(bySpace.get(o.schema) ?? []), o]));
+  const own = objects.filter((o) => o.schema === space);
+  const shared = objects.filter((o) => isShared(t, `${o.schema}.${o.name}`, space));
+  const canShare = t.spaces.length > 1;
+  const item = (o: (typeof objects)[number], sharedFrom?: string) => `<li>
+      <button type="button" data-obj="${esc(o.schema)}.${esc(o.name)}"><span class="oname" title="${esc(o.name)}">${esc(o.name)}</span><span class="otype">${sharedFrom ? esc(sharedFrom) : o.type}</span></button>
+      ${!sharedFrom && canShare ? `<button type="button" class="share-btn" data-share="${esc(o.schema)}.${esc(o.name)}" title="Share ${esc(o.name)} with other spaces" aria-label="Share ${esc(o.name)}">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M5.6 7.1l4.8-2.3M5.6 8.9l4.8 2.3"/></svg>
+        ${t.shares.some((x) => x.object === `${o.schema}.${o.name}`) ? '<span class="share-dot"></span>' : ''}</button>` : ''}
+    </li>`;
 
-  host.innerHTML = [...bySpace.entries()]
-    .map(
-      ([space, objs]) => `
-      <div class="space-head"><span class="chip" data-layer="${layerOf(space) ?? ''}">${esc(space)}</span></div>
-      <ul>${objs
-        .map((o) => `<li><button type="button" data-obj="${esc(space)}.${esc(o.name)}">${esc(o.name)}<span class="otype">${o.type}</span></button></li>`)
-        .join('')}</ul>`,
-    )
-    .join('');
+  host.innerHTML = `
+    <div class="space-head"><span class="chip" data-layer="${layerOf(space) ?? ''}">${esc(space)}</span></div>
+    ${own.length ? `<ul>${own.map((o) => item(o)).join('')}</ul>` : '<p class="repo-empty">No objects in this space yet.</p>'}
+    ${shared.length ? `<div class="space-head shared-head">Shared with ${esc(space)}</div><ul>${shared.map((o) => item(o, o.schema)).join('')}</ul>` : ''}`;
 
   host.querySelectorAll<HTMLButtonElement>('button[data-obj]').forEach((b) =>
     b.addEventListener('click', () => {
@@ -429,10 +605,13 @@ async function refreshObjects() {
       runQuery();
     }),
   );
+  host.querySelectorAll<HTMLButtonElement>('button[data-share]').forEach((b) =>
+    b.addEventListener('click', () => openShareDialog(b.dataset.share!)),
+  );
 
-  // Autocomplete: "SPACE.OBJECT" → columns
+  // Autocomplete: "SPACE.OBJECT" → columns, only for what this space can read.
   const schema: Record<string, string[]> = {};
-  objects.forEach((o) => (schema[`${o.schema}.${o.name}`] = o.columns));
+  [...own, ...shared].forEach((o) => (schema[`${o.schema}.${o.name}`] = o.columns));
   editor?.setSchema(schema);
 }
 
@@ -442,6 +621,11 @@ async function runQuery() {
   const out = document.querySelector<HTMLElement>('#results')!;
   if (!state.sql.trim()) {
     out.innerHTML = `<div class="result-status">Write a query first, then run it.</div>`;
+    return;
+  }
+  const denied = accessError(state.sql, tenant().activeSpace, tenant());
+  if (denied) {
+    out.innerHTML = `<div class="result-status error">${esc(denied)}</div>`;
     return;
   }
   try {
@@ -642,7 +826,7 @@ async function runCheck() {
   renderMission();
   const chapterBefore = currentChapter();
   try {
-    state.report = await checkMission(m, { sql: state.sql, answers: mp.answers });
+    state.report = await checkMission(m, { sql: state.sql, answers: mp.answers, tenant: tenant() });
   } catch (err) {
     state.report = { passed: false, notes: [], outcomes: [{ label: 'Check', ok: false, message: err instanceof Error ? err.message : String(err) }] };
   }
@@ -677,6 +861,8 @@ async function boot() {
     await initDb();
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
     for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
+    // Spaces the player created live in the save game; recreate them as schemas.
+    for (const sp of tenant().spaces) await exec(`CREATE SCHEMA IF NOT EXISTS "${sp.id}"`);
     renderFrame();
     const id = state.progress.currentMission;
     if (!state.progress.tutorialsSeen.includes(id)) openTutorial(id);

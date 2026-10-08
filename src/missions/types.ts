@@ -1,3 +1,5 @@
+import type { TenantState } from '../tenant';
+
 /**
  * Mission format. One file per chapter in src/content/missions/, registered in index.ts.
  * Texts are English (game language). HTML fields are trusted content from this repo.
@@ -14,6 +16,8 @@ export interface ResultCheck {
   type: 'result';
   /** Short name shown in the feedback list, e.g. "Contracts per grid area". */
   label: string;
+  /** The query must run in this space (the Data Builder's active space). */
+  space?: string;
   /** Reference solution(s). The player passes if the result matches any of them. Never shown. */
   expected: string | string[];
   /** Row order matters (ORDER BY tasks). Default false. */
@@ -51,7 +55,24 @@ export interface QuestionCheck {
   nudge: string;
 }
 
-export type Check = ResultCheck | StructureCheck | QuestionCheck;
+/** What a rule check can look at. */
+export interface RuleContext {
+  tenant: TenantState;
+}
+
+/**
+ * A rule on the tenant state (spaces, storage, sharing). The test returns null when the rule holds,
+ * otherwise the feedback text. Functions are fine here because missions are TypeScript modules.
+ */
+export interface RuleCheck {
+  type: 'rule';
+  label: string;
+  /** Feedback when the rule holds. */
+  ok?: string;
+  test: (ctx: RuleContext) => string | null;
+}
+
+export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck;
 
 /** Rule IDs of the senior architect's review, see review.ts. */
 export type ReviewRule = 'no_select_star' | 'alias_aggregates' | 'explicit_join' | 'no_logic_in_inbound';

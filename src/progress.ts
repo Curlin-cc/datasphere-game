@@ -1,5 +1,6 @@
 import { RANKS } from './content/chapters';
 import { MISSIONS } from './content/missions';
+import { defaultTenant, sanitizeTenant, type TenantState } from './tenant';
 
 /**
  * Save game: localStorage plus JSON export/import.
@@ -28,6 +29,8 @@ export interface Progress {
   currentMission: string;
   missions: Record<string, MissionProgress>;
   tutorialsSeen: string[];
+  /** Spaces, storage and shares the player set up (chapter 1+). */
+  tenant: TenantState;
 }
 
 /** Bonus for a solution without review notes. */
@@ -37,7 +40,7 @@ export const CLEAN_BONUS = 5;
 export const RANK_XP = [0, 100, 350, 750];
 
 export function freshProgress(): Progress {
-  return { version: 3, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [] };
+  return { version: 3, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tenant: defaultTenant() };
 }
 
 export function missionProgress(p: Progress, id: string): MissionProgress {
@@ -79,6 +82,7 @@ export function sanitize(data: unknown): Progress | null {
   const p = freshProgress();
   p.xp = Math.max(0, Math.round(d.xp));
   p.tutorialsSeen = Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
+  p.tenant = sanitizeTenant(d.tenant);
   if (typeof d.currentMission === 'string' && MISSIONS.some((m) => m.id === d.currentMission)) p.currentMission = d.currentMission;
   for (const [id, mp] of Object.entries(d.missions)) {
     if (!MISSIONS.some((m) => m.id === id) || !mp || typeof mp !== 'object') continue;
