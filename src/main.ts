@@ -30,12 +30,40 @@ function layerOf(space: string): 'in' | 'ha' | 'rep' | undefined {
   return undefined;
 }
 
+/** Every new architect starts with a signing bonus, so the first hints are affordable. */
+const START_XP = 50;
+const SAVE_KEY = 'dsg-progress-v1';
+
+interface Progress {
+  xp: number;
+  hintsOpen: number;
+  introSeen: boolean;
+}
+
+function loadProgress(): Progress {
+  const fresh: Progress = { xp: START_XP, hintsOpen: 0, introSeen: false };
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? { ...fresh, ...JSON.parse(raw) } : fresh;
+  } catch {
+    return fresh;
+  }
+}
+
+function saveProgress() {
+  try {
+    const { xp, hintsOpen, introSeen } = state;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ xp, hintsOpen, introSeen }));
+  } catch {
+    /* storage unavailable: progress lasts for this visit only */
+  }
+}
+
 const state = {
   view: 'builder' as ViewId,
   currentChapter: 0,
-  xp: 0,
   sql: `-- Ctrl+Enter runs the query\nSELECT *\nFROM RHN_IN.BILLING_CONTRACTS\nLIMIT 20;`,
-  hintsOpen: 0,
+  ...loadProgress(),
 };
 
 let editor: SqlEditor | null = null;
@@ -53,11 +81,8 @@ function renderFrame() {
       <header class="topbar">
         <span class="tenant">Stadtwerke Rheinau<small>training tenant</small></span>
         <span class="spacer"></span>
-        <span class="rank" title="Earn experience by solving missions with few hints">
-          <strong>${esc(RANKS[0])}</strong>
-          <span class="xp-bar" aria-label="Experience ${state.xp} of 100"><span style="width:${state.xp}%"></span></span>
-          <span>${state.xp} XP</span>
-        </span>
+        <span class="rank" id="rank" title="Earn XP by solving missions. Hints cost XP.">${rankHtml()}</span>
+        <button class="icon-btn" id="guide-open" type="button">How to play</button>
         <button class="icon-btn" id="theme-toggle" type="button">Theme</button>
       </header>
       <nav class="nav" aria-label="Main">
@@ -77,8 +102,77 @@ function renderFrame() {
     }),
   );
   app.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
+  app.querySelector('#guide-open')!.addEventListener('click', openGuide);
   renderView();
   renderMission();
+  if (!state.introSeen) openGuide();
+}
+
+function rankHtml() {
+  const fill = Math.min(100, Math.max(0, state.xp));
+  return `<strong>${esc(RANKS[0])}</strong>
+    <span class="xp-bar" aria-label="Experience ${state.xp} of 100"><span style="width:${fill}%"></span></span>
+    <span>${state.xp} XP</span>`;
+}
+
+function renderRank() {
+  const el = document.querySelector('#rank');
+  if (el) el.innerHTML = rankHtml();
+}
+
+// ---------------------------------------------------------------- how to play
+
+const GUIDE_STEPS = [
+  {
+    title: 'Read the ticket',
+    text: 'Each mission starts with a ticket on the right. It describes what the business needs, not how to build it. Working that out is your job.',
+  },
+  {
+    title: 'Explore and build in the Data Builder',
+    text: 'Click a table on the left to preview it. Write SQL in the editor and press Run or Ctrl+Enter. The data is a real database in your browser, so nothing you do can break the tenant.',
+  },
+  {
+    title: 'Use hints when you are stuck',
+    text: `Every mission has three hints: a direction, the concept, then a skeleton. Each costs XP and you can only spend XP you have. You start with ${START_XP} XP. Hints never show the full solution.`,
+  },
+  {
+    title: 'Check your solution',
+    text: 'Press "Check my solution" when you are done. You get feedback on the result, the structure and best practices, and earn XP for the mission.',
+  },
+];
+
+function guideList() {
+  return `<ol class="guide-steps">${GUIDE_STEPS.map(
+    (g, i) => `<li><span class="num">${i + 1}</span><div><b>${esc(g.title)}</b><p>${esc(g.text)}</p></div></li>`,
+  ).join('')}</ol>`;
+}
+
+function openGuide() {
+  document.querySelector('.guide-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'guide-overlay';
+  overlay.innerHTML = `
+    <div class="guide panel" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+      <h2 id="guide-title">How to play</h2>
+      <p class="guide-lead">You are the new data architect at Stadtwerke Rheinau. Your mentor Calin Mucea sends you tickets.
+        Solve them with SQL, one layer at a time, until the board gets its reporting.</p>
+      ${guideList()}
+      <div class="guide-actions"><button class="btn primary" type="button" id="guide-close">Start working</button></div>
+    </div>`;
+  document.body.append(overlay);
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    if (!state.introSeen) {
+      state.introSeen = true;
+      saveProgress();
+    }
+  };
+  const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e) => e.target === overlay && close());
+  overlay.querySelector<HTMLButtonElement>('#guide-close')!.addEventListener('click', close);
+  overlay.querySelector<HTMLButtonElement>('#guide-close')!.focus();
 }
 
 function navButton(item: NavItem) {
@@ -129,6 +223,10 @@ function renderHome(main: HTMLElement) {
     <h1 class="view-title">Welcome to Stadtwerke Rheinau</h1>
     <p class="view-lead">The board wants one trusted view of revenue, consumption and receivables per grid area.
       You are the new data architect. Build the Datasphere landscape that delivers it, one ticket at a time.</p>
+    <section class="panel how" aria-label="How to play">
+      <h3>How to play</h3>
+      ${guideList()}
+    </section>
     <div class="home-grid">
       <section class="panel" aria-label="Learning path">
         <ol class="path">
@@ -210,7 +308,10 @@ async function renderBuilder(main: HTMLElement) {
           <span class="hint">Ctrl+Enter runs the query. Standard SQL, not HANA.</span>
         </div>
         <div class="editor-host" id="editor"></div>
-        <div class="results" id="results"><div class="placeholder">Run a query to see its result here.</div></div>
+        <div class="results" id="results"><div class="placeholder">
+          <b>Start here.</b> Click a table on the left to preview its first 100 rows,
+          or write your own SQL above and press Run. Tables are addressed as SPACE.TABLE, for example RHN_IN.BILLING_CONTRACTS.
+        </div></div>
       </section>
     </div>`;
 
@@ -310,8 +411,8 @@ function renderMission() {
     </div>
     <div class="ticket">
       <div class="ticket-from">
-        <span class="avatar" aria-hidden="true">JW</span>
-        <div><b>Jana Weber</b><span>Senior Data Architect, your mentor</span></div>
+        <span class="avatar" aria-hidden="true">CM</span>
+        <div><b>Calin Mucea</b><span>Senior Data Architect, your mentor</span></div>
       </div>
       <div class="ticket-body">
         <p>Welcome aboard! IT already loaded the first extracts from billing, metering and the CRM into our inbound space.</p>
@@ -319,25 +420,42 @@ function renderMission() {
       </div>
     </div>
     <div class="section">
-      <h3>Hints</h3>
+      <h3>Your task</h3>
+      <ol class="task-steps">
+        <li>Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.</li>
+        <li>Write a query that counts the contracts per grid area.</li>
+        <li>Look at the grid areas you get back. What is wrong with them, and where do those rows come from?</li>
+      </ol>
+    </div>
+    <div class="section">
+      <h3>Hints <span class="balance">You have ${state.xp} XP</span></h3>
       <div class="hints">
-        ${PREVIEW_HINTS.map((h, i) =>
-          i < state.hintsOpen
-            ? `<div class="hint-open">${esc(h.text)}</div>`
-            : `<button class="hint-btn" type="button" data-hint="${i}" ${i > state.hintsOpen ? 'disabled' : ''}>
-                 <span>${esc(h.label)}</span><span class="cost">−${h.cost} XP</span>
-               </button>`,
-        ).join('')}
+        ${PREVIEW_HINTS.map((h, i) => {
+          if (i < state.hintsOpen) return `<div class="hint-open">${esc(h.text)}</div>`;
+          const next = i === state.hintsOpen;
+          const affordable = state.xp >= h.cost;
+          const note = !next ? 'Open the previous hint first' : !affordable ? `Not enough XP, you need ${h.cost}` : '';
+          return `<button class="hint-btn" type="button" data-hint="${i}" ${next && affordable ? '' : 'disabled'} ${note ? `title="${esc(note)}"` : ''}>
+                 <span>${esc(h.label)}${next && !affordable ? `<small>Not enough XP</small>` : ''}</span><span class="cost">−${h.cost} XP</span>
+               </button>`;
+        }).join('')}
       </div>
     </div>
     <div class="feedback">
       <button class="btn primary" type="button" disabled>Check my solution</button>
-      <p>Automatic checks arrive with the next build. Hints are free during the preview.</p>
+      <p>Automatic checks arrive with the next build. For now, compare your result with the ticket yourself.</p>
     </div>`;
 
   panel.querySelectorAll<HTMLButtonElement>('[data-hint]').forEach((b) =>
     b.addEventListener('click', () => {
-      state.hintsOpen = Number(b.dataset.hint) + 1;
+      const i = Number(b.dataset.hint);
+      const hint = PREVIEW_HINTS[i];
+      // Never go below zero: a hint is only bought when the XP is there.
+      if (i !== state.hintsOpen || state.xp < hint.cost) return;
+      state.xp -= hint.cost;
+      state.hintsOpen = i + 1;
+      saveProgress();
+      renderRank();
       renderMission();
     }),
   );

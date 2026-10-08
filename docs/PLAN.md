@@ -33,7 +33,7 @@ Stakeholder (schicken Tickets):
 | CFO | Auftraggeberin | Umsatz und Forderungen je Netzgebiet |
 | Head of IT | Tenant-Owner | sauberes Space- und Rollenkonzept |
 | Regional Managers North/South | Endnutzer | nur eigene Netzgebiete sehen |
-| Senior Architect | Mentor | Tipps und Code-Reviews |
+| Calin Mucea, Senior Data Architect | Mentor | Tipps und Code-Reviews |
 
 ## 3. Lernpfad
 

@@ -20,6 +20,7 @@
 
 | Datum | Was passiert ist |
 | --- | --- |
+| 2026-10-08 | Anleitung („How to play“ beim ersten Start, im Topbar-Button und auf Home), Aufgabenschritte im Missions-Panel. XP: Start mit 50, Tipps nur kaufbar wenn genug XP, Stand in localStorage. Mentor heißt Calin Mucea. Kacheln stärker umrandet |
 | 2026-10-08 | Artifact-Build (`npm run build:artifact`): Spiel als privates claude.ai-Artifact testbar, DuckDB-wasm gzip-komprimiert (Dateilimit 15 MB). Link: https://claude.ai/artifact/GqkmcYFaosKzk3zxyAkPMa |
 | 2026-10-08 | Datengenerator: 7 Tabellen in RHN_IN (Verträge, Rechnungen, Tarife, Netzgebiete, Ablesungen, CRM, Schlüssel-Mapping), Fehler eingebaut, im Browser getestet (Start ca. 2,4 s) |
 | 2026-10-08 | App-Gerüst gebaut: Layout, DuckDB im Browser, SQL-Editor, Vorschau-Mission Kapitel 0 mit Tipps, kleine Vorschau-Daten in RHN_IN |

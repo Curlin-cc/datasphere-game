@@ -4,6 +4,8 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Start mit 50 XP, XP nie unter 0; Tipp nur kaufbar, wenn genug XP da sind | Wunsch von Curlin; Startbonus deckt die Tipps einer Mission |
+| 2026-10-08 | Mentor im Spiel: Calin Mucea (Senior Data Architect) | Wunsch von Curlin, sein Spiel |
 | 2026-10-08 | Testdaten werden beim Start im Browser erzeugt (fester Seed), nicht als Dateien eingecheckt | Repo bleibt klein, Daten immer passend zum Code; Ladezeit < 1 s |
 | 2026-10-08 | Geschäftliches „Heute“ = 2026-07-15 | Ergibt offene, bezahlte und überfällige Rechnungen für Forderungs-Missionen |
 | 2026-10-08 | Regionen: NORTH = Netzgebiete NORTH + EAST, SOUTH = SOUTH + WEST | Grundlage für Data Access Controls in Kapitel 8 |
