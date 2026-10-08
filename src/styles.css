@@ -370,6 +370,33 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
 .guide-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
 .results .placeholder b { color: var(--ink); }
 
+/* ---------- Mission tutorial ---------- */
+.tour { position: fixed; inset: 0; z-index: 60; }
+.tour-block { position: absolute; inset: 0; }
+.tour.centered .tour-block { background: rgba(11, 21, 36, .55); }
+.tour-spot {
+  position: fixed; border-radius: var(--radius-m); pointer-events: none;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 0 9999px rgba(11, 21, 36, .55);
+  transition: left .2s, top .2s, width .2s, height .2s;
+}
+.tour-card { position: fixed; width: min(400px, calc(100vw - 32px)); padding: 16px 18px 14px; }
+.tour-count { font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: .02em; }
+.tour-card h2 { margin: 2px 0 8px; font-size: 17px; letter-spacing: -0.01em; text-wrap: balance; }
+.tour-body p { margin: 0 0 8px; }
+.tour-body ul { margin: 0 0 8px; padding-left: 18px; }
+.tour-body code, .tour-example { font-family: var(--font-code); font-size: 12.5px; }
+.tour-body code { background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+.tour-example {
+  margin: 4px 0 8px; padding: 10px 12px; background: var(--surface-sunk);
+  border: 1.5px solid var(--tile-border); border-radius: var(--radius-s); overflow-x: auto; white-space: pre;
+}
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.tour-actions .spacer { flex: 1; }
+.btn.link { border-color: transparent; background: none; color: var(--ink-soft); padding-inline: 4px; }
+.btn.link:hover { color: var(--ink); text-decoration: underline; background: none; }
+.btn.small { padding: 3px 10px; font-size: 12.5px; }
+.mission-head .btn.small { margin-top: 10px; }
+
 /* ---------- Glossary ---------- */
 .glossary { display: grid; gap: 12px; max-width: 760px; }
 .term { padding: 14px 18px; }

@@ -23,6 +23,8 @@ hat aber noch nicht selbst modelliert).
 - Standard-SQL via DuckDB-WASM; HANA-Unterschiede nur als Info-Karten
 - Ruhige Business-Simulation mit Karriere-Rängen und Badges, keine laute Spieloptik
 - Tipps frei nutzbar, kosten aber XP; nie eine fertige Lösung anzeigen
+- Start mit 0 XP; jede Mission hat ein kostenloses Tutorial-Popup, das Schritt für Schritt alles erklärt
+- Mentor im Spiel: Calin Mucea
 - Keine SAP-Logos, keine 1:1-Kopie der SAP-Oberfläche (nur Fiori/Horizon-inspiriert)
 
 ## Stack (geplant)
@@ -50,6 +52,8 @@ src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces 
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
+src/content/tutorials.ts ← Tutorial-Schritte je Mission-ID (jede neue Mission braucht eins!)
+src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 content/missions/    ← eine JSON-Datei pro Mission (noch nicht angelegt)
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten

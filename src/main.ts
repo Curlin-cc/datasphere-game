@@ -3,6 +3,8 @@ import { initDb, exec, runSql, listObjects } from './db';
 import { generateDataset, datasetToSql } from './data/generator';
 import { createSqlEditor, type SqlEditor } from './editor';
 import { CHAPTERS, RANKS, GLOSSARY } from './content/chapters';
+import { TUTORIALS } from './content/tutorials';
+import { startTour } from './tutorial';
 
 type ViewId = 'home' | 'spaces' | 'builder' | 'security' | 'monitor' | 'glossary';
 
@@ -30,18 +32,20 @@ function layerOf(space: string): 'in' | 'ha' | 'rep' | undefined {
   return undefined;
 }
 
-/** Every new architect starts with a signing bonus, so the first hints are affordable. */
-const START_XP = 50;
-const SAVE_KEY = 'dsg-progress-v1';
+/** Everyone starts at 0 XP. XP is earned by solving missions; tutorials are free. */
+const START_XP = 0;
+const SAVE_KEY = 'dsg-progress-v2';
+const MISSION_ID = 'c00-m01';
 
 interface Progress {
   xp: number;
   hintsOpen: number;
-  introSeen: boolean;
+  /** Mission IDs whose tutorial the player has finished or skipped. */
+  tutorialsSeen: string[];
 }
 
 function loadProgress(): Progress {
-  const fresh: Progress = { xp: START_XP, hintsOpen: 0, introSeen: false };
+  const fresh: Progress = { xp: START_XP, hintsOpen: 0, tutorialsSeen: [] };
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     return raw ? { ...fresh, ...JSON.parse(raw) } : fresh;
@@ -52,8 +56,8 @@ function loadProgress(): Progress {
 
 function saveProgress() {
   try {
-    const { xp, hintsOpen, introSeen } = state;
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ xp, hintsOpen, introSeen }));
+    const { xp, hintsOpen, tutorialsSeen } = state;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ xp, hintsOpen, tutorialsSeen }));
   } catch {
     /* storage unavailable: progress lasts for this visit only */
   }
@@ -96,16 +100,38 @@ function renderFrame() {
 
   app.querySelectorAll<HTMLButtonElement>('.nav button').forEach((b) =>
     b.addEventListener('click', () => {
-      if (editor) state.sql = editor.getValue();
-      state.view = b.dataset.view as ViewId;
-      renderFrame();
+      setView(b.dataset.view as ViewId);
     }),
   );
   app.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
   app.querySelector('#guide-open')!.addEventListener('click', openGuide);
   renderView();
   renderMission();
-  if (!state.introSeen) openGuide();
+}
+
+function setView(view: ViewId) {
+  if (state.view === view) return;
+  if (editor) state.sql = editor.getValue();
+  state.view = view;
+  renderFrame();
+}
+
+function openTutorial(missionId: string) {
+  const steps = TUTORIALS[missionId];
+  if (!steps) return;
+  startTour(steps, {
+    setView: (v) => setView(v as ViewId),
+    insertExample: (sql) => {
+      state.sql = sql;
+      editor?.setValue(sql);
+    },
+    onFinish: () => {
+      if (!state.tutorialsSeen.includes(missionId)) {
+        state.tutorialsSeen.push(missionId);
+        saveProgress();
+      }
+    },
+  });
 }
 
 function rankHtml() {
@@ -125,7 +151,7 @@ function renderRank() {
 const GUIDE_STEPS = [
   {
     title: 'Read the ticket',
-    text: 'Each mission starts with a ticket on the right. It describes what the business needs, not how to build it. Working that out is your job.',
+    text: 'Each mission starts with a ticket on the right and a tutorial that walks you through it. The ticket describes what the business needs; how to build it is your job.',
   },
   {
     title: 'Explore and build in the Data Builder',
@@ -133,7 +159,7 @@ const GUIDE_STEPS = [
   },
   {
     title: 'Use hints when you are stuck',
-    text: `Every mission has three hints: a direction, the concept, then a skeleton. Each costs XP and you can only spend XP you have. You start with ${START_XP} XP. Hints never show the full solution.`,
+    text: `Every mission has three hints: a direction, the concept, then a skeleton. Each costs XP and you can only spend XP you have. You start with 0 XP and earn it by solving missions. Hints never show the full solution.`,
   },
   {
     title: 'Check your solution',
@@ -157,16 +183,12 @@ function openGuide() {
       <p class="guide-lead">You are the new data architect at Stadtwerke Rheinau. Your mentor Calin Mucea sends you tickets.
         Solve them with SQL, one layer at a time, until the board gets its reporting.</p>
       ${guideList()}
-      <div class="guide-actions"><button class="btn primary" type="button" id="guide-close">Start working</button></div>
+      <div class="guide-actions"><button class="btn primary" type="button" id="guide-close">Close</button></div>
     </div>`;
   document.body.append(overlay);
   const close = () => {
     overlay.remove();
     document.removeEventListener('keydown', onKey);
-    if (!state.introSeen) {
-      state.introSeen = true;
-      saveProgress();
-    }
   };
   const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
   document.addEventListener('keydown', onKey);
@@ -408,6 +430,7 @@ function renderMission() {
     <div class="mission-head">
       <div class="where">Chapter 0, Onboarding. Mission 1 of 4</div>
       <h2>Meet the raw data</h2>
+      <button class="btn small" type="button" id="tutorial-open">Show tutorial</button>
     </div>
     <div class="ticket">
       <div class="ticket-from">
@@ -419,7 +442,7 @@ function renderMission() {
         <p>Before we model anything: how many contracts do we have per grid area? Something about the grid areas looks off to me. Tell me what you find.</p>
       </div>
     </div>
-    <div class="section">
+    <div class="section" id="task">
       <h3>Your task</h3>
       <ol class="task-steps">
         <li>Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.</li>
@@ -427,7 +450,7 @@ function renderMission() {
         <li>Look at the grid areas you get back. What is wrong with them, and where do those rows come from?</li>
       </ol>
     </div>
-    <div class="section">
+    <div class="section" id="hints">
       <h3>Hints <span class="balance">You have ${state.xp} XP</span></h3>
       <div class="hints">
         ${PREVIEW_HINTS.map((h, i) => {
@@ -446,6 +469,7 @@ function renderMission() {
       <p>Automatic checks arrive with the next build. For now, compare your result with the ticket yourself.</p>
     </div>`;
 
+  panel.querySelector('#tutorial-open')!.addEventListener('click', () => openTutorial(MISSION_ID));
   panel.querySelectorAll<HTMLButtonElement>('[data-hint]').forEach((b) =>
     b.addEventListener('click', () => {
       const i = Number(b.dataset.hint);
@@ -470,6 +494,7 @@ async function boot() {
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
     for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
     renderFrame();
+    if (!state.tutorialsSeen.includes(MISSION_ID)) openTutorial(MISSION_ID);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     app.innerHTML = `<div class="boot">The database could not start: ${esc(msg)}. Reload the page; if it keeps failing, try a current Chrome, Edge or Firefox.</div>`;
