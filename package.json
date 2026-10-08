@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "data:report": "node scripts/data-report.ts"
+    "data:report": "node scripts/data-report.ts",
+    "build:artifact": "node scripts/build-artifact.mjs"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

@@ -17,9 +17,27 @@ const BUNDLES: duckdb.DuckDBBundles = {
 
 let conn: duckdb.AsyncDuckDBConnection | null = null;
 
+/**
+ * Artifact build (npm run build:artifact): the host caps single files at 15 MB, so the
+ * 36 MB wasm ships gzipped (about 8 MB) and is unpacked here into a blob URL.
+ */
+async function gzippedBundle(gzUrl: string): Promise<duckdb.DuckDBBundle> {
+  const res = await fetch(gzUrl);
+  if (!res.ok) throw new Error(`Could not load the database engine (${res.status}).`);
+  let bytes = new Uint8Array(await res.arrayBuffer());
+  // Some hosts already decode gzip on the wire; only unpack when the gzip magic bytes are there.
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  const wasm = URL.createObjectURL(new Blob([bytes], { type: 'application/wasm' }));
+  return { mainModule: wasm, mainWorker: ehWorker, pthreadWorker: null };
+}
+
 /** Starts DuckDB in a web worker and opens one shared connection. */
 export async function initDb(): Promise<void> {
-  const bundle = await duckdb.selectBundle(BUNDLES);
+  const gz = import.meta.env.VITE_DUCKDB_WASM_GZ as string | undefined;
+  const bundle = gz ? await gzippedBundle(gz) : await duckdb.selectBundle(BUNDLES);
   const worker = new Worker(bundle.mainWorker!);
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
