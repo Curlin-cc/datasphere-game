@@ -2,8 +2,8 @@ import './styles.css';
 import { initDb, exec, runSql, listObjects } from './db';
 import { generateDataset, datasetToSql } from './data/generator';
 import { createSqlEditor, type SqlEditor } from './editor';
-import { CHAPTERS, RANKS, GLOSSARY } from './content/chapters';
-import { TUTORIALS } from './content/tutorials';
+import { CHAPTERS, RANKS, GLOSSARY, GUIDANCE_INFO } from './content/chapters';
+import { TUTORIALS, TASK_TOURS } from './content/tutorials';
 import { startTour } from './tutorial';
 
 type ViewId = 'home' | 'spaces' | 'builder' | 'security' | 'monitor' | 'glossary';
@@ -116,22 +116,35 @@ function setView(view: ViewId) {
   renderFrame();
 }
 
-function openTutorial(missionId: string) {
-  const steps = TUTORIALS[missionId];
+function openTaskTour(missionId: string, task: number) {
+  const steps = TASK_TOURS[missionId]?.[task];
   if (!steps) return;
-  startTour(steps, {
-    setView: (v) => setView(v as ViewId),
-    insertExample: (sql) => {
+  startTour(steps, tourHooks(() => undefined), 'Got it');
+}
+
+function tourHooks(onFinish: () => void) {
+  return {
+    setView: (v: string) => setView(v as ViewId),
+    insertExample: (sql: string) => {
       state.sql = sql;
       editor?.setValue(sql);
     },
-    onFinish: () => {
+    onFinish,
+  };
+}
+
+function openTutorial(missionId: string) {
+  const steps = TUTORIALS[missionId];
+  if (!steps) return;
+  startTour(
+    steps,
+    tourHooks(() => {
       if (!state.tutorialsSeen.includes(missionId)) {
         state.tutorialsSeen.push(missionId);
         saveProgress();
       }
-    },
-  });
+    }),
+  );
 }
 
 function rankHtml() {
@@ -159,7 +172,7 @@ const GUIDE_STEPS = [
   },
   {
     title: 'Use hints when you are stuck',
-    text: `Every mission has three hints: a direction, the concept, then a skeleton. Each costs XP and you can only spend XP you have. You start with 0 XP and earn it by solving missions. Hints never show the full solution.`,
+    text: 'Each task step has a Show me button with a quick tutorial. Hints come in three levels. In the first chapters they are open for free; later you buy them with XP you earned. You start with 0 XP.',
   },
   {
     title: 'Check your solution',
@@ -418,14 +431,25 @@ function resultTable(columns: string[], rows: unknown[][]) {
 
 // ---------------------------------------------------------------- mission panel (preview)
 
+const TASKS = [
+  'Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.',
+  'Write a query that counts the contracts per grid area.',
+  'Look at the grid areas you get back. What is wrong with them, and where do those rows come from?',
+];
+
 const PREVIEW_HINTS = [
   { label: 'Hint 1: where to look', cost: 5, text: 'Open the Data Builder. The billing data sits in the space RHN_IN, click a table on the left to preview it.' },
   { label: 'Hint 2: the concept', cost: 10, text: 'COUNT(*) counts rows. SELECT DISTINCT returns each value once. Look closely at the values you get back.' },
   { label: 'Hint 3: a skeleton', cost: 20, text: 'SELECT GRID_AREA, COUNT(*) FROM RHN_IN.______ GROUP BY ____;' },
 ];
 
+/** Hints that are open for free in this chapter, before anything is bought. */
+const FREE_HINTS = { full: 3, light: 1, paid: 0, none: 0 } as const;
+
 function renderMission() {
   const panel = document.querySelector<HTMLElement>('#mission')!;
+  const guidance = CHAPTERS[state.currentChapter].guidance;
+  const openHints = Math.max(FREE_HINTS[guidance], state.hintsOpen);
   panel.innerHTML = `
     <div class="mission-head">
       <div class="where">Chapter 0, Onboarding. Mission 1 of 4</div>
@@ -445,17 +469,18 @@ function renderMission() {
     <div class="section" id="task">
       <h3>Your task</h3>
       <ol class="task-steps">
-        <li>Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.</li>
-        <li>Write a query that counts the contracts per grid area.</li>
-        <li>Look at the grid areas you get back. What is wrong with them, and where do those rows come from?</li>
+        ${TASKS.map(
+          (t, i) => `<li><span>${t}</span>${TASK_TOURS[MISSION_ID]?.[i] ? `<button class="btn small show-me" type="button" data-task="${i}">Show me</button>` : ''}</li>`,
+        ).join('')}
       </ol>
     </div>
     <div class="section" id="hints">
       <h3>Hints <span class="balance">You have ${state.xp} XP</span></h3>
+      <p class="guidance"><span class="chip" data-guidance="${guidance}">${GUIDANCE_INFO[guidance].label}</span> ${esc(GUIDANCE_INFO[guidance].text)}</p>
       <div class="hints">
-        ${PREVIEW_HINTS.map((h, i) => {
-          if (i < state.hintsOpen) return `<div class="hint-open">${esc(h.text)}</div>`;
-          const next = i === state.hintsOpen;
+        ${guidance === 'none' ? '' : PREVIEW_HINTS.map((h, i) => {
+          if (i < openHints) return `<div class="hint-open"><b>${esc(h.label)}</b>${esc(h.text)}</div>`;
+          const next = i === openHints;
           const affordable = state.xp >= h.cost;
           const note = !next ? 'Open the previous hint first' : !affordable ? `Not enough XP, you need ${h.cost}` : '';
           return `<button class="hint-btn" type="button" data-hint="${i}" ${next && affordable ? '' : 'disabled'} ${note ? `title="${esc(note)}"` : ''}>
@@ -470,12 +495,15 @@ function renderMission() {
     </div>`;
 
   panel.querySelector('#tutorial-open')!.addEventListener('click', () => openTutorial(MISSION_ID));
+  panel.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((b) =>
+    b.addEventListener('click', () => openTaskTour(MISSION_ID, Number(b.dataset.task))),
+  );
   panel.querySelectorAll<HTMLButtonElement>('[data-hint]').forEach((b) =>
     b.addEventListener('click', () => {
       const i = Number(b.dataset.hint);
       const hint = PREVIEW_HINTS[i];
       // Never go below zero: a hint is only bought when the XP is there.
-      if (i !== state.hintsOpen || state.xp < hint.cost) return;
+      if (i !== openHints || state.xp < hint.cost) return;
       state.xp -= hint.cost;
       state.hintsOpen = i + 1;
       saveProgress();

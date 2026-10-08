@@ -342,7 +342,15 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
 .hint-btn .cost { font-size: 12px; color: var(--ink-faint); }
 .hint-btn small { display: block; font-size: 12px; color: var(--critical); }
 .section h3 .balance { float: right; font-weight: 500; color: var(--ink-faint); }
-.task-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.task-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.task-steps li span { display: block; }
+.task-steps .show-me { margin-top: 4px; }
+.guidance { margin: 0 0 8px; font-size: 12.5px; color: var(--ink-soft); }
+.guidance .chip { margin-right: 4px; }
+.chip[data-guidance='full'] { --chip-color: var(--ok); }
+.chip[data-guidance='light'] { --chip-color: var(--warning); }
+.chip[data-guidance='paid'], .chip[data-guidance='none'] { --chip-color: var(--critical); }
+.hint-open b { display: block; font-size: 12px; color: var(--accent); margin-bottom: 2px; }
 .task-steps code { font-family: var(--font-code); font-size: 12.5px; background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 .hint-open { border: 1.5px solid var(--tile-border); border-left: 3px solid var(--accent); border-radius: var(--radius-s); padding: 8px 12px; background: var(--accent-soft); }
 

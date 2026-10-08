@@ -20,6 +20,7 @@
 
 | Datum | Was passiert ist |
 | --- | --- |
+| 2026-10-08 | Tipp-Stufen je Kapitel (`guidance` in chapters.ts): Kap. 0–1 alle Tipps offen, 2–4 nur erster Tipp frei, 5–10 alle kaufen, 11 keine. „Show me“-Schnelltutorial je Aufgabenschritt (`TASK_TOURS`) |
 | 2026-10-08 | Tutorial je Mission: Schritt-für-Schritt-Popup mit Spotlight (`src/tutorial.ts`, Inhalte `src/content/tutorials.ts`), öffnet beim ersten Start, „Show tutorial“ im Missions-Panel. Start mit 0 XP (Spielstand-Key v2) |
 | 2026-10-08 | Anleitung („How to play“ beim ersten Start, im Topbar-Button und auf Home), Aufgabenschritte im Missions-Panel. XP: Start mit 50, Tipps nur kaufbar wenn genug XP, Stand in localStorage. Mentor heißt Calin Mucea. Kacheln stärker umrandet |
 | 2026-10-08 | Artifact-Build (`npm run build:artifact`): Spiel als privates claude.ai-Artifact testbar, DuckDB-wasm gzip-komprimiert (Dateilimit 15 MB). Link: https://claude.ai/artifact/GqkmcYFaosKzk3zxyAkPMa |

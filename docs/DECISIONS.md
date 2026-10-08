@@ -4,6 +4,8 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Hilfe nimmt mit den Kapiteln ab: full (0–1), light (2–4), paid (5–10), none (11) | Wunsch von Curlin: anfangs leicht, später nur gegen XP |
+| 2026-10-08 | Jeder Aufgabenschritt hat ein „Show me“-Schnelltutorial (2–3 Pop-ups) | Wunsch von Curlin |
 | 2026-10-08 | Start mit 0 XP, XP nie unter 0; Tipp nur kaufbar, wenn genug XP da sind | Wunsch von Curlin; XP erst verdienen |
 | 2026-10-08 | Jede Mission hat ein kostenloses Tutorial, das alles Nötige erklärt (ohne fertige Lösung, Beispiele auf anderer Tabelle) | Wunsch von Curlin: erst alles erklären |
 | 2026-10-08 | Mentor im Spiel: Calin Mucea (Senior Data Architect) | Wunsch von Curlin, sein Spiel |

@@ -23,7 +23,8 @@ export const TUTORIALS: Record<string, TourStep[]> = {
       title: 'Your task',
       target: '#task',
       body: `<p>The task breaks the ticket into steps. Work through them from top to bottom.</p>
-        <p>We go through each step now.</p>`,
+        <p>Every step has a <b>Show me</b> button. It opens a quick tutorial with a few pop-ups for just that step.
+        We go through all steps once now.</p>`,
     },
     {
       title: 'Step 1: Find the data',
@@ -67,9 +68,10 @@ ORDER BY CUSTOMERS DESC;`,
       title: 'Hints',
       view: 'builder',
       target: '#hints',
-      body: `<p>Stuck? Hints help in three levels: a direction, the concept, then a skeleton of the query.</p>
-        <p>Each hint costs XP, and you can only buy one when you have enough. With 0 XP they stay locked for now. That is fine:
-        this tutorial already explained everything for this mission.</p>`,
+      body: `<p>Hints come in three levels: a direction, the concept, then a skeleton of the query.</p>
+        <p>In the first chapters all hints are <b>open for free</b>, so read them whenever you like.
+        From chapter 2 only the first, vague hint is free. From chapter 5 there are no free hints:
+        you buy them with XP you earned, and only if you have enough.</p>`,
     },
     {
       title: 'Check your solution',
@@ -82,5 +84,58 @@ ORDER BY CUSTOMERS DESC;`,
       body: `<p>Count the contracts per grid area and find out what is wrong with the grid areas.</p>
         <p>You can reopen this tutorial any time with <b>Show tutorial</b> in the mission panel.</p>`,
     },
+  ],
+};
+
+/**
+ * Quick tutorials: two or three pop-ups per task step, opened with "Show me" next to the step.
+ * Index = position in the mission's task list.
+ */
+export const TASK_TOURS: Record<string, TourStep[][]> = {
+  'c00-m01': [
+    [
+      {
+        title: 'Find the contracts',
+        view: 'builder',
+        target: '.objects',
+        body: `<p>The Repository lists everything in the tenant, grouped by space. Open <b>RHN_IN</b> and click <b>BILLING_CONTRACTS</b>.</p>`,
+      },
+      {
+        title: 'What you see',
+        target: '#results',
+        body: `<p>The preview shows the first 100 rows. Each row is one supply contract: who, which <code>GRID_AREA</code>, which <code>TARIFF</code>,
+          and in <code>SRC_SYS_ID</code> the system it came from.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Count per value',
+        view: 'builder',
+        target: '#editor',
+        body: `<p><code>COUNT(*)</code> counts rows. <code>GROUP BY</code> splits the rows into one group per value, so the count runs per group.</p>
+          <p>Same pattern, other table:</p>`,
+        example: `SELECT CITY, COUNT(*) AS CUSTOMERS
+FROM RHN_IN.CRM_CUSTOMERS
+GROUP BY CITY;`,
+      },
+      {
+        title: 'Run it',
+        target: '#run',
+        body: `<p>Swap in the contracts table and the column <code>GRID_AREA</code>, then press <b>Run</b> or <b>Ctrl+Enter</b>.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Compare the values',
+        view: 'builder',
+        target: '#results',
+        body: `<p>How many different grid areas do you get? Are some of them the same area, just spelled differently?</p>`,
+      },
+      {
+        title: 'Follow the source',
+        target: '#editor',
+        body: `<p>Add <code>SRC_SYS_ID</code> to the <code>SELECT</code> and to the <code>GROUP BY</code>. Then you see which system delivers the odd values.</p>`,
+      },
+    ],
   ],
 };

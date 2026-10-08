@@ -24,7 +24,8 @@ export interface TourHooks {
 
 let active: { close: () => void } | null = null;
 
-export function startTour(steps: TourStep[], hooks: TourHooks) {
+/** finishLabel names the last button, e.g. 'Start the mission' or 'Got it'. */
+export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'Start the mission') {
   active?.close();
   let index = 0;
 
@@ -77,7 +78,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks) {
         <button class="btn link" type="button" data-act="skip">Skip tutorial</button>
         <span class="spacer"></span>
         <button class="btn" type="button" data-act="back" ${index === 0 ? 'disabled' : ''}>Back</button>
-        <button class="btn primary" type="button" data-act="next">${last ? 'Start the mission' : 'Next'}</button>
+        <button class="btn primary" type="button" data-act="next">${last ? finishLabel : 'Next'}</button>
       </div>`;
     if (step.example) card.querySelector('.tour-example code')!.textContent = step.example;
     card.querySelector('[data-act="skip"]')!.addEventListener('click', () => close(true));
