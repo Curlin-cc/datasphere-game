@@ -54,9 +54,13 @@ src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete,
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
+src/content/missions/ ← Missionen je Kapitel (`c00.ts`), Reihenfolge in `index.ts`
+src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result/structure/question), Review-Regeln, XP
+src/missions/engine.ts ← Prüf-Engine: führt letzte Anweisung im Editor aus, vergleicht mit Musterlösung(en), `diagnose` für typische Fehler
+src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound)
+src/progress.ts      ← Spielstand v3 (je Mission), Ränge (RANK_XP), Export/Import
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
-content/missions/    ← eine JSON-Datei pro Mission (noch nicht angelegt)
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
 
@@ -69,12 +73,16 @@ scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerpr
 
 ## Aktueller Stand
 
-Phase 1 (Fundament) läuft. App-Gerüst steht: Layout, DuckDB im Browser, SQL-Editor mit Ergebnistabelle,
-eine Vorschau-Mission (Kapitel 0) mit Tipps, aber ohne automatische Prüfung. Datengenerator fertig:
-7 Tabellen in `RHN_IN` mit eingebauten Fehlern, Details in `docs/DATA.md`. Lokal starten: `npm install`, `npm run dev`.
+Phase 1 (Fundament) fertig bis auf GitHub Pages. Kapitel 0 (Onboarding) ist komplett spielbar: 4 Missionen mit
+automatischer Prüfung, Fragen, Review, XP und Rängen, Spielstand mit Export/Import. Datengenerator: 7 Tabellen in
+`RHN_IN` mit eingebauten Fehlern, Details in `docs/DATA.md`. Lokal starten: `npm install`, `npm run dev`.
+
+Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
+`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`, im Browser mit richtiger und falscher Lösung durchspielen.
 
 ## Nächster Schritt
 
-1. Missions-Format (`content/missions/*.json`) + Prüf-Engine (Ergebnis, Struktur, Review)
-2. Spielstand in localStorage + Export/Import, XP-Abzug für Tipps
-3. Kapitel-0-Missionen auf die neuen Daten schreiben (Zahlen aus `docs/DATA.md`)
+1. Kapitel 1 (Space Concept): Space-Management-Formular (Space anlegen = DuckDB-Schema, Storage, Priority),
+   Missionen mit `structure`-Checks für `RHN_HARM` und `RHN_REP`, Namenskonventionen als Review-Regel
+2. GitHub Pages aktivieren (Repo-Einstellungen → Pages → „GitHub Actions“), Artifact-Build aktualisieren
+3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges

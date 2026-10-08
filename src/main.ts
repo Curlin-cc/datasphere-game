@@ -2,9 +2,16 @@ import './styles.css';
 import { initDb, exec, runSql, listObjects } from './db';
 import { generateDataset, datasetToSql } from './data/generator';
 import { createSqlEditor, type SqlEditor } from './editor';
-import { CHAPTERS, RANKS, GLOSSARY, GUIDANCE_INFO } from './content/chapters';
+import { CHAPTERS, GLOSSARY, GUIDANCE_INFO } from './content/chapters';
 import { TUTORIALS, TASK_TOURS } from './content/tutorials';
+import { MISSIONS, missionById, missionsOfChapter } from './content/missions';
+import { checkMission, type CheckReport } from './missions/engine';
+import type { QuestionCheck } from './missions/types';
 import { startTour } from './tutorial';
+import {
+  loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, rankOf,
+  exportProgress, importProgress, freshProgress, CLEAN_BONUS,
+} from './progress';
 
 type ViewId = 'home' | 'spaces' | 'builder' | 'security' | 'monitor' | 'glossary';
 
@@ -32,43 +39,24 @@ function layerOf(space: string): 'in' | 'ha' | 'rep' | undefined {
   return undefined;
 }
 
-/** Everyone starts at 0 XP. XP is earned by solving missions; tutorials are free. */
-const START_XP = 0;
-const SAVE_KEY = 'dsg-progress-v2';
-const MISSION_ID = 'c00-m01';
+const DEFAULT_SQL = `-- Ctrl+Enter runs the query\nSELECT *\nFROM RHN_IN.BILLING_CONTRACTS\nLIMIT 20;`;
 
-interface Progress {
-  xp: number;
-  hintsOpen: number;
-  /** Mission IDs whose tutorial the player has finished or skipped. */
-  tutorialsSeen: string[];
-}
-
-function loadProgress(): Progress {
-  const fresh: Progress = { xp: START_XP, hintsOpen: 0, tutorialsSeen: [] };
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    return raw ? { ...fresh, ...JSON.parse(raw) } : fresh;
-  } catch {
-    return fresh;
-  }
-}
-
-function saveProgress() {
-  try {
-    const { xp, hintsOpen, tutorialsSeen } = state;
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ xp, hintsOpen, tutorialsSeen }));
-  } catch {
-    /* storage unavailable: progress lasts for this visit only */
-  }
-}
+const progress = loadProgress();
 
 const state = {
   view: 'builder' as ViewId,
-  currentChapter: 0,
-  sql: `-- Ctrl+Enter runs the query\nSELECT *\nFROM RHN_IN.BILLING_CONTRACTS\nLIMIT 20;`,
-  ...loadProgress(),
+  sql: missionProgress(progress, progress.currentMission).sql ?? DEFAULT_SQL,
+  progress,
+  /** Last check result for the current mission, cleared when the mission changes. */
+  report: null as CheckReport | null,
+  checking: false,
+  /** Set right after a mission is solved, for the success message. */
+  solved: null as { xp: number; bonus: boolean; promotedTo?: string } | null,
 };
+
+const save = () => saveProgress(state.progress);
+const currentMission = () => missionById(state.progress.currentMission) ?? MISSIONS[0];
+const currentChapter = () => reachedChapter(state.progress);
 
 let editor: SqlEditor | null = null;
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -139,19 +127,21 @@ function openTutorial(missionId: string) {
   startTour(
     steps,
     tourHooks(() => {
-      if (!state.tutorialsSeen.includes(missionId)) {
-        state.tutorialsSeen.push(missionId);
-        saveProgress();
+      if (!state.progress.tutorialsSeen.includes(missionId)) {
+        state.progress.tutorialsSeen.push(missionId);
+        save();
       }
     }),
   );
 }
 
 function rankHtml() {
-  const fill = Math.min(100, Math.max(0, state.xp));
-  return `<strong>${esc(RANKS[0])}</strong>
-    <span class="xp-bar" aria-label="Experience ${state.xp} of 100"><span style="width:${fill}%"></span></span>
-    <span>${state.xp} XP</span>`;
+  const xp = state.progress.xp;
+  const r = rankOf(xp);
+  const label = r.next ? `${xp} of ${r.next} XP to the next rank` : `${xp} XP, highest rank`;
+  return `<strong>${esc(r.name)}</strong>
+    <span class="xp-bar" aria-label="${label}" title="${label}"><span style="width:${Math.min(100, Math.max(0, r.fill))}%"></span></span>
+    <span>${xp} XP</span>`;
 }
 
 function renderRank() {
@@ -211,7 +201,7 @@ function openGuide() {
 }
 
 function navButton(item: NavItem) {
-  const locked = item.unlockChapter !== undefined && item.unlockChapter > state.currentChapter;
+  const locked = item.unlockChapter !== undefined && item.unlockChapter > currentChapter();
   return `<button type="button" data-view="${item.id}" ${state.view === item.id ? 'aria-current="page"' : ''}>
     <svg viewBox="0 0 16 16" aria-hidden="true">${item.icon}</svg>${esc(item.label)}
     ${locked ? `<span class="lock" title="Unlocks in chapter ${item.unlockChapter}" aria-label="Locked until chapter ${item.unlockChapter}"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg></span>` : ''}
@@ -254,6 +244,9 @@ function renderView() {
 }
 
 function renderHome(main: HTMLElement) {
+  const reached = currentChapter();
+  const solved = MISSIONS.filter((m) => state.progress.missions[m.id]?.done).length;
+  const r = rankOf(state.progress.xp);
   main.innerHTML = `
     <h1 class="view-title">Welcome to Stadtwerke Rheinau</h1>
     <p class="view-lead">The board wants one trusted view of revenue, consumption and receivables per grid area.
@@ -262,16 +255,37 @@ function renderHome(main: HTMLElement) {
       <h3>How to play</h3>
       ${guideList()}
     </section>
+    <section class="panel progress" aria-label="Your progress">
+      <h3>Your progress</h3>
+      <div class="progress-row">
+        <div class="stat"><b>${esc(r.name)}</b><span>Rank</span></div>
+        <div class="stat"><b>${state.progress.xp}</b><span>XP${r.next ? `, ${r.next - state.progress.xp} to the next rank` : ''}</span></div>
+        <div class="stat"><b>${solved} of ${MISSIONS.length}</b><span>Missions solved</span></div>
+        <span class="spacer"></span>
+        <div class="save-actions">
+          <button class="btn" type="button" id="save-export">Export save</button>
+          <button class="btn" type="button" id="save-import">Import save</button>
+          <button class="btn link" type="button" id="save-reset">Start over</button>
+        </div>
+      </div>
+      <p class="save-note" id="save-note">Your progress is saved in this browser. Export it to move to another PC or browser.</p>
+    </section>
     <div class="home-grid">
       <section class="panel" aria-label="Learning path">
         <ol class="path">
-          ${CHAPTERS.map(
-            (c) => `<li class="${c.nr === state.currentChapter ? 'current' : ''}">
+          ${CHAPTERS.map((c) => {
+            const missions = missionsOfChapter(c.nr);
+            const done = missions.filter((m) => state.progress.missions[m.id]?.done).length;
+            const label = c.nr < reached ? 'Done' : c.nr > reached ? 'Locked' : missions.length ? `${done} of ${missions.length}` : 'Coming soon';
+            return `<li class="${c.nr === reached ? 'current' : ''}">
               <span class="num">${c.nr}</span>
-              <span><span class="t">${esc(c.title)}</span><br><span class="d">${esc(c.summary)}</span></span>
-              <span class="state">${c.nr === state.currentChapter ? 'Current' : c.nr < state.currentChapter ? 'Done' : 'Locked'}</span>
-            </li>`,
-          ).join('')}
+              <span><span class="t">${esc(c.title)}</span><br><span class="d">${esc(c.summary)}</span>
+                ${c.nr <= reached && missions.length ? `<span class="path-missions">${missions
+                  .map((m) => `<button type="button" class="mission-link ${state.progress.missions[m.id]?.done ? 'done' : ''}" data-mission="${m.id}" ${isUnlocked(state.progress, m.id) ? '' : 'disabled'}>${esc(m.title)}</button>`)
+                  .join('')}</span>` : ''}</span>
+              <span class="state">${label}</span>
+            </li>`;
+          }).join('')}
         </ol>
       </section>
       <section class="panel arch" aria-label="Target architecture">
@@ -284,6 +298,41 @@ function renderHome(main: HTMLElement) {
         <p class="arch-note">Only the inbound space exists so far. You create the others in chapter 1.</p>
       </section>
     </div>`;
+
+  main.querySelectorAll<HTMLButtonElement>('[data-mission]').forEach((b) =>
+    b.addEventListener('click', () => {
+      openMission(b.dataset.mission!);
+      setView('builder');
+    }),
+  );
+  const note = main.querySelector<HTMLElement>('#save-note')!;
+  main.querySelector('#save-export')!.addEventListener('click', () => {
+    persistEditor();
+    exportProgress(state.progress);
+    note.textContent = 'Save exported. Keep the file; Import save loads it again.';
+  });
+  main.querySelector('#save-import')!.addEventListener('click', async () => {
+    try {
+      state.progress = await importProgress();
+      afterProgressReplaced();
+    } catch (err) {
+      note.textContent = err instanceof Error ? err.message : String(err);
+    }
+  });
+  main.querySelector('#save-reset')!.addEventListener('click', () => {
+    if (!confirm('Start over? Your XP and all solved missions are deleted. Export your save first if you want to keep it.')) return;
+    state.progress = freshProgress();
+    afterProgressReplaced();
+  });
+}
+
+/** After import or reset: load the mission's SQL and redraw everything. */
+function afterProgressReplaced() {
+  save();
+  state.report = null;
+  state.solved = null;
+  state.sql = missionProgress(state.progress, state.progress.currentMission).sql ?? DEFAULT_SQL;
+  renderFrame();
 }
 
 async function renderSpaces(main: HTMLElement) {
@@ -429,88 +478,195 @@ function resultTable(columns: string[], rows: unknown[][]) {
   </table>${rows.length > MAX ? `<div class="placeholder">Showing the first ${MAX} of ${rows.length} rows.</div>` : ''}`;
 }
 
-// ---------------------------------------------------------------- mission panel (preview)
-
-const TASKS = [
-  'Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.',
-  'Write a query that counts the contracts per grid area.',
-  'Look at the grid areas you get back. What is wrong with them, and where do those rows come from?',
-];
-
-const PREVIEW_HINTS = [
-  { label: 'Hint 1: where to look', cost: 5, text: 'Open the Data Builder. The billing data sits in the space RHN_IN, click a table on the left to preview it.' },
-  { label: 'Hint 2: the concept', cost: 10, text: 'COUNT(*) counts rows. SELECT DISTINCT returns each value once. Look closely at the values you get back.' },
-  { label: 'Hint 3: a skeleton', cost: 20, text: 'SELECT GRID_AREA, COUNT(*) FROM RHN_IN.______ GROUP BY ____;' },
-];
+// ---------------------------------------------------------------- mission panel
 
 /** Hints that are open for free in this chapter, before anything is bought. */
 const FREE_HINTS = { full: 3, light: 1, paid: 0, none: 0 } as const;
 
+/** Keeps the editor text with the mission, so it is still there after a reload. */
+function persistEditor() {
+  if (editor) state.sql = editor.getValue();
+  missionProgress(state.progress, state.progress.currentMission).sql = state.sql;
+  save();
+}
+
+function openMission(id: string) {
+  if (!isUnlocked(state.progress, id) || id === state.progress.currentMission) return;
+  persistEditor();
+  state.progress.currentMission = id;
+  state.report = null;
+  state.solved = null;
+  state.sql = missionProgress(state.progress, id).sql ?? DEFAULT_SQL;
+  editor?.setValue(state.sql);
+  save();
+  renderMission();
+  if (!state.progress.tutorialsSeen.includes(id)) openTutorial(id);
+}
+
 function renderMission() {
-  const panel = document.querySelector<HTMLElement>('#mission')!;
-  const guidance = CHAPTERS[state.currentChapter].guidance;
-  const openHints = Math.max(FREE_HINTS[guidance], state.hintsOpen);
+  const panel = document.querySelector<HTMLElement>('#mission');
+  if (!panel) return;
+  const m = currentMission();
+  const mp = missionProgress(state.progress, m.id);
+  const chapter = CHAPTERS[m.chapter];
+  const inChapter = missionsOfChapter(m.chapter);
+  const pos = inChapter.indexOf(m);
+  const guidance = chapter.guidance;
+  const openHints = Math.max(FREE_HINTS[guidance], mp.hintsOpen);
+  const xp = state.progress.xp;
+  const questions = m.checks.filter((c): c is QuestionCheck => c.type === 'question');
+  const all = MISSIONS.indexOf(m);
+  const prev = MISSIONS[all - 1];
+  const next = MISSIONS[all + 1];
+
   panel.innerHTML = `
     <div class="mission-head">
-      <div class="where">Chapter 0, Onboarding. Mission 1 of 4</div>
-      <h2>Meet the raw data</h2>
-      <button class="btn small" type="button" id="tutorial-open">Show tutorial</button>
+      <div class="where">Chapter ${chapter.nr}, ${esc(chapter.title)}. Mission ${pos + 1} of ${inChapter.length}</div>
+      <h2>${esc(m.title)}${mp.done ? ' <span class="chip solved">Solved</span>' : ''}</h2>
+      <div class="mission-nav">
+        <button class="btn small" type="button" id="tutorial-open">Show tutorial</button>
+        <span class="spacer"></span>
+        <button class="btn small" type="button" data-goto="${prev?.id ?? ''}" ${prev ? '' : 'disabled'} aria-label="Previous mission">‹ Prev</button>
+        <button class="btn small" type="button" data-goto="${next?.id ?? ''}" ${next && isUnlocked(state.progress, next.id) ? '' : 'disabled'}
+          ${next && !isUnlocked(state.progress, next.id) ? 'title="Solve this mission first"' : ''} aria-label="Next mission">Next ›</button>
+      </div>
     </div>
     <div class="ticket">
       <div class="ticket-from">
-        <span class="avatar" aria-hidden="true">CM</span>
-        <div><b>Calin Mucea</b><span>Senior Data Architect, your mentor</span></div>
+        <span class="avatar" aria-hidden="true">${esc(m.from.initials)}</span>
+        <div><b>${esc(m.from.name)}</b><span>${esc(m.from.role)}</span></div>
       </div>
-      <div class="ticket-body">
-        <p>Welcome aboard! IT already loaded the first extracts from billing, metering and the CRM into our inbound space.</p>
-        <p>Before we model anything: how many contracts do we have per grid area? Something about the grid areas looks off to me. Tell me what you find.</p>
-      </div>
+      <div class="ticket-body">${m.ticket}</div>
     </div>
     <div class="section" id="task">
       <h3>Your task</h3>
       <ol class="task-steps">
-        ${TASKS.map(
-          (t, i) => `<li><span>${t}</span>${TASK_TOURS[MISSION_ID]?.[i] ? `<button class="btn small show-me" type="button" data-task="${i}">Show me</button>` : ''}</li>`,
+        ${m.tasks.map(
+          (t, i) => `<li><span>${t}</span>${TASK_TOURS[m.id]?.[i] ? `<button class="btn small show-me" type="button" data-task="${i}">Show me</button>` : ''}</li>`,
         ).join('')}
       </ol>
     </div>
+    ${questions.length ? `<div class="section" id="questions">
+      <h3>Your answers</h3>
+      ${questions.map((q) => `<fieldset class="question">
+          <legend>${esc(q.prompt)}</legend>
+          ${q.options.map((o, i) => `<label><input type="radio" name="q-${q.id}" value="${i}" ${mp.answers[q.id] === i ? 'checked' : ''}> ${esc(o)}</label>`).join('')}
+        </fieldset>`).join('')}
+    </div>` : ''}
     <div class="section" id="hints">
-      <h3>Hints <span class="balance">You have ${state.xp} XP</span></h3>
+      <h3>Hints <span class="balance">You have ${xp} XP</span></h3>
       <p class="guidance"><span class="chip" data-guidance="${guidance}">${GUIDANCE_INFO[guidance].label}</span> ${esc(GUIDANCE_INFO[guidance].text)}</p>
       <div class="hints">
-        ${guidance === 'none' ? '' : PREVIEW_HINTS.map((h, i) => {
+        ${guidance === 'none' ? '' : m.hints.map((h, i) => {
           if (i < openHints) return `<div class="hint-open"><b>${esc(h.label)}</b>${esc(h.text)}</div>`;
-          const next = i === openHints;
-          const affordable = state.xp >= h.cost;
-          const note = !next ? 'Open the previous hint first' : !affordable ? `Not enough XP, you need ${h.cost}` : '';
-          return `<button class="hint-btn" type="button" data-hint="${i}" ${next && affordable ? '' : 'disabled'} ${note ? `title="${esc(note)}"` : ''}>
-                 <span>${esc(h.label)}${next && !affordable ? `<small>Not enough XP</small>` : ''}</span><span class="cost">−${h.cost} XP</span>
+          const isNext = i === openHints;
+          const affordable = xp >= h.cost;
+          const note = !isNext ? 'Open the previous hint first' : !affordable ? `Not enough XP, you need ${h.cost}` : '';
+          return `<button class="hint-btn" type="button" data-hint="${i}" ${isNext && affordable ? '' : 'disabled'} ${note ? `title="${esc(note)}"` : ''}>
+                 <span>${esc(h.label)}${isNext && !affordable ? `<small>Not enough XP</small>` : ''}</span><span class="cost">−${h.cost} XP</span>
                </button>`;
         }).join('')}
       </div>
     </div>
     <div class="feedback">
-      <button class="btn primary" type="button" disabled>Check my solution</button>
-      <p>Automatic checks arrive with the next build. For now, compare your result with the ticket yourself.</p>
+      <button class="btn primary" type="button" id="check" ${state.checking ? 'disabled' : ''}>${state.checking ? 'Checking…' : 'Check my solution'}</button>
+      <p>Checks the last query in the editor${questions.length ? ' and your answers' : ''}.${mp.done ? ' You already earned the XP for this mission.' : ` Worth ${m.xp} XP, plus ${CLEAN_BONUS} for a clean review.`}</p>
+      ${reportHtml()}
     </div>`;
 
-  panel.querySelector('#tutorial-open')!.addEventListener('click', () => openTutorial(MISSION_ID));
+  panel.querySelector('#tutorial-open')!.addEventListener('click', () => openTutorial(m.id));
+  panel.querySelectorAll<HTMLButtonElement>('[data-goto]').forEach((b) =>
+    b.addEventListener('click', () => b.dataset.goto && openMission(b.dataset.goto)),
+  );
   panel.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((b) =>
-    b.addEventListener('click', () => openTaskTour(MISSION_ID, Number(b.dataset.task))),
+    b.addEventListener('click', () => openTaskTour(m.id, Number(b.dataset.task))),
+  );
+  panel.querySelectorAll<HTMLInputElement>('.question input').forEach((input) =>
+    input.addEventListener('change', () => {
+      mp.answers[input.name.slice(2)] = Number(input.value);
+      save();
+    }),
   );
   panel.querySelectorAll<HTMLButtonElement>('[data-hint]').forEach((b) =>
     b.addEventListener('click', () => {
       const i = Number(b.dataset.hint);
-      const hint = PREVIEW_HINTS[i];
+      const hint = m.hints[i];
       // Never go below zero: a hint is only bought when the XP is there.
-      if (i !== openHints || state.xp < hint.cost) return;
-      state.xp -= hint.cost;
-      state.hintsOpen = i + 1;
-      saveProgress();
+      if (i !== openHints || state.progress.xp < hint.cost) return;
+      state.progress.xp -= hint.cost;
+      mp.hintsOpen = i + 1;
+      save();
       renderRank();
       renderMission();
     }),
   );
+  panel.querySelector('#check')!.addEventListener('click', runCheck);
+  panel.querySelector('#next-mission')?.addEventListener('click', () => next && openMission(next.id));
+}
+
+function reportHtml() {
+  const report = state.report;
+  if (!report) return '';
+  const m = currentMission();
+  const next = MISSIONS[MISSIONS.indexOf(m) + 1];
+  const list = `<ul class="check-list">${report.outcomes
+    .map((o) => `<li class="${o.ok ? 'ok' : 'fail'}"><b>${o.ok ? '✓' : '✗'} ${esc(o.label)}</b><span>${esc(o.message)}</span></li>`)
+    .join('')}</ul>`;
+  const notes = report.notes.length
+    ? `<div class="review"><b>Calin's review</b>${report.notes.map((n) => `<p>${esc(n.text)}</p>`).join('')}
+        ${report.passed ? '' : '<p class="muted">Review notes do not fail the mission, but a clean solution earns a bonus.</p>'}</div>`
+    : '';
+  if (!report.passed) return list + notes;
+
+  const s = state.solved;
+  return `${list}
+    <div class="success" role="status">
+      ${s ? `<div class="gain">+${s.xp} XP${s.bonus ? ` <small>incl. ${CLEAN_BONUS} for a clean review</small>` : ''}</div>` : ''}
+      ${s?.promotedTo ? `<div class="promotion">Promoted to <b>${esc(s.promotedTo)}</b></div>` : ''}
+      <div class="debrief"><span class="avatar" aria-hidden="true">${esc(m.from.initials)}</span><div>${m.debrief}</div></div>
+    </div>
+    ${notes}
+    <div class="real-tenant"><b>In the real tenant</b><p>${m.realTenant}</p></div>
+    ${next
+      ? `<button class="btn primary" type="button" id="next-mission">Next mission: ${esc(next.title)}</button>`
+      : `<p class="muted">That was the last mission built so far. Chapter ${m.chapter + 1} is in the making; your progress is saved.</p>`}`;
+}
+
+async function runCheck() {
+  if (state.checking) return;
+  const m = currentMission();
+  const mp = missionProgress(state.progress, m.id);
+  persistEditor();
+  state.checking = true;
+  state.solved = null;
+  renderMission();
+  const chapterBefore = currentChapter();
+  try {
+    state.report = await checkMission(m, { sql: state.sql, answers: mp.answers });
+  } catch (err) {
+    state.report = { passed: false, notes: [], outcomes: [{ label: 'Check', ok: false, message: err instanceof Error ? err.message : String(err) }] };
+  }
+  mp.attempts++;
+  if (state.report.passed && !mp.done) {
+    const bonus = state.report.notes.length === 0;
+    const gained = m.xp + (bonus ? CLEAN_BONUS : 0);
+    const before = rankOf(state.progress.xp).name;
+    mp.done = true;
+    mp.xpEarned = gained;
+    state.progress.xp += gained;
+    const after = rankOf(state.progress.xp).name;
+    state.solved = { xp: gained, bonus, promotedTo: after !== before ? after : undefined };
+  }
+  state.checking = false;
+  save();
+  renderRank();
+  renderMission();
+  // A new chapter may unlock views in the navigation.
+  if (currentChapter() !== chapterBefore) {
+    document.querySelector('.nav')!.innerHTML = `${NAV.map(navButton).join('')}<div class="nav-sep"></div>${NAV_BOTTOM.map(navButton).join('')}`;
+    document.querySelectorAll<HTMLButtonElement>('.nav button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view as ViewId)));
+  }
+  document.querySelector('.feedback')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 // ---------------------------------------------------------------- boot
@@ -522,11 +678,14 @@ async function boot() {
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
     for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
     renderFrame();
-    if (!state.tutorialsSeen.includes(MISSION_ID)) openTutorial(MISSION_ID);
+    const id = state.progress.currentMission;
+    if (!state.progress.tutorialsSeen.includes(id)) openTutorial(id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     app.innerHTML = `<div class="boot">The database could not start: ${esc(msg)}. Reload the page; if it keeps failing, try a current Chrome, Edge or Firefox.</div>`;
   }
 }
+
+window.addEventListener('beforeunload', persistEditor);
 
 boot();

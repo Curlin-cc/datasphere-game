@@ -4,6 +4,11 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-08 | Missionen als TypeScript-Module (`src/content/missions/*.ts`) statt JSON | Typprüfung beim Build, mehrzeiliges SQL und HTML ohne Escaping; Format bleibt rein datengetrieben |
+| 2026-10-08 | Ergebnisprüfung ignoriert Spaltennamen und -reihenfolge, Zeilenreihenfolge nur bei `ordered` | Bewertet wird das Ergebnis, nicht der Schreibstil |
+| 2026-10-08 | Typische Fehler werden als eigene Abfragen (`diagnose`) hinterlegt und gezielt erklärt | Konkretes Feedback statt „falsch“, ohne die Lösung zu verraten |
+| 2026-10-08 | Review-Hinweise lassen eine Mission nie scheitern; saubere Lösung gibt +5 XP | Best Practices belohnen statt bestrafen |
+| 2026-10-08 | Ränge ab 0 / 100 / 350 / 750 XP | Nach Kapitel 0 (100–120 XP) erste Beförderung |
 | 2026-10-08 | Hilfe nimmt mit den Kapiteln ab: full (0–1), light (2–4), paid (5–10), none (11) | Wunsch von Curlin: anfangs leicht, später nur gegen XP |
 | 2026-10-08 | Jeder Aufgabenschritt hat ein „Show me“-Schnelltutorial (2–3 Pop-ups) | Wunsch von Curlin |
 | 2026-10-08 | Start mit 0 XP, XP nie unter 0; Tipp nur kaufbar, wenn genug XP da sind | Wunsch von Curlin; XP erst verdienen |
