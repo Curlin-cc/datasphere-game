@@ -51,6 +51,7 @@ docs/PLAN.md         ← vollständiger Plan (Kapitel, Mechaniken, Architektur)
 docs/STATUS.md       ← Checkliste + Session-Log
 docs/DECISIONS.md    ← Architektur-Entscheidungen
 docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen, Quellsysteme
+docs/handbuch/       ← Curlins SAP-Datasphere-Handbuch: docx + Markdown je Kapitel (fachliche Quelle, README = Inhaltsverzeichnis)
 docs/HANDBUCH_ABGLEICH.md ← Abgleich mit Curlins SAP-Datasphere-Handbuch: was abgedeckt ist, was dort „nicht verifiziert“ ist
 src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
 src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
@@ -105,7 +106,9 @@ Spielbar (21 Missionen):
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
 - Kapitel 4 Inbound Layer: SQL-Profiling im Scratch-SQL-View
 
-Fachliche Quelle seit 09.10.2026: Curlins Handbuch „SAP Datasphere Handbuch“ (docx, nicht im Repo). Abgleich und offene Punkte: `docs/HANDBUCH_ABGLEICH.md`.
+**Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
+`docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
+und gekennzeichnet bauen. Abgleich und offene Punkte: `docs/HANDBUCH_ABGLEICH.md`.
 
 Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,

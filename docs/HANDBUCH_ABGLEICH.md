@@ -1,6 +1,6 @@
 # Abgleich: SAP-Datasphere-Handbuch ↔ Datasphere Game
 
-Quelle: Curlins „SAP Datasphere Handbuch“ (docx, 12 Kapitel, Stand 09.10.2026; nicht im Repo).
+Quelle: Curlins „SAP Datasphere Handbuch“ (12 Kapitel, Stand 09.10.2026), im Repo unter `docs/handbuch/`.
 Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut das Spiel nur vereinfacht und kennzeichnet sie.
 
 ## Deckt das Handbuch alle Spielkapitel ab?
