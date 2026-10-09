@@ -4,6 +4,9 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | **Task Chains vereinfacht:** Schrittliste statt Canvas, nur sequenziell (ALL/ANY nur erklärt); Schritte = Objekte des eigenen Spaces + geteilte Ketten anderer Spaces (globale Task Chains seit 11/2024, Quelle valantic); Replication Flows nur mit *Initial Only*; fehlgeschlagener Schritt stoppt die Kette; E-Mail als Meldung im Lauf | Handbuch 6.8 belegt Schritttypen, Benachrichtigung, Einplanung; Canvas und Parallelität bringen für das Lernziel wenig |
+| 2026-10-09 | Neues Mission-Feld `setupAsync` (läuft nach `setup`, wenn die Datenbank bereit ist), z. B. für den geplanten Lauf in c10-m03 | Ein realer Fehlerlauf braucht DuckDB; `setup` ist synchron |
+| 2026-10-09 | c10-m03: Tims Änderung `CAST(CUSTOMER_ID AS INTEGER)` lässt sich deployen und scheitert erst beim Lauf | Zeigt den Unterschied zwischen Deploy (Struktur) und Laufzeit (Daten) |
 | 2026-10-09 | **Kapitel 9: Laufzeiten simuliert** (Kostenmodell `src/perf.ts`: Zeilen × Arbeit im SQL entlang der Lineage, Produktionsvolumen ≈ 1000 × Trainingsdaten); Datensätze echt, Dauer/Speicher/CPU simuliert und so beschriftet | Echte DuckDB-Zeiten im Browser sind Millisekunden und sagen nichts über Persistenz |
 | 2026-10-09 | **View-Persistenz in DuckDB:** Snapshot als Tabelle im versteckten Schema `persistence`, der View liest dann den Snapshot (bleibt ein View für Prüfungen und Lineage); nach Reload neu aufgebaut; Deploy eines persistierten Views entfernt den Snapshot (vereinfacht) | Strukturprüfungen früherer Kapitel (Typ View) bleiben gültig |
 | 2026-10-09 | Persistierung gesperrt, wenn der View (auch indirekt) einen View mit DAC liest (Handbuch 9.3.7); ein View mit eigener DAC darf persistiert werden (nicht belegt, vereinfacht) | Handbuch belegt nur den ersten Fall |

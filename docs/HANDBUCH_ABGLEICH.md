@@ -17,7 +17,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 7 Analytic Model | 6.10, 6.12.5 | ja, gebaut am 09.10.2026: genau ein Fact, Dimensionen aus Associations, Fact Source / Calculated / Restricted / Count Distinct Measures, Filter Variable (Single Value, Interval, Pflicht/optional), Data Preview mit Zeilen, Measures, Variablenwerten | Fixed Value, Währungs-/Einheitenumrechnung, Ausnahmeaggregation, Skalierung, Sichtbarkeit, globaler Filter, mehrstufige Dimensionen, Standard-/Restricted-Measure-/Stichtagsvariable nur erklärt (teils „nicht verifiziert“) |
 | 8 Data Access Controls | 9.3, 9.9, 6.5.7 | ja, gebaut am 09.10.2026: Berechtigungsentität (lokale Tabelle mit Data Editor), Single Values, Identifier/Criteria, Zuweisung mit Spalten-Mapping, Prüfen als Testbenutzer („View as“) | Operator and Values (nicht verifiziert) und Hierarchy nur erklärt; BW-Import, Custom Application Attributes nicht simuliert; Wirkung auf nachgelagerte Views vereinfacht |
 | 9 Persistence | 6.5.6, 10.3.4, 10.4, 9.3.7 | ja, gebaut am 09.10.2026: Expensive Statement Tracing (System › Configuration › Monitoring), Expensive Statement Logs, Views-Monitor (Start Data Persistence, Remove Persisted Data, Schedule, Läufe mit Meldungen), View Analyzer (vereinfacht), Grenze „liest View mit DAC“ | Partitionierung und Spalten des Views-Monitors „nicht verifiziert“ (Partitionierung nur erklärt); Laufzeiten simuliert; ob ein View mit eigener DAC persistierbar ist, nicht belegt (Spiel: ja) |
-| 10 Operations | 6.7.3, 6.8, 10 | ja: Transformation Flow, Task Chains, Monitor, Benachrichtigungen | – |
+| 10 Operations | 6.7.3, 6.8, 10.3.6, 10.3.8, 10.5, 10.6 | ja, gebaut am 09.10.2026: Task Chains (Replication Flow nur Initial Only, View-Persistenz, Remote-Table-Snapshot, verschachtelte Ketten, geteilte Ketten anderer Spaces), E-Mail-Benachrichtigung, Run/Schedule im Editor und im Monitor, Task-Chains-Monitor mit Schritten und Sprung in den Detailmonitor (Ablauf C), Task Logs über alle Spaces | Parallele Zweige (ALL/ANY) nur erklärt; Transformation Flow, Pause/Fortsetzen, Cron, Cloud ALM nicht simuliert; geteilte (globale) Task Chains laut valantic-Jahresrückblick 2024, nicht im Handbuch |
 | 11 / Exkurse | 7, 8, 11, 12 | ja: Business Builder, Catalog & Marketplace, Transport, Verbrauch | – |
 
 ## Widersprüche und offene Punkte (am echten Tenant prüfen)
@@ -49,6 +49,18 @@ Nicht simuliert: Real-Time-Replikation, Data Provisioning Agent, Data Flows, Cus
 - Bereitstellungsreihenfolge: Deploy einer View scheitert, solange eine Quelle nicht geteilt ist (6.13)
 
 Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (Kapitel 9), Intelligent Lookup (nur erwähnt).
+
+## Was Kapitel 10 aus dem Handbuch umsetzt
+
+- Aufgabenkette fasst Aufgaben zu einer ausführbaren, einplanbaren Einheit zusammen; Schritte: Replikationsflüsse (nur *Initial Only*), View-Persistenz, Remote-Tabellen, andere Ketten (6.8)
+- E-Mail-Benachrichtigung bei Fehler oder Abschluss, im Editor der Kette (6.8, 10.3.6, 10.5)
+- Ausführen und Einplanen im Editor und im Monitor; Zeitpläne laufen mit Zustimmung (10.3.6, 10.3.8)
+- Monitor Task Chains: Läufe mit Schritten; Ablauf C „Fehlgeschlagene Aufgabenkette analysieren“ bis in den Detailmonitor (10.6)
+- Task Logs über alle Spaces, mit Status und Laufzeit (10.5); der Data Integration Monitor zeigt immer nur einen Space (10.7)
+
+Vereinfacht und gekennzeichnet: Schritte laufen nacheinander (kein Canvas, keine parallelen Zweige mit ALL/ANY); eine Kette enthält
+Objekte ihres Spaces, andere Spaces über geteilte Ketten (laut SAP seit 11/2024, nicht im Handbuch); E-Mail erscheint als Meldung im
+Lauf; Laufzeiten simuliert. Nicht simuliert: Transformation Flow, Pause/Fortsetzen, Cron-Ausdrücke, Übernahme fremder Zeitpläne, SAP Cloud ALM.
 
 ## Was Kapitel 9 aus dem Handbuch umsetzt
 

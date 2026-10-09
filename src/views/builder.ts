@@ -13,6 +13,7 @@ import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
 import { renderModelEditor, newModelDraft } from './analytic';
 import { renderTableEditor, newTableDraft } from './table';
 import { renderDacEditor, newDacDraft } from './dac';
+import { renderChainEditor, newChainDraft } from './chain';
 import { DAC_USERS, securedFrom, assignmentError } from '../dac';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
@@ -27,7 +28,7 @@ import { objectToolbar, bindDetails, propsHead } from './toolbar';
  */
 
 type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' } | { kind: 'new-model' }
-  | { kind: 'new-table' } | { kind: 'new-dac' };
+  | { kind: 'new-table' } | { kind: 'new-dac' } | { kind: 'new-chain' };
 type ListTab = 'all' | 'tables' | 'views' | 'er' | 'models' | 'flows' | 'lookups' | 'chains' | 'dac';
 /** Tabs of the start page, as in the real Data Builder (docs/design/README.md B.2). */
 const LIST_TABS: [ListTab, string][] = [
@@ -36,7 +37,7 @@ const LIST_TABS: [ListTab, string][] = [
 ];
 
 /** "New" tiles that work in this build of the game, from their chapter on. */
-const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic', 'table', 'dac']);
+const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic', 'table', 'dac', 'taskchain']);
 /** Favorites (star column), for this visit. */
 const favorites = new Set<string>();
 let listFilter = '';
@@ -48,7 +49,7 @@ let page: Page = { kind: 'spaces' };
 let spaceChosen = false;
 let listTab: ListTab = 'all';
 const inTab = (o: RepoObject, tab: ListTab) =>
-  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'dac' && o.kind === 'Data Access Control') || (tab === 'flows' && o.kind === 'Replication Flow');
+  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'dac' && o.kind === 'Data Access Control') || (tab === 'flows' && o.kind === 'Replication Flow') || (tab === 'chains' && o.kind === 'Task Chain');
 
 export const NEW_VIEW_SQL = `-- Write a SELECT statement. Ctrl+Enter shows the Data Preview.\nSELECT\n  \nFROM `;
 
@@ -67,7 +68,7 @@ export function openObjectInBuilder(key: string) {
 }
 
 /** For tutorials: open the start page or a new SQL view, choosing a space if none is chosen yet. */
-export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow' | 'new-model' | 'new-table' | 'new-dac', space?: string) {
+export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow' | 'new-model' | 'new-table' | 'new-dac' | 'new-chain', space?: string) {
   const t = ctx.tenant();
   if (space && t.spaces.some((s) => s.id === space)) {
     t.activeSpace = space;
@@ -91,7 +92,7 @@ export async function renderBuilder(main: HTMLElement) {
   rememberEditor();
   ctx.editor = null;
   main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow' || page.kind === 'new-model'
-    || page.kind === 'new-table' || page.kind === 'new-dac');
+    || page.kind === 'new-table' || page.kind === 'new-dac' || page.kind === 'new-chain');
   main.classList.toggle('bleed', page.kind === 'spaces' || page.kind === 'landing');
   if (page.kind === 'spaces') return renderSpacePicker(main);
   if (page.kind === 'landing') return renderLanding(main);
@@ -101,6 +102,7 @@ export async function renderBuilder(main: HTMLElement) {
   if (page.kind === 'new-model') return renderModelEditor(main, null, flowNav);
   if (page.kind === 'new-table') return renderTableEditor(main, null, flowNav);
   if (page.kind === 'new-dac') return renderDacEditor(main, null, flowNav);
+  if (page.kind === 'new-chain') return renderChainEditor(main, null, flowNav);
   const o = findObject(ctx.tenant(), page.key);
   if (!o) {
     page = { kind: 'landing' };
@@ -109,6 +111,7 @@ export async function renderBuilder(main: HTMLElement) {
   if (o.kind === 'Replication Flow') return renderFlowEditor(main, o, flowNav);
   if (o.kind === 'Analytic Model') return renderModelEditor(main, o, flowNav);
   if (o.kind === 'Data Access Control') return renderDacEditor(main, o, flowNav);
+  if (o.kind === 'Task Chain') return renderChainEditor(main, o, flowNav);
   if (o.kind === 'Local Table' && o.table && o.space === ctx.tenant().activeSpace) return renderTableEditor(main, o, flowNav);
   return renderEditor(main, o);
 }
@@ -243,6 +246,10 @@ function renderLanding(main: HTMLElement) {
       newDacDraft();
       return go({ kind: 'new-dac' });
     }
+    if (n.id === 'taskchain') {
+      newChainDraft();
+      return go({ kind: 'new-chain' });
+    }
     ctx.sqlOwner = 'draft';
     go({ kind: 'new-view' });
   };
@@ -290,7 +297,7 @@ function renderLanding(main: HTMLElement) {
 
 export const typeIcon = (o: Pick<RepoObject, 'kind'>) =>
   icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow
-    : o.kind === 'Analytic Model' ? ICONS.cube : o.kind === 'Data Access Control' ? ICONS.lock : ICONS.table, 'type-ic');
+    : o.kind === 'Analytic Model' ? ICONS.cube : o.kind === 'Data Access Control' ? ICONS.lock : o.kind === 'Task Chain' ? ICONS.chain : ICONS.table, 'type-ic');
 
 /** "SQL View (Dimension)": type with the semantic usage in brackets, like the real list. */
 const typeText = (o: RepoObject) =>

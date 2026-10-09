@@ -281,3 +281,26 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c10-m01: task chain in RHN_IN while the tour waits
+from chapter10_data import TENANT10  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(10, 'c10-m01', TENANT10))
+    expect(pg, 'Chapter 10: Operations'); nexts(pg, 2)
+    expect(pg, 'New Task Chain'); pg.click('[data-new="taskchain"]')
+
+    def add(key):
+        pg.click('#chain-add'); pg.check(f'.dialog [name="step"][value="{key}"]'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
+    expect(pg, 'Add the CRM flow'); add('RHN_IN.RHN_IN_RF_CRM')
+    expect(pg, 'And the meter readings?'); add('RHN_IN.RHN_IN_RF_MDM'); pg.click('.dialog [data-act="cancel"]')
+    expect(pg, 'Names and Deploy'); pg.fill('#prop-business', 'CRM file'); pg.fill('#prop-technical', 'RHN_IN_TC_CRM'); pg.click('#ed-deploy')
+    expect(pg, 'Run'); g.shot('g-c10-chain'); pg.click('#chain-run')
+    expect(pg, 'Share with RHN_HARM'); g.share('RHN_IN.RHN_IN_TC_CRM', 'RHN_HARM')
+    expect(pg, 'Remove the old schedule'); pg.click('[data-flow="RHN_IN_RF_CRM"]'); pg.click('#flow-schedule')
+    pg.check('[name="freq"][value="None"]'); pg.click('.dialog button[type="submit"]')
+    expect(pg, 'Your answers'); g.answer('delta', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

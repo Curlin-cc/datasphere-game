@@ -6,6 +6,7 @@ import {
 } from '../integration';
 import { spaceSelect } from './connections';
 import { esc, openDialog, toast, fmtDate } from '../ui';
+import { runChain } from '../taskchain';
 import { persistView, unpersistView, persistError, analyze, sizeMB, fmtSize, fmtMs, type PerfNode } from '../perf';
 
 /**
@@ -19,6 +20,7 @@ let selectedRemote = '';
 let selectedFlow = '';
 let selectedRun = '';
 let selectedView = '';
+let selectedChain = '';
 let analyzed = '';
 
 const TABS: { id: Tab; label: string }[] = [
@@ -36,6 +38,9 @@ export function monitorTo(target: Tab, flow?: string) {
   if (flow) {
     selectedFlow = flow;
     selectedView = flow;
+    selectedChain = flow;
+    selectedRemote = flow;
+    selectedRun = '';
   }
 }
 
@@ -85,6 +90,7 @@ export function renderMonitor(main: HTMLElement) {
   else if (tab === 'queries') queriesTab(host);
   else if (tab === 'local') localTab(host);
   else if (tab === 'views' && ctx.currentChapter() >= 9) viewsTab(host, redraw);
+  else if (tab === 'chains' && ctx.currentChapter() >= 10) chainsTab(host, redraw);
   else host.innerHTML = `<section class="panel"><p class="muted">${tab === 'views'
     ? 'Views you persist show up here: run or schedule the persistence, remove it, and analyze views with the View Analyzer. You decide what to persist in chapter 9.'
     : 'Task chains run several loads in a fixed order and show each step with its log. You build your first one in chapter 10.'}</p></section>`;
@@ -169,7 +175,7 @@ function remoteTab(host: HTMLElement, redraw: () => void) {
   );
 }
 
-function scheduleDialog(name: string, current: Frequency | undefined, apply: (f: Frequency | undefined) => void, redraw: () => void) {
+export function scheduleDialog(name: string, current: Frequency | undefined, apply: (f: Frequency | undefined) => void, redraw: () => void) {
   const t = ctx.tenant();
   const { form, close } = openDialog(`Schedule ${name}`, `
     <p class="guide-lead">A simple schedule runs the task at a fixed frequency. Complex patterns use a cron expression in a real tenant.</p>
@@ -329,6 +335,119 @@ async function renderAnalyzer(panel: HTMLElement, key: string) {
       computed when it is read. Persist where the expensive work happens, as low in the stack as that work allows, and keep in mind
       that a snapshot uses memory and is only as fresh as its last run.</p>`;
   panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// ---------------------------------------------------------------- task chains (chapter 10)
+
+/** Runs a deployed task chain, from the editor or the monitor. */
+export async function startChainRun(o: RepoObject): Promise<Run | null> {
+  const t = ctx.tenant();
+  if (!o.deployed?.chain) {
+    toast('Deploy the task chain before you run it.', 'error');
+    return null;
+  }
+  if (o.status === 'changes') toast('Running the deployed version. Your saved changes are not deployed yet.', 'info');
+  const run = await runChain(t, o);
+  ctx.track(`chain-run:${objectKey(o)}:${run.status}`);
+  ctx.save();
+  const mail = run.messages.find((m) => m.startsWith('Email sent to'));
+  toast(run.status === 'Failed' ? `${o.name} failed${mail ? '; the notification email went out' : ''}. Open the run in the Data Integration Monitor.` : `${o.name} completed`, run.status === 'Failed' ? 'error' : 'ok');
+  return run;
+}
+
+const STEP_TAB: Record<string, Tab> = { 'Replication Flow': 'flows', 'View Persistence': 'views', 'Remote Table Replication': 'remote', 'Task Chain': 'chains' };
+
+/** The steps of a chain run, with a link into the monitor of each step. */
+export function stepTable(run: Run): string {
+  if (!run.steps?.length) return `<ol class="run-log">${run.messages.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>`;
+  return `<div class="table-scroll"><table class="grid" id="step-list"><thead><tr><th>#</th><th>Step</th><th>Type</th><th>Status</th><th class="num">Records</th><th class="num">Duration</th><th>Message</th></tr></thead>
+    <tbody>${run.steps.map((s, i) => `<tr class="${s.status === 'Failed' ? 'failed-row' : ''}"><td>${i + 1}</td>
+      <td>${s.status === 'Not Run' ? `<span class="mono">${esc(s.object.split('.')[1])}</span>` : `<button type="button" class="link-btn mono" data-step-open="${esc(s.object)}" data-step-type="${esc(s.type)}" title="Open in its monitor">${esc(s.object.split('.')[1])}</button>`}</td>
+      <td>${esc(s.type)}</td><td>${s.status === 'Not Run' ? '<span class="muted">Not Run</span>' : runChip(s as { status: Run['status'] })}</td>
+      <td class="num">${s.records.toLocaleString('en-US')}</td><td class="num">${s.ms ? fmtMs(s.ms) : '–'}</td>
+      <td class="${s.status === 'Failed' ? 'err-text' : 'muted'}">${esc(s.message)}</td></tr>`).join('')}</tbody></table></div>
+    ${run.messages.some((m) => m.startsWith('Email sent')) ? `<p class="muted">${esc(run.messages.find((m) => m.startsWith('Email sent'))!)}</p>` : ''}`;
+}
+
+/** Opens the monitor of a step (from a chain run): its space and tab, with the object selected. */
+export function bindStepLinks(host: HTMLElement) {
+  host.querySelectorAll<HTMLButtonElement>('[data-step-open]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const key = b.dataset.stepOpen!;
+      const [space, name] = key.split('.');
+      ctx.tenant().activeSpace = space;
+      monitorTo(STEP_TAB[b.dataset.stepType!] ?? 'chains', name);
+      ctx.track(`chain-step-open:${key}`);
+      ctx.track(`monitor-open:${key}`);
+      ctx.setView('monitor');
+      ctx.renderView();
+    }),
+  );
+}
+
+function chainsTab(host: HTMLElement, redraw: () => void) {
+  const t = ctx.tenant();
+  const list = t.objects.filter((o) => o.space === t.activeSpace && o.kind === 'Task Chain' && o.deployed);
+  if (!list.some((o) => o.name === selectedChain)) selectedChain = '';
+  const sel = list.find((o) => o.name === selectedChain);
+  const runs = sel ? runsOf(t, objectKey(sel)) : [];
+  if (!runs.some((r) => r.id === selectedRun)) selectedRun = runs[0]?.id ?? '';
+  const run = runs.find((r) => r.id === selectedRun);
+  host.innerHTML = `
+    <section class="panel">
+      <div class="table-head"><h3>Task Chains</h3><span class="muted">Deployed task chains of this space</span></div>
+      <div class="table-scroll"><table class="grid" id="chain-list">
+        <thead><tr><th>Name</th><th>Steps</th><th>Status</th><th>Last Run</th><th class="num">Duration</th><th>Schedule</th></tr></thead>
+        <tbody>${list.length ? list.map((o) => {
+          const r = lastRun(t, objectKey(o));
+          return `<tr class="${o.name === selectedChain ? 'selected' : ''}">
+            <td><button type="button" class="link-btn mono" data-chain="${esc(o.name)}">${esc(o.name)}</button></td>
+            <td class="num">${o.deployed!.chain?.steps.length ?? 0}</td><td>${runChip(r)}</td><td class="muted">${r ? fmtDate(r.start) : '–'}</td>
+            <td class="num">${r?.ms ? fmtMs(r.ms) : '–'}</td><td>${o.chainSchedule ? `Scheduled, ${esc(o.chainSchedule.toLowerCase())}` : 'None'}</td></tr>`;
+        }).join('') : `<tr><td colspan="6" class="muted">No deployed task chains in this space. Build one in the Data Builder.</td></tr>`}</tbody>
+      </table></div>
+    </section>
+    ${sel ? `<section class="panel flow-detail" id="chain-detail">
+      <div class="table-head"><h3>${esc(sel.name)} <small class="muted">${esc(sel.businessName)}</small></h3>
+        <div class="toolbar">
+          <button class="btn small primary" type="button" id="chain-run">Run</button>
+          <button class="btn small" type="button" id="chain-schedule">Schedule</button>
+        </div></div>
+      <div class="runs-layout stacked">
+        <table class="grid" id="run-list"><thead><tr><th>Runs</th><th>Status</th><th class="num">Duration</th></tr></thead>
+          <tbody>${runs.length ? runs.map((r) => `<tr class="${r.id === selectedRun ? 'selected' : ''}">
+            <td><button type="button" class="link-btn" data-run="${esc(r.id)}">${fmtDate(r.start)}</button></td><td>${runChip(r)}</td><td class="num">${r.ms ? fmtMs(r.ms) : '–'}</td></tr>`).join('')
+            : '<tr><td colspan="3" class="muted">No runs yet.</td></tr>'}</tbody></table>
+        <div class="run-log" id="run-log">${run ? `<h4>Steps <small class="muted">${fmtDate(run.start)}</small></h4>${stepTable(run)}` : '<p class="muted">Select a run to see its steps.</p>'}</div>
+      </div></section>` : ''}`;
+  host.querySelectorAll<HTMLButtonElement>('[data-chain]').forEach((b) =>
+    b.addEventListener('click', () => {
+      selectedChain = b.dataset.chain!;
+      selectedRun = '';
+      ctx.track(`monitor-open:${t.activeSpace}.${selectedChain}`);
+      redraw();
+    }),
+  );
+  host.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((b) =>
+    b.addEventListener('click', () => {
+      selectedRun = b.dataset.run!;
+      ctx.track(`monitor-run:${selectedRun}`);
+      redraw();
+    }),
+  );
+  bindStepLinks(host);
+  host.querySelector('#chain-run')?.addEventListener('click', async () => {
+    if (!sel) return;
+    const r = await startChainRun(sel);
+    if (r) selectedRun = r.id;
+    redraw();
+  });
+  host.querySelector('#chain-schedule')?.addEventListener('click', () =>
+    sel && scheduleDialog(sel.name, sel.chainSchedule, (f) => {
+      sel.chainSchedule = f;
+      ctx.track(`schedule:${objectKey(sel)}:${f ?? 'none'}`);
+    }, redraw),
+  );
 }
 
 // ---------------------------------------------------------------- flows

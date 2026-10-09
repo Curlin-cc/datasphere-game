@@ -35,7 +35,7 @@ const REF_CONTRACTS_KEYS = `SELECT c.CONTRACT_ID, COALESCE(m.CUSTOMER_ID, c.CUST
   FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`;
 
 /** One row per person, the oldest record wins (mission 3). A person = same e-mail (any case) at the same address. */
-const refCustomers = (order: 'ASC' | 'DESC' = 'ASC', partition = 'lower(EMAIL), STREET, ZIP') => `
+export const refCustomers = (order: 'ASC' | 'DESC' = 'ASC', partition = 'lower(EMAIL), STREET, ZIP') => `
   SELECT CUSTOMER_ID, trim(NAME) AS NAME, STREET, ZIP, CITY, lower(EMAIL) AS EMAIL FROM (
     SELECT k.*, ROW_NUMBER() OVER (PARTITION BY ${partition} ORDER BY CREATED_AT ${order}) AS RN FROM RHN_IN.CRM_CUSTOMERS k
   ) x WHERE RN = 1`;
@@ -44,7 +44,7 @@ const refCustomers = (order: 'ASC' | 'DESC' = 'ASC', partition = 'lower(EMAIL), 
 const REF_READINGS = `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE,
   CASE WHEN UNIT = 'MWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.METER_READINGS`;
 
-const project = (cols: string[], sql: string) => `SELECT ${cols.join(', ')} FROM (${sql}) ref`;
+export const project = (cols: string[], sql: string) => `SELECT ${cols.join(', ')} FROM (${sql}) ref`;
 
 // ---------------------------------------------------------------- rule helpers
 
@@ -67,7 +67,7 @@ function secondCopy(ctx: RuleContext, keep: string, source: string): string | nu
 
 const M01_COLS = ['CONTRACT_ID', 'GRID_AREA', 'TARIFF', 'START_DATE', 'END_DATE', 'SRC_SYS_ID'];
 const M02_COLS = ['CONTRACT_ID', 'CUSTOMER_ID', 'LEGACY_CUSTOMER_ID', 'GRID_AREA', 'TARIFF', 'SRC_SYS_ID'];
-const M03_COLS = ['CUSTOMER_ID', 'NAME', 'STREET', 'ZIP', 'CITY', 'EMAIL'];
+export const M03_COLS = ['CUSTOMER_ID', 'NAME', 'STREET', 'ZIP', 'CITY', 'EMAIL'];
 const M04_COLS = ['METER_ID', 'CONTRACT_ID', 'READING_DATE', 'CONSUMPTION_KWH', 'SRC_SYS_ID'];
 
 export const CHAPTER_5: Mission[] = [

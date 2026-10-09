@@ -142,7 +142,7 @@ export const APPS: AppInfo[] = [
     who: 'Administrators, cost owners',
   },
   {
-    id: 'tasklogs', label: 'Task Logs', section: 'monitoring', chapter: 10,
+    id: 'tasklogs', label: 'Task Logs', section: 'monitoring', interactive: 10, chapter: 10,
     icon: '<path d="M3 4h10M3 8h10M3 12h6"/>',
     summary: 'Every task run of the tenant: flows, task chains, persistence, with status and duration.',
     does: ['Lists runs across all spaces: start time, object, type, activity, status, records, duration', 'Filters by date range, space, status and storage type', 'Cancel a running task'],

@@ -147,4 +147,6 @@ export interface Mission {
   debrief: string;
   /** Starting situation, applied once when the mission is first opened (e.g. a failed load to repair). */
   setup?: (tenant: TenantState) => void;
+  /** Runs after `setup` once the database has the set-up objects, e.g. last night's scheduled run (chapter 10). */
+  setupAsync?: (tenant: TenantState) => Promise<void>;
 }

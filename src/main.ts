@@ -26,6 +26,7 @@ import { renderConnections } from './views/connections';
 import { renderMonitor, monitorTo } from './views/monitor';
 import { renderSystem, systemTo } from './views/system';
 import { renderStatements } from './views/statements';
+import { renderTaskLogs } from './views/tasklogs';
 import { restoreIntegration } from './integration';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
@@ -250,6 +251,8 @@ function renderView() {
       return currentChapter() >= 3 ? renderSystem(main) : renderAppInfo(main, a!);
     case 'statements':
       return currentChapter() >= 9 ? renderStatements(main) : renderAppInfo(main, a!);
+    case 'tasklogs':
+      return currentChapter() >= 10 ? renderTaskLogs(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }
@@ -769,7 +772,11 @@ function setupMission(id: string) {
   m.setup(t);
   t.scenarios.push(m.id);
   // A set-up may add views or persisted data; create them in the database.
-  void restoreViews(t).then(() => restorePersistence(t)).then(() => renderView());
+  void restoreViews(t).then(() => restorePersistence(t)).then(() => m.setupAsync?.(t)).then(() => {
+    save();
+    renderView();
+    renderMission();
+  });
 }
 
 /** Creates the spaces and deployed views of the save game in the database. */

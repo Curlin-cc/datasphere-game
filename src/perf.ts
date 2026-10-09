@@ -86,7 +86,7 @@ export function persistError(t: TenantState, o: RepoObject): string | null {
 }
 
 /** Runs the persistence: stores the result of the deployed SQL and lets the view read it. Logs a run. */
-export async function persistView(t: TenantState, o: RepoObject, trigger: 'Manual' | 'Scheduled' = 'Manual'): Promise<{ ok: boolean; message: string }> {
+export async function persistView(t: TenantState, o: RepoObject, trigger: 'Manual' | 'Scheduled' | 'Task Chain' = 'Manual'): Promise<{ ok: boolean; message: string }> {
   const key = objectKey(o);
   const start = new Date().toISOString();
   const problem = persistError(t, o);
@@ -110,7 +110,8 @@ export async function persistView(t: TenantState, o: RepoObject, trigger: 'Manua
     });
     return { ok: true, message: `${o.name}: ${n.toLocaleString('en-US')} records persisted` };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    // Keep the database's message, without the position marker that shows internal names.
+    const msg = (err instanceof Error ? err.message : String(err)).split(/\n|\s+LINE \d+:/)[0].trim();
     addRun(t, { object: key, kind: 'View', start, status: 'Failed', records: 0, messages: [`${trigger} run: Persist ${o.name}.`, `Failed: ${msg}`] });
     return { ok: false, message: msg };
   }

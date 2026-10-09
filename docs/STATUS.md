@@ -24,12 +24,14 @@
   - [x] Kapitel 7: Analytic Model – 5 Missionen (Modell für die CFO, Calculated Measure Brutto, Restricted Measure unbezahlt, Filtervariable + Count Distinct, schlankes Verbrauchsmodell)
   - [x] Kapitel 8: Data Access Controls – 4 Missionen (Berechtigungstabelle im Data Editor, DAC Single Values, Rechnungs-Fact schützen, Verbrauchs-Fact + Falle „nur Dimension“)
 - [ ] **Phase 5 – Betrieb und Abschluss:** Kapitel 9, 10, 11, Exkurse
+  - [x] Kapitel 10: Operations – 4 Missionen (Task Chain in RHN_IN mit CRM-Flow, Delta-Flow abgewiesen, geteilt; nächtliche Kette in RHN_HARM mit Reihenfolge, E-Mail, einem Zeitplan; Fehlerlauf durch Tims Änderung verfolgen und beheben; Task Logs über alle Spaces)
   - [x] Kapitel 9: Persistence and Performance – 4 Missionen (Expensive Statement Tracing + Logs, View Analyzer + Persistenz der Ablesungen, täglicher Zeitplan, Grenzen: DAC-geschützte Quelle, kleiner View)
 
 ## Session-Log (neueste oben)
 
 | Datum | Was passiert ist |
 | --- | --- |
+| 2026-10-09 | **Kapitel 10 Operations** (4 Missionen, `src/content/missions/c10.ts`): Task Chains als neuer Objekttyp (`src/taskchain.ts`, Editor `src/views/chain.ts`: Schritte, Reihenfolge, E-Mail, Run, Schedule), Reiter Task Chains im Data Integration Monitor mit Schritten und Sprung in den Detailmonitor, Monitoring › Task Logs als echte Seite (`src/views/tasklogs.ts`), `setupAsync` für Missionen; Tutorials in `guided.ts`, Playtest `chapter10.py` + `guided.py` (c10-m01); alle 48 Missionen grün |
 | 2026-10-09 | **Kapitel 9 Persistence and Performance** (4 Missionen, `src/content/missions/c09.ts`): System › Configuration › Monitoring (Expensive Statement Tracing), Expensive Statement Logs als echte Seite (`src/views/statements.ts`), Views-Reiter im Data Integration Monitor mit Start Data Persistence, Remove Persisted Data, Schedule, Läufen und View Analyzer, simuliertes Kostenmodell (`src/perf.ts`), Laufzeit in der Data Preview von Analytic Models; Tutorials in `guided.ts`, Playtest `chapter9.py` + `guided.py` (c09-m02); alle 44 Missionen grün |
 | 2026-10-09 | **MSC-Logo final** aus Curlins Vorlagen (hell/dunkel) vektorisiert: Wortmarke + Ring aus vier Sicheln (Weinrot, Lila, Karminrot, Orange) als ein SVG; Farben per CSS-Variablen, im dunklen Theme weiße Wortmarke; Home-Karte bleibt hell; Vorlagen in `docs/design/`; alle 40 Missionen grün |
 | 2026-10-09 | MSC-Logo nach Curlins neuer Vorlage: Wortmarke + offener Ring aus drei spitz zulaufenden Bögen (Lila, Orange, Weinrot), als Vektor neu gebaut (scharf in jeder Auflösung), Shellbar und Home-Karte angepasst; alle 40 Missionen grün |

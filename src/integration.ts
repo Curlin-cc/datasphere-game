@@ -159,11 +159,27 @@ export interface Run {
   id: string;
   /** SPACE.NAME of the flow or remote table. */
   object: string;
-  kind: 'Replication Flow' | 'Remote Table' | 'View';
+  kind: 'Replication Flow' | 'Remote Table' | 'View' | 'Task Chain';
   start: string;
   status: 'Completed' | 'Running' | 'Failed';
   records: number;
   messages: string[];
+  /** Simulated duration at production volume (ms), where known. */
+  ms?: number;
+  /** Task chains (chapter 10): the result of each step. */
+  steps?: StepResult[];
+}
+
+/** One step of a task chain run. */
+export interface StepResult {
+  object: string;
+  type: 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain';
+  status: 'Completed' | 'Failed' | 'Not Run';
+  records: number;
+  ms: number;
+  /** The step's own run in its monitor. */
+  runId?: string;
+  message: string;
 }
 
 /** Columns that flows added to tables; re-applied on every start. */
@@ -249,7 +265,7 @@ export const remoteQueries: { at: string; space: string; connection: string; obj
 export function addRun(t: TenantState, run: Omit<Run, 'id'>): Run {
   const r = { ...run, id: `R${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}` };
   t.runs.unshift(r);
-  t.runs = t.runs.slice(0, 60);
+  t.runs = t.runs.slice(0, 120);
   return r;
 }
 
@@ -362,10 +378,15 @@ export function sanitizeConnections(data: unknown, spaceIds: Set<string>): Conne
 export function sanitizeRuns(data: unknown): Run[] {
   return (Array.isArray(data) ? data : [])
     .filter((r) => r && typeof r.object === 'string' && ['Completed', 'Running', 'Failed'].includes(r.status))
-    .slice(0, 60)
+    .slice(0, 120)
     .map((r) => ({
       id: str(r.id, 40) || `R${Math.random().toString(36).slice(2)}`,
-      object: r.object, kind: r.kind === 'Remote Table' || r.kind === 'View' ? r.kind : 'Replication Flow',
+      object: r.object, kind: ['Remote Table', 'View', 'Task Chain'].includes(r.kind) ? r.kind : 'Replication Flow',
+      ms: Number.isFinite(r.ms) ? Math.max(0, Number(r.ms)) : undefined,
+      steps: Array.isArray(r.steps) ? r.steps.slice(0, 20).filter((s: StepResult) => s && typeof s.object === 'string').map((s: StepResult) => ({
+        object: str(s.object, 80), type: s.type, status: ['Completed', 'Failed', 'Not Run'].includes(s.status) ? s.status : 'Failed',
+        records: Math.max(0, Number(s.records) || 0), ms: Math.max(0, Number(s.ms) || 0), runId: s.runId ? str(s.runId, 40) : undefined, message: str(s.message, 400),
+      })) : undefined,
       start: str(r.start, 40), status: r.status, records: Math.max(0, Number(r.records) || 0),
       messages: (Array.isArray(r.messages) ? r.messages : []).map((m: unknown) => str(m, 400)).slice(0, 30),
     }));

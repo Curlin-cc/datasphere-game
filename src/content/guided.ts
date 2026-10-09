@@ -28,7 +28,7 @@ const answered = () => {
 };
 
 /** Apps inside the expandable Monitoring entry: the tour first points at Monitoring, then the entry opens. */
-const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces', statements: 'Expensive Statement Logs' };
+const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces', statements: 'Expensive Statement Logs', tasklogs: 'Task Logs' };
 
 const nav = (id: string, label: string, body: string): TourStep => ({
   title: `Open ${label}`,
@@ -636,6 +636,40 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       body: `<p><b>Expensive statement tracing</b> records SQL statements that exceed a threshold, with duration, peak memory and CPU time.
         It is off by default; an administrator switches it on in System › Configuration › Monitoring.</p>
         <p>In the game, runtimes are simulated for production volume: the training tenant only holds a sample.</p>`,
+    },
+  ],
+  'c10-m01': [
+    {
+      title: 'Chapter 10: Operations',
+      body: `<p>Loads and persistence run every night, and someone has to know when they fail. A <b>task chain</b> runs several tasks
+        as one unit: in a fixed order, with one schedule and an email when it fails.</p>
+        <p>A chain runs objects of its own space. To combine spaces, share a chain with another space and nest it there.</p>`,
+    },
+    {
+      title: 'What a chain can run',
+      body: `<p>Replication flows (load type Initial Only), view persistence, remote table snapshots and other task chains. A step starts
+        when the one before it has ended; a failed step stops the chain.</p>`,
+    },
+  ],
+  'c10-m02': [
+    {
+      title: 'Order and one schedule',
+      body: `<p>A snapshot is only as fresh as the data it was built from. Put the load before the persistence, give the whole night
+        one schedule, and tell the person on call when it breaks.</p>`,
+    },
+  ],
+  'c10-m03': [
+    {
+      title: 'From the email to the cause',
+      body: `<p>The chain's run shows which step failed. Each step has its own run in its own monitor (Views, Flows) with the real
+        error message. Fix the cause, then run the chain again.</p>`,
+    },
+  ],
+  'c10-m04': [
+    {
+      title: 'All spaces at once',
+      body: `<p>The Data Integration Monitor shows one space. <b>Monitoring › Task Logs</b> lists the runs of every space, with filters
+        for status and space: the place for a weekly look.</p>`,
     },
   ],
   'c09-m02': [
@@ -2242,5 +2276,162 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('What does the view read, and what does that object have?'),
+  ],
+  // ================================================================ chapter 10
+  'c10-m01': [
+    [
+      {
+        title: 'New Task Chain',
+        view: 'builder:landing:RHN_IN',
+        target: '[data-new="taskchain"]',
+        body: `<p>A task chain belongs to one space, like everything in the Data Builder.</p>`,
+        action: { do: 'Click <b>Task Chain</b>.', appear: '#chain-steps' },
+      },
+      {
+        title: 'Add the CRM flow',
+        target: '#chain-add',
+        body: `<p><b>Add Step</b> lists the deployed objects of the space, grouped by what the step does.</p>`,
+        action: { do: 'Add <b>RHN_IN_RF_CRM</b>.', event: '^chain-add:RHN_IN\\.RHN_IN_RF_CRM$' },
+      },
+      {
+        title: 'And the meter readings?',
+        target: '#chain-add',
+        body: `<p>Try Lena's delta flow as well. The dialog tells you whether it can be a step.</p>`,
+        action: { do: 'Try to add <b>RHN_IN_RF_MDM</b>, read the message, cancel.', event: '^chain-refused:RHN_IN\\.RHN_IN_RF_MDM$' },
+      },
+    ],
+    [
+      {
+        title: 'Names and Deploy',
+        target: '#properties',
+        body: `<p>Business name for people, technical name <code>RHN_IN_TC_CRM</code>. Then Deploy: only a deployed chain can run.</p>`,
+        action: { do: 'Enter the names and press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_TC_CRM$' },
+      },
+      {
+        title: 'Run',
+        target: '#chain-run',
+        body: `<p>Run starts the deployed version now. The result of each step appears below.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_IN\\.RHN_IN_TC_CRM:' },
+      },
+    ],
+    [
+      {
+        title: 'Share with RHN_HARM',
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>The share icon in the object list shares the chain. RHN_HARM can then nest it in its own chain.</p>`,
+        action: { do: 'Share <b>RHN_IN_TC_CRM</b> with <b>RHN_HARM</b>.', event: '^share:RHN_IN\\.RHN_IN_TC_CRM$' },
+      },
+      {
+        title: 'Remove the old schedule',
+        view: 'monitor:flows:RHN_IN',
+        target: '#flow-list',
+        body: `<p>The flow still has its own daily schedule from chapter 3. Open it and set <b>Schedule</b> to No schedule.</p>`,
+        action: { do: 'Remove the schedule of <b>RHN_IN_RF_CRM</b>.', event: '^schedule:RHN_IN\\.RHN_IN_RF_CRM:none' },
+      },
+    ],
+    questions('When does a delta replication end?'),
+  ],
+  'c10-m02': [
+    [
+      {
+        title: 'The nightly chain',
+        view: 'builder:landing:RHN_HARM',
+        target: '[data-new="taskchain"]',
+        body: `<p>This chain lives in RHN_HARM: it persists views of RHN_HARM and calls the shared chain of RHN_IN.</p>`,
+        action: { do: 'Click <b>Task Chain</b>.', appear: '#chain-steps' },
+      },
+      {
+        title: 'Three steps',
+        target: '#chain-add',
+        body: `<p>The shared chain is under Task Chain, the views under View Persistence. Use the arrows to fix the order.</p>`,
+        action: { do: 'Add the three steps in the order of the ticket.', check: () => document.querySelectorAll('#chain-steps .chain-step').length >= 3 },
+      },
+    ],
+    [
+      {
+        title: 'Email notification',
+        target: '#chain-notify',
+        body: `<p>Tick <b>When the task chain fails</b> and enter <code>LHOFFMANN</code> as recipient.</p>`,
+        action: { do: 'Set the failure email, then name and <b>Deploy</b> the chain.', event: '^deploy:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+      },
+    ],
+    [
+      {
+        title: 'Schedule and run',
+        target: '#chain-schedule',
+        body: `<p>Schedule it daily, then run it once to see that every step completes.</p>`,
+        action: { do: 'Schedule <b>Daily</b> and press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
+      },
+      {
+        title: 'The second schedule',
+        view: 'monitor:views:RHN_HARM',
+        target: '#view-list',
+        body: `<p>The readings still have their own schedule from chapter 9. The chain runs them now.</p>`,
+        action: { do: 'Remove the schedule of <b>RHN_HA_V_METER_READINGS</b>.', event: '^schedule:RHN_HARM\\.RHN_HA_V_METER_READINGS:none' },
+      },
+    ],
+    questions('What does the customer view read?'),
+  ],
+  'c10-m03': [
+    [
+      {
+        title: 'The failed run',
+        view: 'monitor:chains:RHN_HARM',
+        target: '#chain-list',
+        body: `<p>Open the nightly chain. Its last run failed; the steps show where.</p>`,
+        action: { do: 'Click <b>RHN_HARM_TC_NIGHTLY</b>.', event: '^monitor-open:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+      },
+      {
+        title: 'The failed step',
+        target: '#run-log',
+        body: `<p>Red is the step that failed, grey the ones that did not run. The step name opens its own monitor.</p>`,
+        action: { do: 'Click the step that failed.', event: '^chain-step-open:' },
+      },
+      {
+        title: 'Its own log',
+        target: '#run-log',
+        body: `<p>The view's run says exactly what went wrong. Fix it in the Data Builder, deploy, and run the chain again.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Fix the view',
+        view: 'builder:landing:RHN_HARM',
+        target: '#object-list',
+        body: `<p>Open the view, correct Tim's line, run the Data Preview to see it works on all rows, then Deploy.</p>`,
+        action: { do: 'Fix and deploy <b>RHN_HA_V_CUSTOMERS</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_V_CUSTOMERS$' },
+      },
+    ],
+    [
+      {
+        title: 'Run again',
+        view: 'monitor:chains:RHN_HARM',
+        target: '#chain-list',
+        body: `<p>Open the chain and run it. Deploying removed the snapshot of the view; the run builds it again.</p>`,
+        action: { do: 'Run <b>RHN_HARM_TC_NIGHTLY</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:Completed' },
+      },
+    ],
+    questions('When is a value converted: at deploy or at run time?'),
+  ],
+  'c10-m04': [
+    [
+      nav('tasklogs', 'Task Logs', `<p>Every run of every space in one list.</p>`),
+      {
+        title: 'Only the failures',
+        target: '#tl-status',
+        body: `<p>Filter the status. Keep all spaces.</p>`,
+        action: { do: 'Choose <b>Failed</b>.', event: 'tasklogs-status:Failed' },
+      },
+    ],
+    [
+      {
+        title: 'Read a run',
+        target: '#tasklog-list',
+        body: `<p>Click the start time of a run to see its messages below the list.</p>`,
+        action: { do: 'Open a run of the object that fails most often.', event: '^tasklog-open:RHN_IN\\.RHN_IN_RF_S4U$' },
+      },
+    ],
+    questions('Count per object, and read the second message.'),
   ],
 };

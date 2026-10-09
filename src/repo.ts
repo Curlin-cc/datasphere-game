@@ -5,6 +5,7 @@ import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
 import { sanitizeTable, tableStatements, type TableDef } from './localtable';
 import { sanitizeDac, sanitizeAssignments, type DacDef, type DacAssignment } from './dac';
 import { sanitizePersist, type PersistInfo } from './perf';
+import { sanitizeChain, type ChainDef } from './taskchain';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -15,8 +16,8 @@ import { sanitizePersist, type PersistInfo } from './perf';
  *  - Deployed: what is saved is what runs
  */
 
-export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model' | 'Data Access Control';
-export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model', 'Data Access Control'];
+export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model' | 'Data Access Control' | 'Task Chain';
+export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model', 'Data Access Control', 'Task Chain'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
 export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text' | 'Hierarchy';
 
@@ -70,7 +71,7 @@ export interface RepoObject {
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef; table?: TableDef; dac?: DacDef } & Partial<Semantics>;
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef; table?: TableDef; dac?: DacDef; chain?: ChainDef } & Partial<Semantics>;
   /** Remote tables: connection, source object, data access. */
   remote?: RemoteInfo;
   /** Replication flows: the saved definition. */
@@ -81,6 +82,9 @@ export interface RepoObject {
   table?: TableDef;
   /** Data access controls (chapter 8): the saved definition. */
   dac?: DacDef;
+  /** Task chains (chapter 10): the saved definition, and the schedule (Data Integration Monitor › Task Chains). */
+  chain?: ChainDef;
+  chainSchedule?: Frequency;
   /** Chapter 9: the deployed view is persisted (its result stored as a snapshot). */
   persisted?: PersistInfo;
   /** Chapter 9: schedule of the view persistence (Data Integration Monitor › Views). */
@@ -142,6 +146,7 @@ export function statusAfterSave(o: RepoObject): DeployStatus {
     && (o.kind !== 'Analytic Model' || JSON.stringify(o.deployed.model) === JSON.stringify(o.model))
     && JSON.stringify(o.deployed.table) === JSON.stringify(o.table)
     && JSON.stringify(o.deployed.dac) === JSON.stringify(o.dac)
+    && JSON.stringify(o.deployed.chain) === JSON.stringify(o.chain)
     && JSON.stringify(semanticsOf(o.deployed)) === JSON.stringify(semanticsOf(o));
   return same ? 'deployed' : 'changes';
 }
@@ -187,7 +192,7 @@ export async function deploy(o: RepoObject): Promise<string | null> {
   o.deployed = {
     businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined,
     model: o.model ? structuredClone(o.model) : undefined, table: o.table ? structuredClone(o.table) : undefined,
-    dac: o.dac ? structuredClone(o.dac) : undefined, ...structuredClone(semanticsOf(o)),
+    dac: o.dac ? structuredClone(o.dac) : undefined, chain: o.chain ? structuredClone(o.chain) : undefined, ...structuredClone(semanticsOf(o)),
   };
   o.status = 'deployed';
   o.changedAt = now();
@@ -290,6 +295,7 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
             model: o.kind === 'Analytic Model' ? sanitizeModel(o.deployed.model) : undefined,
             table: o.kind === 'Local Table' ? sanitizeTable(o.deployed.table) : undefined,
             dac: o.kind === 'Data Access Control' ? sanitizeDac(o.deployed.dac) : undefined,
+            chain: o.kind === 'Task Chain' ? sanitizeChain(o.deployed.chain) : undefined,
             ...sanitizeSemantics(o.deployed),
           }
         : undefined,
@@ -298,6 +304,8 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       model: o.kind === 'Analytic Model' ? sanitizeModel(o.model) : undefined,
       table: o.kind === 'Local Table' ? sanitizeTable(o.table) : undefined,
       dac: o.kind === 'Data Access Control' ? sanitizeDac(o.dac) : undefined,
+      chain: o.kind === 'Task Chain' ? sanitizeChain(o.chain) : undefined,
+      chainSchedule: o.kind === 'Task Chain' && ['Daily', 'Weekly', 'Monthly'].includes(o.chainSchedule) ? o.chainSchedule : undefined,
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,
