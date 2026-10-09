@@ -4,6 +4,14 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Curlins „SAP Datasphere Handbuch“ ist fachliche Quelle; was es als „nicht verifiziert“ markiert, wird vereinfacht gebaut und im Code/Text als vereinfacht gekennzeichnet | Wunsch von Curlin; keine erfundenen Details als Fakten |
+| 2026-10-09 | Pilot-Tabellen in RHN_IN bleiben und sind Ziel der Replication Flows; Läufe zählen Datensätze, ändern die Daten aber nicht (Ausnahme: Zusatzspalten aus Projektionen, neue Zieltabellen) | Kapitel 0–2 und 4 bauen auf diesen Tabellen auf; Prüfungen bleiben stabil |
+| 2026-10-09 | Truncate auf Tabellen mit Zeilen anderer Quellen (LEGACY) wird beim Run von Lena gestoppt statt Daten zu löschen | Lerneffekt ohne zerstörte Daten für spätere Kapitel |
+| 2026-10-09 | Feature-Matrix je Verbindungstyp vereinfacht (Handbuch: nicht verifiziert); Real-Time-Replikation, Data Flows, Data Provisioning Agent nur erklärt | Fokus auf Remote vs. Snapshot vs. Replication Flow |
+| 2026-10-09 | Remote Tables als DuckDB-Views auf die Pilot-Tabellen (gefiltert nach SRC_SYS_ID); Remote Queries nur für die laufende Sitzung | Echter Datenzugriff in der Vorschau ohne zweite Datenkopie |
+| 2026-10-09 | Connections, Data Integration Monitor und System (Configuration) ab Kapitel 3 interaktiv | Kapitel 3 braucht sie; Handbuch Kap. 3.3, 5, 10 |
+| 2026-10-09 | Space-Sperre bei Überschreitung des Disk-Speichers: keine Loads/Deploys bis mehr Speicher + Unlock | Handbuch 4.4.3 und 4.4.11 |
+| 2026-10-09 | Missionen können eine einmalige Startsituation (`setup`) haben, Merker in `tenant.scenarios` | c03-m06 beginnt mit einem fehlgeschlagenen Nachtlauf |
 | 2026-10-09 | Aufbau/Navigation von Datasphere ist die Grundlage, nicht SQL; neues Kapitel 0 ohne SQL | Wunsch von Curlin: erst lernen, wie Datasphere aufgebaut ist und was welche App macht |
 | 2026-10-09 | Echte Struktur (Apps, Namen, Abläufe), eigener Look ohne SAP-Logos | Wunsch von Curlin |
 | 2026-10-09 | Nur SQL Views, keine Graphical Views; die Kachel erklärt nur | Wunsch von Curlin |

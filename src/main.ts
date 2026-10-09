@@ -19,6 +19,10 @@ import { renderBuilder, enterBuilder, builderTo, rememberEditor } from './views/
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
 import { renderSecurity } from './views/security';
+import { renderConnections } from './views/connections';
+import { renderMonitor, monitorTo } from './views/monitor';
+import { renderSystem, systemTo } from './views/system';
+import { restoreIntegration } from './integration';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
 const SOURCE_BUSINESS_NAMES: Record<string, string> = {
@@ -170,6 +174,12 @@ function renderView() {
       return renderGlossary(main);
     case 'security':
       return currentChapter() >= 2 ? renderSecurity(main) : renderAppInfo(main, a!);
+    case 'connections':
+      return currentChapter() >= 3 ? renderConnections(main) : renderAppInfo(main, a!);
+    case 'monitor':
+      return currentChapter() >= 3 ? renderMonitor(main) : renderAppInfo(main, a!);
+    case 'system':
+      return currentChapter() >= 3 ? renderSystem(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }
@@ -200,12 +210,21 @@ function toggleTheme() {
 
 function tourHooks(onFinish: () => void) {
   return {
-    /** Views for tutorials: an app ID, or builder:landing / builder:new-view / builder:spaces, optionally :SPACE. */
+    /**
+     * Views for tutorials: an app ID, or builder:landing|new-view|new-flow|spaces[:SPACE],
+     * monitor:remote|flows|… and system:security|integration|….
+     */
     setView: (v: string) => {
       const [view, target, space] = v.split(':');
       if (view === 'builder' && target) {
-        builderTo(target as 'landing' | 'new-view' | 'spaces', space);
+        builderTo(target as 'landing' | 'new-view' | 'spaces' | 'new-flow', space);
         setView('builder', true);
+      } else if (view === 'monitor' && target) {
+        monitorTo(target as Parameters<typeof monitorTo>[0]);
+        setView('monitor', true);
+      } else if (view === 'system' && target) {
+        systemTo(target as Parameters<typeof systemTo>[0]);
+        setView('system', true);
       } else setView(view as ViewId);
     },
     insertExample: (sql: string) => {
@@ -453,8 +472,10 @@ function openMission(id: string) {
   ctx.progress.currentMission = id;
   state.report = null;
   state.solved = null;
+  setupMission(id);
   save();
   renderMission();
+  if (ctx.view !== 'builder') renderView();
   if (!ctx.progress.tutorialsSeen.includes(id)) openTutorial(id);
 }
 
@@ -623,6 +644,15 @@ async function runCheck() {
 
 // ---------------------------------------------------------------- boot
 
+/** Applies a mission's starting situation once, e.g. last night's failed load in c03-m06. */
+function setupMission(id: string) {
+  const m = missionById(id);
+  const t = ctx.tenant();
+  if (!m?.setup || t.scenarios.includes(m.id)) return;
+  m.setup(t);
+  t.scenarios.push(m.id);
+}
+
 /** Creates the spaces and deployed views of the save game in the database. */
 async function prepareTenant() {
   const t = ctx.tenant();
@@ -631,6 +661,7 @@ async function prepareTenant() {
     t,
     generateDataset().tables.map((tb) => ({ space: tb.space, name: tb.name, businessName: SOURCE_BUSINESS_NAMES[tb.name] ?? tb.name })),
   );
+  await restoreIntegration(t);
   await restoreViews(t);
 }
 
@@ -641,6 +672,7 @@ async function boot() {
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
     for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
     await prepareTenant();
+    setupMission(ctx.progress.currentMission);
     save();
     renderFrame();
     const id = ctx.progress.currentMission;

@@ -99,4 +99,6 @@ export interface Mission {
   realTenant: string;
   /** Mentor's closing words after solving (HTML). */
   debrief: string;
+  /** Starting situation, applied once when the mission is first opened (e.g. a failed load to repair). */
+  setup?: (tenant: TenantState) => void;
 }

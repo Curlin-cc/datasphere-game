@@ -42,7 +42,7 @@ Stakeholder (schicken Tickets):
 | 0 | Find your way | Apps der Seitennavigation, Spaces, Repository Explorer, Business/Technical Name, Save vs. Deploy | sich im Tenant zurechtfinden, Objekt umbenennen und deployen | erst orientieren, dann bauen |
 | 1 | Space Concept | Spaces, Storage, Priorities, Naming | Spaces je Layer anlegen | Layer trennen, Präfixe |
 | 2 | Users & Roles | DW Administrator, Space Administrator, Integrator, Modeler, Viewer, Consumer, Scoped Roles | Rollenmatrix für 8 Personas | Least Privilege, Space Admin delegieren |
-| 3 | Data Integration | Connections, Remote vs. Local Table, Replication Flow, CSV Upload | Quellen anbinden, Initial/Delta wählen | `SRC_SYS_ID` beim Laden setzen |
+| 3 | Data Integration | Connections + Features, Cloud Connector, Zertifikate, Remote vs. Snapshot, Replication Flow (Initial/Delta, Truncate, Projektion), Data Integration Monitor, gesperrter Space | Quellen anbinden, Datenzugriff wählen, Flows bauen, Fehler beheben | `SRC_SYS_ID` beim Laden setzen, Truncate nur wenn eine Quelle die Tabelle besitzt |
 | 4 | Inbound Layer | Local Tables, Datenqualität, SQL-Grundlagen | per SQL profilen (Scratch-SQL-View, Data Preview) | keine Logik im Inbound |
 | 5 | Harmonization | SQL Views, Joins, Bereinigung, Sharing | Dubletten, Einheiten, Altschlüssel | Logik einmal zentral, wiederverwendbar |
 | 6 | Semantics | Fact, Dimension, Text, Hierarchy, Associations | Objekte typisieren und verknüpfen | Fact + Associations statt Riesen-View |

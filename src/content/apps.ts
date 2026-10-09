@@ -76,17 +76,17 @@ export const APPS: AppInfo[] = [
     who: 'Modelers and integrators',
   },
   {
-    id: 'monitor', label: 'Data Integration Monitor', group: 'top', chapter: 3,
+    id: 'monitor', label: 'Data Integration Monitor', group: 'top', interactive: 3, chapter: 3,
     icon: '<path d="M2 12l3-4 3 2 3-5 3 3"/>',
     summary: 'Run, schedule and watch everything that moves data.',
-    does: ['Remote tables: switch between remote access and replication', 'Persisted views, flows and task chains: run, schedule, read logs', 'Find out why last night\'s load failed'],
+    does: ['Remote tables: switch between remote access and snapshot replication, load snapshots, schedule them', 'Flows and task chains: run, schedule, read the messages of each run', 'Remote queries: what this space asked the source systems', 'Find out why last night\'s load failed'],
     who: 'Integrators, operations',
   },
   {
-    id: 'connections', label: 'Connections', group: 'top', chapter: 3,
+    id: 'connections', label: 'Connections', group: 'top', interactive: 3, chapter: 3,
     icon: '<path d="M6.5 9.5l3-3M5 11a2.1 2.1 0 01-3-3l2-2a2.1 2.1 0 013 0M11 5a2.1 2.1 0 013 3l-2 2a2.1 2.1 0 01-3 0"/>',
     summary: 'Connect source systems to a space.',
-    does: ['Creates connections to S/4HANA, BW, databases, cloud storage and more', 'Each connection belongs to one space', 'Validates that the source can be reached'],
+    does: ['Creates connections from a connection type: S/4HANA, HANA, ABAP, databases, cloud storage and more', 'Each connection belongs to exactly one space; only its members use it', 'Validate shows which features the connection supports: remote tables, data flows, replication flows, model import'],
     who: 'Integrators, space administrators',
   },
   {
@@ -118,10 +118,10 @@ export const APPS: AppInfo[] = [
     who: 'Administrators, lead modelers',
   },
   {
-    id: 'system', label: 'System', group: 'bottom',
+    id: 'system', label: 'System', group: 'bottom', interactive: 3, chapter: 3,
     icon: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6L5 5M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4"/>',
     summary: 'Tenant configuration, administration and version.',
-    does: ['Configuration: tenant settings, IP allowlists, workload settings', 'Administration: system information and maintenance', 'About: tenant version and URL'],
+    does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: Cloud Connectors and Data Provisioning Agents', 'IP allowlist, OAuth clients, About: version and URL'],
     who: 'Administrators',
   },
 ];
@@ -132,6 +132,8 @@ export const appById = (id: string) => APPS.find((a) => a.id === id);
 export interface NewTile {
   id: string;
   label: string;
+  /** Word on the tile, default "New". */
+  verb?: string;
   group: 'Model' | 'Integrate' | 'Secure';
   text: string;
   /** Chapter from which the tile works; undefined = never in this game. */
@@ -144,10 +146,11 @@ export const NEW_TILES: NewTile[] = [
   { id: 'sqlview', label: 'SQL View', group: 'Model', chapter: 0, text: 'A view defined in SQL or SQLScript. Reads tables and views of the space and objects shared with it.' },
   { id: 'er', label: 'E/R Model', group: 'Model', text: 'Draws tables, views and their associations as an entity-relationship diagram.' },
   { id: 'analytic', label: 'Analytic Model', group: 'Model', chapter: 7, text: 'The model SAP Analytics Cloud consumes: measures, dimensions, variables, built on a fact.' },
-  { id: 'replication', label: 'Replication Flow', group: 'Integrate', chapter: 3, text: 'Copies tables from a source system into local tables, initially and then by delta.' },
-  { id: 'dataflow', label: 'Data Flow', group: 'Integrate', chapter: 3, text: 'Moves and transforms data between sources and targets, with joins, filters and scripts.' },
+  { id: 'remote', label: 'Remote Tables', verb: 'Import', group: 'Integrate', chapter: 3, text: 'Makes objects of a connection available in the space without copying them. Data access is remote (live) or a replicated snapshot.' },
+  { id: 'replication', label: 'Replication Flow', group: 'Integrate', chapter: 3, text: 'Copies objects from a source connection into local tables: once (Initial Only) or once and then by delta (Initial and Delta). Filters and extra columns, no complex logic.' },
+  { id: 'dataflow', label: 'Data Flow', group: 'Integrate', text: 'An ETL process on a canvas: sources, operators such as join, union, projection, aggregation and Python script, and a target table. This game uses replication and transformation flows instead.' },
   { id: 'transformation', label: 'Transformation Flow', group: 'Integrate', chapter: 10, text: 'Loads the result of a view into a table, fully or by delta.' },
   { id: 'taskchain', label: 'Task Chain', group: 'Integrate', chapter: 10, text: 'Runs several loads in a fixed order, e.g. every night.' },
-  { id: 'csv', label: 'Import CSV File', group: 'Integrate', chapter: 3, text: 'Uploads a CSV file into a new or existing local table.' },
+  { id: 'csv', label: 'CSV File', verb: 'Import', group: 'Integrate', text: 'Uploads a CSV file into a new local table, with delimiter and column types detected. Good for one-off files; recurring files come in through a flow.' },
   { id: 'dac', label: 'Data Access Control', group: 'Secure', chapter: 8, text: 'Row-level security: decides which users see which rows of a view.' },
 ];

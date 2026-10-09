@@ -1,7 +1,7 @@
 import { ctx } from '../ctx';
-import { objectKey, STATUS_LABEL } from '../repo';
-import { esc, spaceChip, icon, ICONS, fmtDate } from '../ui';
-import { openObjectInBuilder } from './builder';
+import { objectKey, STATUS_LABEL, OBJECT_KINDS } from '../repo';
+import { esc, spaceChip, icon, fmtDate } from '../ui';
+import { openObjectInBuilder, typeIcon } from './builder';
 
 /** Repository Explorer: search all objects of all spaces you are a member of, open them in their editor. */
 
@@ -17,7 +17,7 @@ export function renderRepository(main: HTMLElement) {
       <label class="search">${icon('<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>')}
         <input id="repo-search" type="search" placeholder="Search business or technical name" value="${esc(filter.text)}" autocomplete="off"></label>
       <label>Type <select id="repo-type">
-        ${[['all', 'All types'], ['Local Table', 'Local Table'], ['SQL View', 'SQL View']].map(([v, l]) => `<option value="${v}" ${filter.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+        ${[['all', 'All types'], ...OBJECT_KINDS.map((k) => [k, k])].map(([v, l]) => `<option value="${v}" ${filter.type === v ? 'selected' : ''}>${l}</option>`).join('')}
       </select></label>
       <label>Space <select id="repo-space">
         <option value="all">All spaces</option>
@@ -48,7 +48,7 @@ export function renderRepository(main: HTMLElement) {
       ? rows.map((o) => `<tr>
           <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${esc(o.businessName)}</button></td>
           <td class="mono">${esc(o.name)}</td>
-          <td>${icon(o.kind === 'SQL View' ? ICONS.view : ICONS.table, 'type-ic')}${o.kind}</td>
+          <td>${typeIcon(o)}${o.kind}</td>
           <td>${spaceChip(o.space)}</td>
           <td><span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span></td>
           <td class="muted">${fmtDate(o.changedAt)}</td></tr>`).join('')

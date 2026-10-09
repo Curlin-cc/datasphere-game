@@ -11,6 +11,9 @@
 
 import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
 import { sanitizeObjects, type RepoObject } from './repo';
+import {
+  sanitizeConnections, sanitizeRuns, sanitizeApplied, CERTIFICATE_FILES, type Connection, type Run, type AppliedColumn,
+} from './integration';
 
 export interface Space {
   id: string;
@@ -20,6 +23,10 @@ export interface Space {
   priority: number;
   /** Prepared by IT; cannot be deleted. */
   system?: boolean;
+  /** Locked because it exceeds its disk storage (chapter 3). No loads, no deployments until unlocked. */
+  locked?: boolean;
+  /** Simulated disk use in GB, only set when it matters (a locked space). */
+  usedDiskGB?: number;
 }
 
 export interface Share {
@@ -39,6 +46,14 @@ export interface TenantState {
   assignments: Assignment[];
   /** Repository: tables IT loaded and objects the player built. */
   objects: RepoObject[];
+  /** Chapter 3: connections per space, uploaded certificates, consent for scheduled tasks, runs. */
+  connections: Connection[];
+  certificates: string[];
+  consent: boolean;
+  runs: Run[];
+  appliedColumns: AppliedColumn[];
+  /** Mission set-ups already applied, e.g. c03-m06. */
+  scenarios: string[];
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
@@ -52,6 +67,12 @@ export function defaultTenant(): TenantState {
     roles: [],
     assignments: [],
     objects: [],
+    connections: [],
+    certificates: [],
+    consent: false,
+    runs: [],
+    appliedColumns: [],
+    scenarios: [],
   };
 }
 
@@ -154,11 +175,19 @@ export function sanitizeTenant(data: unknown): TenantState {
   if (typeof d.activeSpace === 'string' && ids.has(d.activeSpace)) t.activeSpace = d.activeSpace;
   Object.assign(t, sanitizeSecurity(d, ids));
   t.objects = sanitizeObjects(d.objects, ids);
+  t.connections = sanitizeConnections(d.connections, ids);
+  t.certificates = (Array.isArray(d.certificates) ? d.certificates : []).filter((c) => CERTIFICATE_FILES.some((f) => f.name === c));
+  t.consent = !!d.consent;
+  t.runs = sanitizeRuns(d.runs);
+  t.appliedColumns = sanitizeApplied(d.appliedColumns, ids);
+  t.scenarios = (Array.isArray(d.scenarios) ? d.scenarios : []).map(String).slice(0, 50);
   return t;
 }
 
 function pickStorage(s: Partial<Space>) {
   return {
+    ...(s.locked ? { locked: true } : {}),
+    ...(typeof s.usedDiskGB === 'number' && s.usedDiskGB > 0 ? { usedDiskGB: round1(s.usedDiskGB) } : {}),
     diskGB: Math.max(0.1, Number(s.diskGB) || NEW_SPACE_DEFAULTS.diskGB),
     memoryGB: Math.max(0.1, Number(s.memoryGB) || NEW_SPACE_DEFAULTS.memoryGB),
     priority: Math.min(5, Math.max(1, Math.round(Number(s.priority) || NEW_SPACE_DEFAULTS.priority))),

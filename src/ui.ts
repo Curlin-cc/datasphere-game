@@ -32,6 +32,8 @@ export const ICONS = {
   lock: '<rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/>',
   back: '<path d="M10 3.5L5.5 8l4.5 4.5"/>',
   down: '<path d="M4 6l4 4 4-4"/>',
+  remote: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5h11M8 8.5v3M6.5 10l1.5 1.5 1.5-1.5"/>',
+  flow: '<circle cx="3.5" cy="8" r="1.6"/><circle cx="12.5" cy="8" r="1.6"/><path d="M5.1 8h5.8M9 6l2 2-2 2"/>',
   info: '<circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v4M8 5v.2"/>',
 };
 

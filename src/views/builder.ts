@@ -7,6 +7,8 @@ import {
   touch, deploy, dropObject, type RepoObject, type SemanticUsage,
 } from '../repo';
 import { accessError, isShared } from '../tenant';
+import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
+import { openImportRemote, renderFlowEditor } from './flow';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
 import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable, fmtDate } from '../ui';
@@ -17,12 +19,18 @@ import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable,
  * Editors have Save (design time), Deploy (runtime), Share and Data Preview, and a properties panel.
  */
 
-type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' };
+type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' };
+type ListTab = 'all' | 'tables' | 'views' | 'flows';
+
+/** "New" tiles that work in this build of the game, from their chapter on. */
+const BUILT_TILES = new Set(['sqlview', 'remote', 'replication']);
 
 let page: Page = { kind: 'spaces' };
 /** The space picker shows once per visit, like choosing a space when you open the Data Builder. */
 let spaceChosen = false;
-let listTab: 'all' | 'Local Table' | 'SQL View' = 'all';
+let listTab: ListTab = 'all';
+const inTab = (o: RepoObject, tab: ListTab) =>
+  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'flows' && o.kind === 'Replication Flow');
 
 export const NEW_VIEW_SQL = `-- Write a SELECT statement. Ctrl+Enter shows the Data Preview.\nSELECT\n  \nFROM `;
 
@@ -41,7 +49,7 @@ export function openObjectInBuilder(key: string) {
 }
 
 /** For tutorials: open the start page or a new SQL view, choosing a space if none is chosen yet. */
-export function builderTo(target: 'landing' | 'new-view' | 'spaces', space?: string) {
+export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow', space?: string) {
   const t = ctx.tenant();
   if (space && t.spaces.some((s) => s.id === space)) {
     t.activeSpace = space;
@@ -64,15 +72,18 @@ export function rememberEditor() {
 export async function renderBuilder(main: HTMLElement) {
   rememberEditor();
   ctx.editor = null;
-  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view');
+  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow');
   if (page.kind === 'spaces') return renderSpacePicker(main);
   if (page.kind === 'landing') return renderLanding(main);
   if (page.kind === 'new-view') return renderEditor(main, null);
+  const flowNav = { back: () => go({ kind: 'landing' }), opened: (key: string) => (page = { kind: 'object', key }) };
+  if (page.kind === 'new-flow') return renderFlowEditor(main, null, flowNav);
   const o = findObject(ctx.tenant(), page.key);
   if (!o) {
     page = { kind: 'landing' };
     return renderLanding(main);
   }
+  if (o.kind === 'Replication Flow') return renderFlowEditor(main, o, flowNav);
   return renderEditor(main, o);
 }
 
@@ -122,7 +133,7 @@ function renderLanding(main: HTMLElement) {
   const space = t.activeSpace;
   const chapter = ctx.currentChapter();
   const own = t.objects.filter((o) => o.space === space);
-  const shown = own.filter((o) => listTab === 'all' || o.kind === listTab);
+  const shown = own.filter((o) => inTab(o, listTab));
   const shared = t.objects.filter((o) => o.space !== space && isShared(t, objectKey(o), space));
   const canShare = t.spaces.length > 1;
   const groups = ['Model', 'Integrate', 'Secure'] as const;
@@ -132,9 +143,9 @@ function renderLanding(main: HTMLElement) {
     <section class="new-tiles" id="new-tiles" aria-label="Create new objects">
       ${groups.map((g) => `<div class="tile-group"><h3>${g}</h3><div class="tile-row">
         ${NEW_TILES.filter((n) => n.group === g).map((n) => {
-          const on = n.chapter !== undefined && n.id === 'sqlview' && chapter >= n.chapter;
+          const on = n.chapter !== undefined && BUILT_TILES.has(n.id) && chapter >= n.chapter;
           return `<button type="button" class="new-tile ${on ? '' : 'off'}" data-new="${n.id}" title="${esc(n.text)}">
-            <span class="plus">+</span><span>New ${esc(n.label)}</span></button>`;
+            <span class="plus">+</span><span>${esc(n.verb ?? 'New')} ${esc(n.label)}</span></button>`;
         }).join('')}
       </div></div>`).join('')}
     </section>
@@ -142,7 +153,7 @@ function renderLanding(main: HTMLElement) {
       <div class="table-head">
         <h3>Objects in ${esc(space)}</h3>
         <div class="tabs small" role="tablist">
-          ${(['all', 'Local Table', 'SQL View'] as const).map((k) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${k === 'all' ? 'All' : k === 'Local Table' ? 'Tables' : 'Views'} <small>${k === 'all' ? own.length : own.filter((o) => o.kind === k).length}</small></button>`).join('')}
+          ${(['all', 'tables', 'views', 'flows'] as const).map((k) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)} <small>${own.filter((o) => inTab(o, k)).length}</small></button>`).join('')}
         </div>
       </div>
       <div class="table-scroll"><table class="grid" id="object-list">
@@ -170,6 +181,8 @@ function renderLanding(main: HTMLElement) {
       const tile = NEW_TILES.find((n) => n.id === b.dataset.new)!;
       ctx.track(`new:${tile.id}`);
       if (b.classList.contains('off')) return tileInfo(tile);
+      if (tile.id === 'remote') return openImportRemote(() => renderLanding(main));
+      if (tile.id === 'replication') return go({ kind: 'new-flow' });
       ctx.sqlOwner = 'draft';
       go({ kind: 'new-view' });
     }),
@@ -194,7 +207,8 @@ function renderLanding(main: HTMLElement) {
   );
 }
 
-const typeIcon = (o: RepoObject) => icon(o.kind === 'SQL View' ? ICONS.view : ICONS.table, 'type-ic');
+export const typeIcon = (o: Pick<RepoObject, 'kind'>) =>
+  icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow : ICONS.table, 'type-ic');
 
 function statusChip(o: Pick<RepoObject, 'status'>) {
   return `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>`;
@@ -263,6 +277,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   const t = ctx.tenant();
   const space = o?.space ?? t.activeSpace;
   const isView = !o || o.kind === 'SQL View';
+  const remote = o?.kind === 'Remote Table' ? o.remote : undefined;
   const readOnly = !!o && o.space !== t.activeSpace;
   const key = o ? objectKey(o) : 'draft';
   const chapter = ctx.currentChapter();
@@ -302,6 +317,9 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
             <dt>Space</dt><dd>${spaceChip(space)}</dd>
             <dt>Status</dt><dd>${o ? statusChip(o) : 'New, not saved'}<p class="muted">${o ? STATUS_HELP[status] : 'Save it to create the object in the repository.'}</p></dd>
             ${o?.deployed && o.deployed.businessName !== o.businessName ? `<dt>Deployed name</dt><dd>${esc(o.deployed.businessName)}</dd>` : ''}
+            ${remote ? `<dt>Connection</dt><dd class="mono">${esc(remote.connection)}</dd><dt>Source Object</dt><dd class="mono">${esc(remote.source)}</dd>
+              <dt>Data Access</dt><dd>${esc(remote.access)}<p class="muted">${remote.access === 'Remote' ? 'Each query reads the source live.' : 'Reads the copy stored in this space.'} Change it in the Data Integration Monitor.</p></dd>` : ''}
+            ${o?.loadFrom ? `<dt>Filled by</dt><dd>Replication from ${esc(o.loadFrom.connection)}</dd>` : ''}
           </dl>
         </aside>
       </div>
@@ -341,6 +359,8 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   main.querySelector('#ed-deploy')?.addEventListener('click', async () => {
     const saved = saveObject(true);
     if (!saved) return;
+    const locked = lockError(t, saved.space);
+    if (locked) return toast(`Deployment failed. ${locked}`, 'error');
     if (saved.kind === 'SQL View') {
       const denied = accessError(saved.sql ?? '', saved.space, t);
       if (denied) return toast(denied, 'error');
@@ -368,7 +388,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
       business.focus();
       return null;
     }
-    if (o && o.kind === 'Local Table') {
+    if (o && (o.kind === 'Local Table' || o.kind === 'Remote Table')) {
       o.businessName = bn;
       touch(o);
       ctx.track(`save:${objectKey(o)}`);
@@ -439,6 +459,15 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
     ctx.save();
     try {
       const res = await runSql(sql);
+      if (remote?.access === 'Remote') {
+        const conn = findConnection(t, o!.space, remote.connection);
+        const so = sourceObject(t, o!.space, remote.connection, remote.source);
+        remoteQueries.unshift({
+          at: new Date().toISOString(), space: o!.space, connection: remote.connection, object: o!.name,
+          statement: so ? sourceSql(so).replace(`"RHN_IN"."${so.table}"`, `"${so.name}"`) + ' LIMIT 100' : '', records: res.rows.length, ms: Math.max(1, Math.round(res.ms * 6)),
+        });
+        if (!conn?.validation?.ok) toast('The connection of this remote table is not valid; the source may not answer in a real tenant.', 'info');
+      }
       const rows = res.rows.length;
       out.innerHTML = `
         <div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'}${isView ? '' : ' (first 100)'} in ${res.ms.toFixed(0)} ms</div>
@@ -482,5 +511,6 @@ async function renderColumns(main: HTMLElement, o: RepoObject) {
       <tbody>${cols.map((c, i) => `<tr><td class="num muted">${i + 1}</td><td class="mono">${esc(c.name)}</td><td>${esc(c.type)}</td>
         <td>${i === 0 ? '<span class="key-mark" title="Key column">●</span>' : ''}</td></tr>`).join('')}</tbody>
     </table>
-    ${o.source ? `<p class="muted source-note">Loaded by IT from a source system. The data cannot be changed here; business name and sharing can.</p>` : ''}`;
+    ${o.source ? `<p class="muted source-note">Loaded by IT in the pilot, a one-off copy of the source systems. The data cannot be changed here; business name and sharing can.</p>` : ''}
+    ${o.kind === 'Remote Table' ? `<p class="muted source-note">A remote table: the structure lives here, the data in ${esc(o.remote?.connection ?? '')}${o.remote?.access === 'Remote' ? ', read live on every query' : ', copied as a snapshot'}.</p>` : ''}`;
 }

@@ -27,7 +27,7 @@ export const CHAPTERS: Chapter[] = [
   { nr: 0, title: 'Find your way', summary: 'The apps of the tenant, spaces, objects, save and deploy', guidance: 'full' },
   { nr: 1, title: 'Space concept', summary: 'Design spaces per layer with storage and naming rules', guidance: 'full' },
   { nr: 2, title: 'Users and roles', summary: 'Give eight people exactly the access they need', guidance: 'light' },
-  { nr: 3, title: 'Data integration', summary: 'Connect sources, choose remote or replicated', guidance: 'light' },
+  { nr: 3, title: 'Data integration', summary: 'Connect sources, read live or replicate, load by delta, repair a failed load', guidance: 'light' },
   { nr: 4, title: 'Inbound layer', summary: 'Profile the raw data with SQL and find its defects', guidance: 'light' },
   { nr: 5, title: 'Harmonization', summary: 'Clean duplicates, units and legacy keys in views', guidance: 'paid' },
   { nr: 6, title: 'Semantics', summary: 'Facts, dimensions, texts, hierarchies, associations', guidance: 'paid' },
@@ -136,5 +136,55 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Save and deploy',
     text: 'Save stores the design. Deploy makes it active in the database. Statuses: Not Deployed, Changes to Deploy, Deployed.',
     realTenant: 'Toolbar of every Data Builder editor; the status column of the object list.',
+  },
+  {
+    term: 'Connection',
+    text: 'Links one space to a source or target system, created from a connection type. Only members of that space can use it.',
+    realTenant: 'Side navigation > Connections, select the space, Create.',
+  },
+  {
+    term: 'Connection features',
+    text: 'What a connection can be used for: Remote Tables, Data Flows, Replication Flows, Model Import. The type decides what is possible; Validate shows what works.',
+    realTenant: 'Connections > select a connection > Validate.',
+  },
+  {
+    term: 'Cloud Connector',
+    text: 'Installed in the company network, it links the cloud tenant with on-premise systems. A connection names it by its location ID.',
+    realTenant: 'System > Configuration > Data Integration; location ID in the connection properties.',
+  },
+  {
+    term: 'Remote table',
+    text: 'An object of a connection, made available in a space. Data access Remote reads the source live on each query; Replicated (Snapshot) stores a copy that is refreshed by a new snapshot or a schedule.',
+    realTenant: 'Data Builder > Import Remote Tables; data access in the Data Integration Monitor > Remote Tables.',
+  },
+  {
+    term: 'Replication flow',
+    text: 'Copies objects from one source connection into local tables, with projections (filters, mapping, extra columns) but no complex logic. Load type Initial Only or Initial and Delta.',
+    realTenant: 'Data Builder > New Replication Flow; runs in the Data Integration Monitor > Flows.',
+  },
+  {
+    term: 'Initial and Delta',
+    text: 'Loads everything once, then keeps checking the source and transfers only the changes. Needs a delta-capable source.',
+    realTenant: 'Load type of each replication object in a replication flow.',
+  },
+  {
+    term: 'Truncate',
+    text: 'Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
+    realTenant: 'Option per replication object in a replication flow.',
+  },
+  {
+    term: 'Data Integration Monitor',
+    text: 'Runs, schedules and logs of everything that moves data into one space: remote tables, local tables, views, flows, remote queries, task chains.',
+    realTenant: 'Side navigation > Data Integration Monitor, select the space.',
+  },
+  {
+    term: 'Consent for scheduling',
+    text: 'Scheduled tasks run in the name of the user who scheduled them. That user has to authorize the job scheduling first.',
+    realTenant: 'Profile settings > Authorized Consent Settings; the monitor asks if it is missing.',
+  },
+  {
+    term: 'Locked space',
+    text: 'A space that uses more disk than assigned is locked: nothing can be written. It needs more storage (or less data) and an Unlock.',
+    realTenant: 'Space Management > Unlock on the space.',
   },
 ];

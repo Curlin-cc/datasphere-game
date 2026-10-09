@@ -118,7 +118,7 @@ export const TUTORIALS: Record<string, TourStep[]> = {
       title: 'Chapter 4: Profile the inbound data',
       body: `<p>Before anyone models, a data architect looks at the raw data. In this chapter you <b>profile</b> the inbound tables with SQL:
         count, group, sum and join, and find what is wrong.</p>
-        <p>From now on only the first hint is free. The tutorials stay free, so read them carefully.</p>`,
+        <p>As in chapter 3, only the first hint is free. The tutorials stay free, so read them carefully.</p>`,
     },
     {
       title: 'A scratch SQL view',
@@ -439,6 +439,159 @@ GROUP BY c.TARIFF;`,
         That keeps the tenant owner from becoming a bottleneck.</p>`,
     },
   ],
+  'c03-m01': [
+    {
+      title: 'Chapter 3: Data integration',
+      body: `<p>So far the data in <code>RHN_IN</code> was a one-off copy IT made for the pilot. Now you connect the real source systems and decide
+        how their data gets in: read live, copied once, or kept up to date by delta.</p>
+        <p>Three apps work together: <b>Connections</b> (where a system is), the <b>Data Builder</b> (remote tables and flows),
+        and the <b>Data Integration Monitor</b> (runs, schedules, logs). Only the first hint is free in this chapter.</p>`,
+    },
+    {
+      title: 'The Connections app',
+      view: 'connections',
+      target: '.nav [data-view="connections"]',
+      body: `<p>Connections link <b>one space</b> to a source or target system. Everybody in that space can use the connection; nobody else can.</p>`,
+    },
+    {
+      title: 'Space first',
+      target: '#conn-space',
+      body: `<p>Like the Data Builder, Connections always works in one space. All loads land in the inbound layer, so its connections live there too.</p>`,
+    },
+    {
+      title: 'Connection types',
+      target: '#conn-create',
+      body: `<p><b>Create</b> starts with the <b>connection type</b>: SAP S/4HANA Cloud, SAP HANA, Amazon S3 and many more.
+        Each type supports a set of <b>features</b>:</p>
+        <ul><li><b>Remote Tables</b>: read objects of the source without copying them</li>
+        <li><b>Data Flows</b> and <b>Replication Flows</b>: copy data into tables</li>
+        <li><b>Model Import</b>: import entities with their semantics</li></ul>`,
+    },
+    {
+      title: 'Validate',
+      target: '#conn-toolbar',
+      body: `<p>After creating, select the connection and press <b>Validate</b>. It tries to reach the source and tells you which features
+        really work, or what failed. It is the first step of every troubleshooting.</p>`,
+    },
+  ],
+  'c03-m02': [
+    {
+      title: 'Cloud and on-premise',
+      body: `<p>Datasphere runs in the cloud. Systems in your own data center are not reachable from the internet, on purpose.
+        The <b>SAP Cloud Connector</b>, installed in the company network, links the two. A connection names it by its <b>location ID</b>.</p>`,
+    },
+    {
+      title: 'Tenant-wide prerequisites',
+      view: 'system:integration',
+      target: '#system-body',
+      body: `<p><b>System › Configuration</b> holds what all spaces share. <b>Data Integration</b> lists the Cloud Connectors (and Data
+        Provisioning Agents) connected to this tenant.</p>`,
+    },
+    {
+      title: 'Trusted certificates',
+      view: 'system:security',
+      target: '#system-body',
+      body: `<p>With TLS, the server shows a certificate. The tenant accepts it only if it trusts that certificate, or the authority (CA) that
+        signed it. You upload trusted certificates here. Trust only what a connection needs.</p>`,
+    },
+    {
+      title: 'Read the validation',
+      view: 'connections',
+      target: '#conn-toolbar',
+      body: `<p>Create the connection, then validate. If it fails, the message names <b>one</b> missing piece. Fix it, validate again.</p>`,
+    },
+  ],
+  'c03-m03': [
+    {
+      title: 'Remote tables',
+      view: 'builder:landing:RHN_IN',
+      target: '#new-tiles',
+      body: `<p>A <b>remote table</b> brings an object of a connection into the space: its structure lives here, its data stays in the source.
+        You import remote tables with the <b>Import Remote Tables</b> tile.</p>`,
+    },
+    {
+      title: 'Data access',
+      body: `<p>Each remote table has a <b>data access</b>:</p>
+        <ul><li><b>Remote</b>: every query is sent to the source. Always current, but each query costs the source and depends on it.</li>
+        <li><b>Replicated (Snapshot)</b>: a full copy is stored in the space. Fast and independent, but only as fresh as the last load.</li></ul>
+        <p>Real-time replication exists for suitable sources; this game does not simulate it.</p>`,
+    },
+    {
+      title: 'The Data Integration Monitor',
+      view: 'monitor:remote',
+      target: '#mon-tabs',
+      body: `<p>You change the data access here, not in the editor: <b>Load New Snapshot</b>, <b>Remove Replicated Data</b> and <b>Schedule</b>.
+        <b>Remote Queries</b> shows what this space sent to the sources.</p>`,
+    },
+    {
+      title: 'Schedules and consent',
+      target: '#mon-tabs',
+      body: `<p>Scheduled tasks run in <b>your</b> name, even at night. So the tenant asks for your <b>consent</b> to job scheduling first.
+        Without it, schedules cannot run.</p>`,
+    },
+  ],
+  'c03-m04': [
+    {
+      title: 'Replication flows',
+      view: 'builder:landing:RHN_IN',
+      target: '[data-new="replication"]',
+      body: `<p>A <b>replication flow</b> copies objects of one source connection into local tables, with little modeling: no joins, no logic,
+        only projections (filters, column mapping, extra columns).</p>`,
+    },
+    {
+      title: 'Load types',
+      body: `<ul><li><b>Initial Only</b>: everything is loaded once.</li>
+        <li><b>Initial and Delta</b>: everything once, then the flow keeps checking the source and transfers only the changes.
+        Only delta-capable sources offer it.</li></ul>
+        <p><b>Truncate</b> empties the target table before the initial load, completely.</p>`,
+    },
+    {
+      title: 'The editor',
+      view: 'builder:new-flow:RHN_IN',
+      target: '.ed-body',
+      body: `<p>Left: the source connection, <b>Add Source Objects</b>, the target and the names. Right: one row per object with target table,
+        load type, Truncate and projection. Save, Deploy, then <b>Run</b>.</p>`,
+    },
+    {
+      title: 'Watch it run',
+      view: 'monitor:flows',
+      target: '#mon-tabs',
+      body: `<p>Every run appears in <b>Flows</b> with its status and messages. A delta flow stays <b>Running</b>: it keeps watching the source.</p>`,
+    },
+  ],
+  'c03-m05': [
+    {
+      title: 'Files as a source',
+      body: `<p>Some systems cannot be connected directly and drop files instead, for example into an Amazon S3 bucket. A connection to
+        cloud storage offers flows, not remote tables.</p>`,
+    },
+    {
+      title: 'Set the source system while loading',
+      body: `<p>Every inbound row should say which system it came from. If the source does not deliver that, the load adds it: in a replication
+        flow, the <b>projection</b> of an object can add columns with a constant value.</p>`,
+    },
+    {
+      title: 'Full export, every night',
+      body: `<p>A file that holds <b>all</b> customers each night replaces yesterday's content. Think about what Truncate does here, and what
+        loads the file tomorrow without you.</p>`,
+    },
+  ],
+  'c03-m06': [
+    {
+      title: 'Something broke at night',
+      view: 'monitor:flows',
+      target: '#flow-list',
+      body: `<p>Failed loads show up in the <b>Data Integration Monitor</b>. Open the flow, pick the failed run, read the messages from top to bottom.
+        The last one usually names the cause.</p>`,
+    },
+    {
+      title: 'Locked spaces',
+      view: 'spaces',
+      target: '#space-list',
+      body: `<p>Each space has a disk quota. If it uses more than assigned, it is <b>locked</b>: no loads, no deployments.
+        It stays locked until it has enough storage again and someone presses <b>Unlock</b>.</p>`,
+    },
+  ],
 };
 
 /**
@@ -688,5 +841,58 @@ GROUP BY CITY;`,
     [ { title: 'The new colleague', view: 'security', target: '#security-body', body: `<p>Nina is in the user list now. Give her the role and space she needs, nothing more.</p>` } ],
     [ { title: 'The mover', view: 'security', target: '#security-body', body: `<p>Edit Tim: tick the new space, untick the old one.</p>` } ],
     [ { title: 'Two questions', target: '#questions', body: `<p>Which template manages members? And which tool filters rows, not functions?</p>` } ],
+  ],
+  'c03-m01': [
+    [ { title: 'Select the space', view: 'connections', target: '#conn-space', body: `<p>Choose <code>RHN_IN</code>. The list shows only this space's connections.</p>` } ],
+    [
+      { title: 'Create', view: 'connections', target: '#conn-create', body: `<p>Pick the type that matches the source system. Then the form asks for host, authentication and names.</p>` },
+      { title: 'Names', body: `<p>Business name for people, technical name <code>RHN_S4U</code>. The technical name cannot change later.</p>` },
+    ],
+    [ { title: 'Validate', view: 'connections', target: '#conn-toolbar', body: `<p>Select the radio button of the connection, then <b>Validate</b>. Read the feature list.</p>` } ],
+    [ { title: 'Two questions', target: '#questions', body: `<p>Where does a connection live? And what did validation list besides remote tables and flows?</p>` } ],
+  ],
+  'c03-m02': [
+    [ { title: 'Type and deployment', view: 'connections', target: '#conn-create', body: `<p>The source is SAP HANA. Its form asks <b>Cloud</b> or <b>On-Premise</b>; the data center is on-premise.</p>` } ],
+    [ { title: 'One error at a time', view: 'connections', target: '#conn-toolbar', body: `<p>Validate, read, fix with <b>Edit</b>, validate again.</p>` } ],
+    [
+      { title: 'Cloud Connector', view: 'system:integration', target: '#system-body', body: `<p>The location ID of the connected Cloud Connector is listed here.</p>` },
+      { title: 'Certificate', view: 'system:security', target: '#system-body', body: `<p><b>Upload Certificate</b> and pick the CA file Jonas named. Only that one.</p>` },
+    ],
+    [ { title: 'Validate again', view: 'connections', target: '#conn-toolbar', body: `<p>A change resets the validation. Validate once more.</p>` } ],
+    [ { title: 'The question', target: '#questions', body: `<p>Why could the cloud not reach the host at first?</p>` } ],
+  ],
+  'c03-m03': [
+    [ { title: 'Import', view: 'builder:landing:RHN_IN', target: '[data-new="remote"]', body: `<p>Choose <code>RHN_S4U</code>, tick the two objects, keep the suggested <code>RHN_IN_RT_</code> names.</p>` } ],
+    [
+      { title: 'Preview', view: 'builder:landing:RHN_IN', target: '#object-list', body: `<p>Open the tariffs remote table and press <b>Data Preview</b>.</p>` },
+      { title: 'Remote Queries', view: 'monitor:queries', target: '#mon-tabs', body: `<p>Here is the statement that went to S/4 for your preview.</p>` },
+    ],
+    [
+      { title: 'Snapshot', view: 'monitor:remote', target: '#mon-tabs', body: `<p>Select the grid areas, <b>Load New Snapshot</b>, then <b>Schedule</b>. Give consent in the banner if asked.</p>` },
+    ],
+    [ { title: 'The question', target: '#questions', body: `<p>What does every snapshot refresh of a big table cost?</p>` } ],
+  ],
+  'c03-m04': [
+    [ { title: 'New flow', view: 'builder:new-flow:RHN_IN', target: '.flow-source', body: `<p>Choose the source connection here.</p>` } ],
+    [ { title: 'Objects', view: 'builder:new-flow:RHN_IN', target: '.flow-center', body: `<p><b>Add Source Objects</b>, then type the existing table name as target. The suggestion is already the same name.</p>` } ],
+    [ { title: 'Load type and Truncate', target: '.flow-center', body: `<p>Delta for both. And think about the LEGACY rows before you tick Truncate.</p>` } ],
+    [
+      { title: 'Names, save, deploy', target: '.flow-props', body: `<p>Business name, technical name <code>RHN_IN_RF_S4U</code>, then Save, Deploy and Run in the toolbar.</p>` },
+      { title: 'Monitor', view: 'monitor:flows', target: '#mon-tabs', body: `<p>Open the flow and read the messages of its run.</p>` },
+    ],
+    [ { title: 'The question', target: '#questions', body: `<p>The run messages say what delta does after the initial load.</p>` } ],
+  ],
+  'c03-m05': [
+    [ { title: 'The bucket', view: 'connections', target: '#conn-create', body: `<p>Type Amazon Simple Storage Service. The bucket name goes into the Bucket field.</p>` } ],
+    [ { title: 'Flow', view: 'builder:landing:RHN_IN', target: '[data-new="replication"]', body: `<p>Source <code>RHN_CRM</code>, add the export file, target <code>CRM_CUSTOMERS</code>.</p>` } ],
+    [ { title: 'Projection', body: `<p>In the flow editor, press the <b>Projection</b> button of the object and add the column with its value.</p>` } ],
+    [ { title: 'Schedule', view: 'monitor:flows', target: '#mon-tabs', body: `<p>After the run: open the flow here and press <b>Schedule</b>.</p>` } ],
+    [ { title: 'Check the table', view: 'builder:landing:RHN_IN', target: '#object-list', body: `<p>Open <code>CRM_CUSTOMERS</code>: a new column at the end.</p>` } ],
+  ],
+  'c03-m06': [
+    [ { title: 'The failed run', view: 'monitor:flows', target: '#flow-list', body: `<p>Click <code>RHN_IN_RF_MDM</code>, then the failed run. Read the last message.</p>` } ],
+    [ { title: 'Storage and unlock', view: 'spaces', target: '#space-list', body: `<p>Edit <code>RHN_IN</code>: used plus 6 GB. Save, then <b>Unlock</b>.</p>` } ],
+    [ { title: 'Run again', view: 'monitor:flows', target: '#flow-list', body: `<p>Open the flow and press <b>Run</b>.</p>` } ],
+    [ { title: 'The question', target: '#questions', body: `<p>What can you set up once so the next failure reaches you first?</p>` } ],
   ],
 };

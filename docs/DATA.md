@@ -29,6 +29,17 @@ Geschäftliches „Heute“ im Tenant: **2026-07-15** (`REFERENCE_DATE`). Danach
 | Leerzeichen im Namen | ca. 3 % mit führendem Leerzeichen | `NAME <> trim(NAME)` | `trim` |
 | Gemischte Einheiten | 263 Ablesungen in MWh (Gaszähler) | `GROUP BY UNIT` | MWh × 1000 → kWh |
 | Doppelte Ablesungen | 98 exakte Dubletten | `COUNT(*)` vs. `SELECT DISTINCT` | `DISTINCT` / `QUALIFY` |
-| CRM ohne SRC_SYS_ID | ganze Tabelle | Spaltenliste | Best Practice: beim Laden setzen (Kapitel 3) |
+| CRM ohne SRC_SYS_ID | ganze Tabelle | Spaltenliste | Kapitel 3 (c03-m05): Replication Flow mit Projektion `SRC_SYS_ID = 'CRM'` hängt die Spalte an (`appliedColumns` im Spielstand, bei jedem Start erneut angewendet) |
 
 Absichtlich *kein* Fehler: Rechnungen sind korrekt aus kWh berechnet, damit Umsatz eine verlässliche Prüfsumme ist.
+
+## Quellsysteme (Kapitel 3, `src/integration.ts`)
+
+Die Pilot-Tabellen in `RHN_IN` sind die Ziele der Replikation; die Daten selbst bleiben die des Generators.
+Remote Tables sind DuckDB-Views auf diese Tabellen, Läufe zählen nur Datensätze (Filter über `SRC_SYS_ID`).
+
+| Quelle | Host / Bucket (fiktiv) | Typ | Objekte | Delta |
+| --- | --- | --- | --- | --- |
+| S4U | `billing.rheinau-s4.example` | SAP S/4HANA Cloud | BILLING_CONTRACTS, BILLING_INVOICES (nur S4U-Zeilen), TARIFFS, GRID_AREAS | Verträge, Rechnungen |
+| MDM | `mdm-db.rheinau.local` | SAP HANA on-premise, Cloud Connector `RHEINAU_DC`, TLS mit „Rheinau Root CA“ | METER_READINGS (nur MDM-Zeilen) | ja |
+| CRM | Bucket `rheinau-crm-export` | Amazon S3 | `customers/CRM_CUSTOMERS.csv` | nein |

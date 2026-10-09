@@ -1,7 +1,7 @@
 import { ctx } from '../ctx';
 import { exec, listObjects } from '../db';
 import { CAPACITY, NEW_SPACE_DEFAULTS, assigned, spaceIdError, storageError, sharedWith, round1, type Space } from '../tenant';
-import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog } from '../ui';
+import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, icon, ICONS } from '../ui';
 
 /** Space Management: one tile per space with storage and priority, create, edit and delete. */
 
@@ -35,16 +35,18 @@ export async function renderSpaces(main: HTMLElement) {
       ${spaces.map((sp) => {
         const sharedIn = sharedWith(t, sp.id).length;
         const n = objectsIn(sp.id);
-        return `<article class="panel space-tile" data-space-tile="${esc(sp.id)}">
-          <div class="space-tile-head">${spaceChip(sp.id)}<span class="spacer"></span><span class="prio" title="Priority, 1 lowest to 5 highest">Priority ${sp.priority}</span></div>
+        return `<article class="panel space-tile ${sp.locked ? 'is-locked' : ''}" data-space-tile="${esc(sp.id)}">
+          <div class="space-tile-head">${spaceChip(sp.id)}${sp.locked ? `<span class="chip warn lock-chip">${icon(ICONS.lock)} Locked</span>` : ''}<span class="spacer"></span><span class="prio" title="Priority, 1 lowest to 5 highest">Priority ${sp.priority}</span></div>
           <h3>${esc(sp.name)}</h3>
           <p class="muted">${layerName(sp.id)} layer${sp.system ? ' · prepared by IT' : ''}</p>
           <dl class="tile-facts">
-            <div><dt>Disk</dt><dd>${sp.diskGB} GB</dd></div>
+            <div><dt>Disk</dt><dd>${sp.diskGB} GB${sp.usedDiskGB !== undefined ? ` <small class="${sp.usedDiskGB > sp.diskGB ? 'over' : 'muted'}">${sp.usedDiskGB} GB used</small>` : ''}</dd></div>
             <div><dt>In-memory</dt><dd>${sp.memoryGB} GB</dd></div>
             <div><dt>Objects</dt><dd>${n}${sharedIn ? ` <small class="muted">+${sharedIn} shared in</small>` : ''}</dd></div>
           </dl>
+          ${sp.locked ? `<p class="lock-note">Exceeds its disk storage. No data can be loaded or deployed until it has enough storage and is unlocked.</p>` : ''}
           ${canCreate ? `<div class="tile-actions"><button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>
+            ${sp.locked ? `<button class="btn small primary" type="button" data-unlock="${esc(sp.id)}">Unlock</button>` : ''}
             ${sp.system ? '' : `<button class="btn small link" type="button" data-delete="${esc(sp.id)}">Delete</button>`}</div>` : ''}
         </article>`;
       }).join('')}
@@ -52,6 +54,20 @@ export async function renderSpaces(main: HTMLElement) {
   main.querySelector('#create-space')?.addEventListener('click', () => openSpaceDialog());
   main.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>
     b.addEventListener('click', () => openSpaceDialog(t.spaces.find((x) => x.id === b.dataset.edit))),
+  );
+  main.querySelectorAll<HTMLButtonElement>('[data-unlock]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const sp = t.spaces.find((x) => x.id === b.dataset.unlock)!;
+      if ((sp.usedDiskGB ?? 0) > sp.diskGB) {
+        toast(`${sp.id} still uses ${sp.usedDiskGB} GB of ${sp.diskGB} GB disk. Assign more storage first (or delete data), then unlock.`, 'error');
+        return;
+      }
+      sp.locked = false;
+      ctx.track(`unlock:${sp.id}`);
+      ctx.save();
+      toast(`${sp.id} unlocked`);
+      renderSpaces(main);
+    }),
   );
   main.querySelectorAll<HTMLButtonElement>('[data-delete]').forEach((b) =>
     b.addEventListener('click', () => deleteSpace(b.dataset.delete!, objectsIn(b.dataset.delete!))),
@@ -106,7 +122,14 @@ function openSpaceDialog(existing?: Space) {
       form.querySelector('.form-error')!.textContent = err;
       return;
     }
-    if (existing) Object.assign(existing, { name: sp.name, diskGB: sp.diskGB, memoryGB: sp.memoryGB, priority: sp.priority });
+    if (existing && existing.usedDiskGB !== undefined && sp.diskGB < existing.usedDiskGB && !existing.locked) {
+      form.querySelector('.form-error')!.textContent = `${existing.id} already uses ${existing.usedDiskGB} GB. Less disk would lock the space.`;
+      return;
+    }
+    if (existing) {
+      Object.assign(existing, { name: sp.name, diskGB: sp.diskGB, memoryGB: sp.memoryGB, priority: sp.priority });
+      ctx.track(`edit-space:${existing.id}`);
+    }
     else {
       await exec(`CREATE SCHEMA IF NOT EXISTS "${sp.id}"`);
       t.spaces.push(sp);

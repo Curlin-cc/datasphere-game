@@ -1,5 +1,6 @@
 import { exec } from './db';
 import type { TenantState } from './tenant';
+import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom } from './integration';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -10,7 +11,8 @@ import type { TenantState } from './tenant';
  *  - Deployed: what is saved is what runs
  */
 
-export type ObjectKind = 'Local Table' | 'SQL View';
+export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow';
+export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
 export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text';
 
@@ -24,7 +26,13 @@ export interface RepoObject {
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string };
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef };
+  /** Remote tables: connection, source object, data access. */
+  remote?: RemoteInfo;
+  /** Replication flows: the saved definition. */
+  flow?: FlowDef;
+  /** Local tables created by a flow: where the data comes from, reloaded after a reload. */
+  loadFrom?: LoadFrom;
   status: DeployStatus;
   changedAt: string;
   /** Loaded by IT from a source system; cannot be deleted. */
@@ -75,7 +83,8 @@ export const suggestTechnicalName = (business: string) =>
 /** Status after a save, derived from what is deployed. */
 export function statusAfterSave(o: RepoObject): DeployStatus {
   if (!o.deployed) return 'not_deployed';
-  const same = o.deployed.businessName === o.businessName && (o.kind !== 'SQL View' || o.deployed.sql === o.sql);
+  const same = o.deployed.businessName === o.businessName && (o.kind !== 'SQL View' || o.deployed.sql === o.sql)
+    && (o.kind !== 'Replication Flow' || JSON.stringify(o.deployed.flow) === JSON.stringify(o.flow));
   return same ? 'deployed' : 'changes';
 }
 
@@ -95,14 +104,15 @@ export async function deploy(o: RepoObject): Promise<string | null> {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
-  o.deployed = { businessName: o.businessName, sql: o.sql };
+  o.deployed = { businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined };
   o.status = 'deployed';
   o.changedAt = now();
   return null;
 }
 
 export async function dropObject(o: RepoObject) {
-  if (o.kind === 'SQL View' && o.deployed) await exec(`DROP VIEW IF EXISTS "${o.space}"."${o.name}"`);
+  if ((o.kind === 'SQL View' && o.deployed) || o.kind === 'Remote Table') await exec(`DROP VIEW IF EXISTS "${o.space}"."${o.name}"`);
+  if (o.kind === 'Local Table' && o.loadFrom) await exec(`DROP TABLE IF EXISTS "${o.space}"."${o.name}"`);
 }
 
 const stripSemicolon = (sql: string) => sql.trim().replace(/;\s*$/, '');
@@ -146,7 +156,7 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
   const out: RepoObject[] = [];
   for (const o of Array.isArray(data) ? data : []) {
     if (!o || typeof o !== 'object' || !spaceIds.has(o.space) || typeof o.name !== 'string' || !/^[A-Z_][A-Z0-9_]{0,49}$/.test(o.name)) continue;
-    if (o.kind !== 'Local Table' && o.kind !== 'SQL View') continue;
+    if (!OBJECT_KINDS.includes(o.kind)) continue;
     if (out.some((x) => x.space === o.space && x.name === o.name)) continue;
     out.push({
       space: o.space,
@@ -156,7 +166,16 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       semanticUsage: SEMANTIC_USAGES.includes(o.semanticUsage) ? o.semanticUsage : 'Relational Dataset',
       sql: typeof o.sql === 'string' ? o.sql : undefined,
       deployed: o.deployed && typeof o.deployed === 'object'
-        ? { businessName: String(o.deployed.businessName ?? o.businessName), sql: typeof o.deployed.sql === 'string' ? o.deployed.sql : undefined }
+        ? {
+            businessName: String(o.deployed.businessName ?? o.businessName),
+            sql: typeof o.deployed.sql === 'string' ? o.deployed.sql : undefined,
+            flow: sanitizeFlow(o.deployed.flow),
+          }
+        : undefined,
+      remote: o.kind === 'Remote Table' ? sanitizeRemote(o.remote) : undefined,
+      flow: o.kind === 'Replication Flow' ? sanitizeFlow(o.flow) : undefined,
+      loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
+        ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,
       status: ['deployed', 'not_deployed', 'changes'].includes(o.status) ? o.status : 'not_deployed',
       changedAt: typeof o.changedAt === 'string' ? o.changedAt : now(),
