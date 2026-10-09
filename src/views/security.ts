@@ -1,6 +1,7 @@
 import { ctx } from '../ctx';
 import { isUnlocked } from '../progress';
 import { PEOPLE } from '../content/people';
+import { MISSIONS } from '../content/missions';
 import {
   GLOBAL_ADMIN, TEMPLATES, ADMIN_INFO, TEMPLATE_ORDER, roleIdError, templateLabel, type ScopedRole, type Template, type RoleInfo,
 } from '../security';
@@ -12,11 +13,12 @@ import { esc, spaceChip, openDialog } from '../ui';
  * with text actions on grey ground.
  */
 
-export type SecurityPage = 'users' | 'roles' | 'authorization';
+export type SecurityPage = 'users' | 'roles' | 'authorization' | 'activities';
 export const SECURITY_PAGES: { id: SecurityPage; label: string }[] = [
   { id: 'users', label: 'Users' },
   { id: 'roles', label: 'Roles' },
   { id: 'authorization', label: 'Authorization Overview' },
+  { id: 'activities', label: 'Activities' },
 ];
 let page: SecurityPage = 'roles';
 export const securityPage = () => page;
@@ -42,6 +44,7 @@ export function renderSecurity(main: HTMLElement) {
   main.classList.add('bleed');
   if (page === 'roles') renderRoles(main);
   else if (page === 'users') renderUsers(main);
+  else if (page === 'activities') renderActivities(main);
   else renderAuthorization(main);
 }
 
@@ -173,6 +176,67 @@ function renderAuthorization(main: HTMLElement) {
     renderSecurity(main);
   });
   main.querySelector('#auth-refresh')!.addEventListener('click', () => renderSecurity(main));
+}
+
+/** Which recorded events count as activities, and how the log names them (object type, activity). */
+const ACTIVITY_OF: [RegExp, string, string][] = [
+  [/^create-space:(.+)$/, 'SPACE', 'CREATE'],
+  [/^edit-space:(.+)$/, 'SPACE', 'UPDATE'],
+  [/^unlock:(.+)$/, 'SPACE', 'UNLOCK'],
+  [/^create-role:(.+)$/, 'ROLE', 'CREATE'],
+  [/^edit-role:(.+)$/, 'ROLE', 'UPDATE'],
+  [/^assign:(.+)$/, 'USER', 'ASSIGN_ROLES'],
+  [/^create-connection:(.+)$/, 'CONNECTION', 'CREATE'],
+  [/^upload-cert:(.+)$/, 'CERTIFICATE', 'UPLOAD'],
+  [/^save:(.+)$/, 'REPOSITORY_OBJECT', 'SAVE'],
+  [/^deploy:(.+)$/, 'REPOSITORY_OBJECT', 'DEPLOY'],
+];
+let activityType = 'all';
+
+/**
+ * Activities: who changed what, as the tenant logs it. The game has no clock, so the log is ordered by mission:
+ * every change you made while working on a mission, newest mission first.
+ */
+function renderActivities(main: HTMLElement) {
+  const rows: { mission: string; type: string; name: string; act: string }[] = [];
+  for (const m of MISSIONS) {
+    const mp = ctx.progress.missions[m.id];
+    if (!mp) continue;
+    const seen = new Set<string>();
+    for (const ev of mp.events) {
+      for (const [re, type, act] of ACTIVITY_OF) {
+        const hit = re.exec(ev);
+        if (!hit || seen.has(ev)) continue;
+        seen.add(ev);
+        rows.push({ mission: m.title, type, act, name: type === 'USER' ? hit[1].toUpperCase() : hit[1] });
+      }
+    }
+  }
+  rows.reverse();
+  const types = [...new Set(ACTIVITY_OF.map((a) => a[1]))];
+  const list = rows.filter((r) => activityType === 'all' || r.type === activityType);
+  main.innerHTML = `<div class="mon-page">
+    ${pageHead('Activities', 'Who created, changed or deployed what. Auditors read this log; you find out here who changed a role or a view before a load broke.',
+      `<label>Object Type <select id="act-type"><option value="all">All</option>${types.map((t) => `<option ${activityType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+       <label>User <select disabled><option>DATA_ARCHITECT (you)</option></select></label>`)}
+    <section class="mon-body">
+      <div class="panel mon-table">
+        <div class="mon-table-head"><h3>Activities (${list.length})</h3><span class="spacer"></span>
+          <button type="button" class="text-act" id="act-refresh">Refresh</button></div>
+        <div class="table-scroll"><table class="grid" id="activity-list">
+          <thead><tr><th>Mission</th><th>User</th><th>Object Type</th><th>Object Name</th><th>Activity</th></tr></thead>
+          <tbody>${list.length ? list.map((r) => `<tr><td>${esc(r.mission)}</td><td class="mono">DATA_ARCHITECT</td><td>${r.type}</td>
+              <td class="mono">${esc(r.name)}</td><td class="act">${r.act}</td></tr>`).join('')
+            : '<tr><td colspan="5" class="muted">No activities yet.</td></tr>'}</tbody>
+        </table></div>
+        <p class="muted mon-note">The game keeps no clock: changes are grouped by the mission you worked on, newest first. Saves from before the activity log only show what was recorded for each mission.</p>
+      </div>
+    </section></div>`;
+  main.querySelector<HTMLSelectElement>('#act-type')!.addEventListener('change', (e) => {
+    activityType = (e.target as HTMLSelectElement).value;
+    renderSecurity(main);
+  });
+  main.querySelector('#act-refresh')!.addEventListener('click', () => renderSecurity(main));
 }
 
 function userRolesHtml(user: string) {

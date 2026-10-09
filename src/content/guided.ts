@@ -1359,10 +1359,17 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   'c03-m03': [
     [
       {
-        title: 'Import Remote Tables',
+        title: 'The Import menu',
         view: 'builder:landing:RHN_IN',
-        target: '[data-new="remote"]',
-        body: `<p>Remote tables are created from the Data Builder of the space that owns the connection.</p>`,
+        target: '#import-menu-btn',
+        body: `<p>Remote tables are created from the Data Builder of the space that owns the connection. Everything that brings
+          objects in from outside sits in the <b>Import</b> menu of the object list, next to <b>+</b>.</p>`,
+        action: { do: 'Open the <b>Import</b> menu.', appear: '[data-menu-import="remote"]' },
+      },
+      {
+        title: 'Import Remote Tables',
+        target: '[data-menu-import="remote"]',
+        body: `<p>CSV files, CSN/JSON definitions and permissions come in the same way; here you need remote tables.</p>`,
         action: { do: 'Click <b>Import Remote Tables</b>.', appear: '.dialog [name="conn"]' },
       },
       {

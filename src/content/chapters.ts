@@ -183,7 +183,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Remote table',
     chapter: 3,
     text: 'An object of a connection, made available in a space. Data access Remote reads the source live on each query; Replicated (Snapshot) stores a copy that is refreshed by a new snapshot or a schedule.',
-    realTenant: 'Data Builder > Import Remote Tables; data access in the Data Integration Monitor > Remote Tables.',
+    realTenant: 'Data Builder > Import menu > Import Remote Tables; data access in the Data Integration Monitor > Remote Tables.',
   },
   {
     term: 'Replication flow',

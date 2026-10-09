@@ -17,7 +17,7 @@ import { renderChainEditor, newChainDraft } from './chain';
 import { DAC_USERS, securedFrom, assignmentError } from '../dac';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
-import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb } from '../ui';
+import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb, shownName } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
 import { EXCURSIONS } from '../content/chapters';
@@ -182,8 +182,6 @@ function renderLanding(main: HTMLElement) {
       </header>
       <section class="new-tiles" id="new-tiles" aria-label="Create new objects">
         ${NEW_TILES.filter((n) => !n.importTile).map(tile).join('')}
-        <span class="tile-sep" aria-hidden="true"></span>
-        ${NEW_TILES.filter((n) => n.importTile).map(tile).join('')}
       </section>
       <div class="db-list">
         <label class="search-field wide">${icon(ICONS.search)}<input type="search" id="object-search" placeholder='Search in: "All"' value="${esc(listFilter)}" aria-label="Search objects"></label>
@@ -191,6 +189,7 @@ function renderLanding(main: HTMLElement) {
           <button type="button" class="tb-icon" title="Filter" aria-label="Filter">${icon(ICONS.filter)}</button>
           <span class="spacer"></span>
           <span class="menu-wrap"><button type="button" class="tb-icon" id="new-menu-btn" title="New" aria-haspopup="menu">${icon(ICONS.plus)}${icon(ICONS.down, 'mini')}</button></span>
+          <span class="menu-wrap"><button type="button" class="tb-icon" id="import-menu-btn" title="Import" aria-haspopup="menu">${icon(ICONS.importIc)}${icon(ICONS.down, 'mini')}</button></span>
           <button type="button" class="tb-icon" disabled title="Deploy: open the object">${icon(ICONS.deploy)}</button>
           <button type="button" class="tb-icon" disabled title="Edit: open the object">${icon(ICONS.edit)}</button>
           <button type="button" class="tb-icon" disabled title="Delete: use the row action">${icon(ICONS.trash)}</button>
@@ -211,7 +210,7 @@ function renderLanding(main: HTMLElement) {
         <div class="list-in"><b>Shared with ${esc(space)}</b> <span class="muted">Objects of other spaces you can use as sources here. They stay read-only.</span></div>
         <div class="table-scroll"><table class="grid object-table" id="shared-list">
           <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th><th>From Space</th></tr></thead>
-          <tbody>${shared.map((o) => `<tr><td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+          <tbody>${shared.map((o) => `<tr><td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(shownName(o))}</button></td>
             <td>${esc(o.name)}</td><td>${typeText(o)}</td><td>${spaceChip(o.space)}</td></tr>`).join('')}</tbody>
         </table></div></div>` : ''}
     </div>`;
@@ -269,6 +268,23 @@ function renderLanding(main: HTMLElement) {
     menu.querySelectorAll<HTMLButtonElement>('[data-menu-new]').forEach((b) => b.addEventListener('click', () => create(b.dataset.menuNew!)));
     setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }));
   });
+  main.querySelector('#import-menu-btn')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wrap = (e.currentTarget as HTMLElement).parentElement!;
+    if (wrap.querySelector('.menu')) return wrap.querySelector('.menu')!.remove();
+    main.querySelectorAll('.list-toolbar .menu').forEach((m) => m.remove());
+    const menu = document.createElement('div');
+    menu.className = 'menu import-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = NEW_TILES.filter((n) => n.importTile).map((n) =>
+      `<button type="button" role="menuitem" data-menu-import="${n.id}" class="${isBuilt(n) ? '' : 'off'}">${esc(n.menuLabel ?? `${n.verb} ${n.label}`)}</button>`).join('');
+    wrap.append(menu);
+    menu.querySelectorAll<HTMLButtonElement>('[data-menu-import]').forEach((b) => b.addEventListener('click', () => {
+      menu.remove();
+      create(b.dataset.menuImport!);
+    }));
+    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }));
+  });
   main.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
     b.addEventListener('click', () => {
       ctx.track(`open:${b.dataset.open}`);
@@ -321,7 +337,7 @@ function objectRow(o: RepoObject, canShare: boolean) {
   const fav = favorites.has(key);
   return `<tr>
     <td class="cb"><input type="checkbox" aria-label="Select ${esc(o.name)}"></td>
-    <td><button type="button" class="link-btn" data-open="${esc(key)}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+    <td><button type="button" class="link-btn" data-open="${esc(key)}">${typeIcon(o)}${esc(shownName(o))}</button></td>
     <td>${esc(o.name)}</td>
     <td>${typeText(o)}</td><td class="col-opt">${esc(o.space)}</td><td>${statusChip(o)}</td>
     <td>${fmtStamp(o.changedAt)}</td>
@@ -339,7 +355,7 @@ function tileInfo(tile: NewTile) {
     : tile.chapter > ctx.currentChapter()
       ? `You build your first one in chapter ${tile.chapter}.`
       : 'Coming in a later build of the game.';
-  const { form, close } = openDialog(`New ${tile.label}`, `
+  const { form, close } = openDialog(`${tile.verb ?? 'New'} ${tile.label}`, `
     <p class="guide-lead">${esc(tile.text)}</p>
     <p class="muted">${esc(when)}</p>
     <div class="guide-actions"><button class="btn primary" type="submit">Got it</button></div>`);

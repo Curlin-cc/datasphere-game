@@ -218,7 +218,7 @@ export const CHAPTER_3: Mission[] = [
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Import Remote Tables is a tile in the Integrate group of the Data Builder. Data access and schedules are set in the Data Integration Monitor, not in the editor.' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'Import Remote Tables is in the Import menu of the object list on the Data Builder start page (the icon next to +). Data access and schedules are set in the Data Integration Monitor, not in the editor.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Remote reads the source on every query: always current, but every query loads the source. A snapshot is a copy: fast and independent, but only as fresh as the last load. A schedule refreshes it, and schedules need your consent.' },
       { label: 'Hint 3: a skeleton', cost: 20, text: 'Import TARIFFS and GRID_AREAS as RHN_IN_RT_… · Tariffs stay Remote · Grid areas: Load New Snapshot, then Schedule → Weekly (give consent first).' },
     ],

@@ -25,6 +25,7 @@ export const spaceChip = (id: string) => `<span class="chip" data-layer="${layer
 export const icon = (paths: string, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 16 16" aria-hidden="true">${paths}</svg>`;
 
 export const ICONS = {
+  importIc: '<rect x="2.5" y="2.5" width="9" height="9" rx="1.5"/><path d="M5 7l2 2 3.5-4M11.5 10v3.5H2.5"/>',
   chain: '<rect x="2" y="2.5" width="5" height="4" rx="1"/><rect x="9" y="9.5" width="5" height="4" rx="1"/><path d="M4.5 6.5v5H9"/>',
   share: '<circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M5.6 7.1l4.8-2.3M5.6 8.9l4.8 2.3"/>',
   table: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5h11M6.5 6.5V13"/>',
@@ -119,3 +120,25 @@ export const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 16).replace('T', ' ');
 };
+
+/** A browser preference (theme, name display). Storage can be blocked: then the choice lasts for this visit only. */
+const prefMemory: Record<string, string> = {};
+export function readUiPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key) ?? prefMemory[key] ?? null;
+  } catch {
+    return prefMemory[key] ?? null;
+  }
+}
+export function writeUiPref(key: string, value: string) {
+  prefMemory[key] = value;
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable */
+  }
+}
+/** Name shown first in object lists: business name, or technical name (Settings › UI Settings). */
+export const shownName = (o: { name: string; businessName: string }) =>
+  readUiPref('dsg-names') === 'technical' ? o.name : o.businessName;

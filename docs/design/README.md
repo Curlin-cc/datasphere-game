@@ -202,12 +202,19 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
 - [x] Security mit Unterpunkten in der Navigation (Users · Roles · Authorization Overview, aufgeklappt solange die App offen ist), jede Seite im Stil D:
       weißer Kopf mit Titel, Satz und Filterzeile, Tabelle „Users (n)“ / „Scoped Roles (n)“ / „Authorizations (n)“ mit Textaktionen auf grauem Grund;
       Vorlagenkarten der Rollen als eigene Tabelle-Panels darunter. Authorization Overview zeigt je Benutzer, Space und Vorlage, was erlaubt ist (lesend)
-- [x] System mit Unterpunkten Configuration · Administration · About in der Navigation (statt „About“-Pille); Administration mit Reitern
+- [x] System mit Unterpunkten Configuration · Administration in der Navigation (Bild 20); Administration mit Reitern
       System Configuration · Data Source Configuration · Security · App Integration · Notifications, nur erklärend. Klick auf „System“ öffnet Configuration
+- [x] Security zusätzlich mit **Activities** (in Bild 20 als Unterpunkt sichtbar): Protokoll der eigenen Änderungen (Spaces, Rollen, Zuweisungen,
+      Verbindungen, Zertifikate, Save/Deploy), nach Mission gruppiert, da das Spiel keine Uhr hat
+- [x] **Import-Menü** wie Bild 19: Symbol neben `+` in der Werkzeugleiste der Objektliste mit Import CSV File · Import Objects from CSN/JSON File ·
+      Import Entities · Import Remote Tables · Validate Remote Tables · Import Permissions; nur Remote Tables interaktiv, Rest erklärt. Keine Import-Kacheln mehr
+- [x] **Settings-Dialog** wie Bild 20: Avatar öffnet Benutzermenü (Settings · About · Sign Out); Settings mit linker Liste (User Account, Appearance,
+      Home Screen, Language & Region, Notifications, UI Settings, Privacy) und rechter Seite, „Close“ unten rechts. **Appearance** schaltet Horizon / Horizon Dark /
+      System (ersetzt den Theme-Knopf der Shellbar), **UI Settings** wählt Business oder Technical Name in den Objektlisten. About aus System hierher verschoben
 
 Noch offen:
-- [ ] Import-Kacheln: im Original im Import-Menü der Werkzeugleiste (Bild 19); im Spiel als Kacheln rechts vom Trenner, damit die Tutorials sie zeigen können
-- [ ] Settings-Dialog (Bild 20) statt einzelner Shell-Buttons
+- [ ] Shellbar rechts: im Original Glocke, Feedback, Support, Hilfe; im Spiel Rang/XP, Glossar, „How to play“ (spielspezifisch, bleibt)
+- [ ] Echte Screenshots fehlen für Connections (Bild 12 zeigt Translation), Security › Users/Roles/Authorization Overview/Activities (Stil D angenommen)
 
 ## 5. Arbeitsweise
 

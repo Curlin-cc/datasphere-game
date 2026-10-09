@@ -25,10 +25,15 @@ with sync_playwright() as p:
     pg.click('#object-list [data-open="RHN_REP.RHN_REP_F_INVOICES"]'); pg.wait_for_selector('#editor'); pg.click('#run'); pg.wait_for_timeout(500)
     g.shot('look-sql-editor' + sfx)
     pg.click('#ed-back'); pg.wait_for_selector('#new-tiles')
+    pg.click('#import-menu-btn'); pg.wait_for_timeout(200); g.shot('look-builder-import' + sfx); pg.click('#import-menu-btn')
     pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker'); pg.click('[data-fact="RHN_REP.RHN_REP_F_INVOICES"]')
     pg.wait_for_selector('#am-canvas'); g.shot('look-analytic' + sfx)
     for app in ['repository', 'spaces', 'monitor', 'connections', 'security', 'system', 'tasklogs']:
         g.nav(app); pg.wait_for_timeout(300); g.shot(f'look-{app}' + sfx)
-    for sub, attr, app in [('users', 'sec', 'security'), ('authorization', 'sec', 'security'), ('administration', 'sys', 'system'), ('about', 'sys', 'system')]:
+    for sub, attr, app in [('users', 'sec', 'security'), ('authorization', 'sec', 'security'), ('activities', 'sec', 'security'), ('administration', 'sys', 'system')]:
         g.nav(app); pg.click(f'.nav [data-{attr}="{sub}"]'); pg.wait_for_timeout(300); g.shot(f'look-{app}-{sub}' + sfx)
+    pg.click('#shell-user'); pg.wait_for_timeout(200); g.shot('look-user-menu' + sfx)
+    pg.click('[data-um="settings"]'); pg.wait_for_selector('.settings-dlg'); g.shot('look-settings' + sfx)
+    pg.click('[data-set="appearance"]'); pg.wait_for_timeout(150); g.shot('look-settings-appearance' + sfx)
+    pg.keyboard.press('Escape')
     g.done()

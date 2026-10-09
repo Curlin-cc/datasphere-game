@@ -193,8 +193,10 @@ export interface NewTile {
   label: string;
   /** Word on the tile, default "New". */
   verb?: string;
-  /** Import tiles sit apart at the end of the strip (in the real tenant they are in the Import menu). */
+  /** Import entries are not tiles: they sit in the Import menu of the object list toolbar (Bild 19). */
   importTile?: boolean;
+  /** Text in the Import menu, e.g. "Import CSV File". */
+  menuLabel?: string;
   /** 32×32 line icon, drawn large and grey on the tile. */
   icon: string;
   text: string;
@@ -225,10 +227,18 @@ export const NEW_TILES: NewTile[] = [
     icon: '<rect x="4" y="5" width="9" height="9" rx="2"/><path d="M6.5 9.5l1.7 1.7 3-3.2"/><rect x="4" y="19" width="9" height="9" rx="2"/><circle cx="24" cy="9.5" r="4.5"/><circle cx="24" cy="23.5" r="4.5"/><path d="M13 9.5h6.5M13 23.5h6.5M8.5 14v5"/>' },
   { id: 'dac', label: 'Data Access Control', chapter: 8, text: 'Row-level security: decides which users see which rows of a view.',
     icon: '<path d="M8 4h11l6 6v6M8 4v24h8"/><path d="M19 4v6h6"/><rect x="17.5" y="21" width="10" height="7" rx="1.5"/><path d="M20 21v-2.5a2.5 2.5 0 015 0V21"/>' },
-  { id: 'remote', label: 'Remote Tables', verb: 'Import', importTile: true, chapter: 3, text: 'Makes objects of a connection available in the space without copying them. Data access is remote (live) or a replicated snapshot.',
-    icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M16 15.5v8M12.5 20l3.5 3.5 3.5-3.5"/>' },
-  { id: 'csv', label: 'CSV File', verb: 'Import', importTile: true, text: 'Uploads a CSV file into a new local table, with delimiter and column types detected. Good for one-off files; recurring files come in through a flow.',
+  { id: 'csv', label: 'CSV File', verb: 'Import', importTile: true, menuLabel: 'Import CSV File', text: 'Uploads a CSV file into a new local table, with delimiter and column types detected. Good for one-off files; recurring files come in through a flow.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M12 17h9M12 21h9M12 25h6"/>' },
+  { id: 'csn', label: 'Objects from CSN/JSON File', verb: 'Import', importTile: true, menuLabel: 'Import Objects from CSN/JSON File', text: 'Creates objects from a CSN/JSON definition file, for example one exported from another tenant or written by a tool. Definitions only, no data.',
+    icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
+  { id: 'entities', label: 'Entities', verb: 'Import', importTile: true, menuLabel: 'Import Entities', text: 'Imports entities with their semantics from an SAP source system (for example CDS views of S/4HANA) as remote tables plus views. The guided version of this is Semantic Onboarding.',
+    icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
+  { id: 'remote', label: 'Remote Tables', verb: 'Import', importTile: true, menuLabel: 'Import Remote Tables', chapter: 3, text: 'Makes objects of a connection available in the space without copying them. Data access is remote (live) or a replicated snapshot.',
+    icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M16 15.5v8M12.5 20l3.5 3.5 3.5-3.5"/>' },
+  { id: 'validate', label: 'Remote Tables', verb: 'Validate', importTile: true, menuLabel: 'Validate Remote Tables', text: 'Compares remote tables with their source: whether columns were added, removed or changed since the import. Run it after a source system upgrade.',
+    icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
+  { id: 'permissions', label: 'Permissions', verb: 'Import', importTile: true, menuLabel: 'Import Permissions', text: 'Takes over row-level permissions from an SAP BW or S/4HANA source as permissions tables and data access controls, instead of maintaining them twice.',
+    icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
 ];
 
 /** Order of the side navigation, as in the real tenant (docs/design/README.md, section 1). */

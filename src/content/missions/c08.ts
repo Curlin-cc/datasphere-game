@@ -158,7 +158,7 @@ export const CHAPTER_8: Mission[] = [
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'New Data Access Control is the last tile before the import tiles. Its Data Preview lists each user with his values.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'New Data Access Control is the last tile of the strip. Its Data Preview lists each user with his values.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Identifier = who (user ID). Criterion = what (the value that must match a column of the protected view).' },
       { label: 'Hint 3: the setup', cost: 25, text: 'Permissions entity RHN_REP_T_PERMISSIONS, identifier USER_ID, criterion GRID_AREA.' },
     ],

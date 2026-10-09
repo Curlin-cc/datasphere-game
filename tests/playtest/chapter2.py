@@ -62,6 +62,8 @@ with sync_playwright() as p:
     pg.select_option('#auth-user', 'tschulz')
     print('AUTH tim:', pg.inner_text('#auth-list tbody').replace('\n', ' ').replace('\t', ' '))
     pg.screenshot(path=f'{S}/authorization.png')
+    pg.click('.nav [data-sec="activities"]'); pg.wait_for_selector('#activity-list')
+    print('ACTIVITIES:', pg.inner_text('.mon-table-head h3'), '|', pg.inner_text('#activity-list tbody tr:first-child').replace('\t', ' '))
     g.next_mission()
     g.nav('security'); pg.wait_for_timeout(300)
     pg.click('.nav [data-sec="users"]')

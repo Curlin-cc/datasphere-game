@@ -24,6 +24,7 @@ import { renderSpaces } from './views/spaces';
 import { renderSecurity, securityTo, securityPage, SECURITY_PAGES, type SecurityPage } from './views/security';
 import { renderConnections } from './views/connections';
 import { renderMonitor, monitorTo } from './views/monitor';
+import { openUserMenu } from './views/settings';
 import { renderSystem, systemTo, systemArea, SYSTEM_PAGES, type SystemArea } from './views/system';
 import { renderStatements } from './views/statements';
 import { renderTaskLogs } from './views/tasklogs';
@@ -111,8 +112,7 @@ function renderFrame() {
         <span class="rank" id="rank" title="Earn XP by solving missions. Hints cost XP.">${rankHtml()}</span>
         <button class="shell-icon" id="glossary-open" type="button" aria-label="Glossary" title="Glossary">${icon(ICONS.book)}</button>
         <button class="shell-icon" id="guide-open" type="button" aria-label="How to play" title="How to play">${icon(ICONS.help)}</button>
-        <button class="shell-icon" id="theme-toggle" type="button" aria-label="Switch light or dark theme" title="Theme">${icon(ICONS.theme)}</button>
-        <span class="shell-avatar" title="You: data architect at Stadtwerke Rheinau">DA</span>
+        <button class="shell-avatar" id="shell-user" type="button" aria-haspopup="menu" aria-label="User menu: Settings, About" title="Data Architect · Settings">DA</button>
         <button class="shell-icon" id="shell-apps" type="button" aria-label="Home" title="Home">${icon(ICONS.grid)}</button>
       </header>
       <nav class="nav" aria-label="Side navigation">${navHtml()}</nav>
@@ -132,7 +132,7 @@ function renderFrame() {
     if (prev) setView(prev, true, false);
   });
   app.querySelectorAll('#brand-home, #shell-apps').forEach((b) => b.addEventListener('click', () => setView('home')));
-  app.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
+  app.querySelector<HTMLElement>('#shell-user')!.addEventListener('click', (e) => openUserMenu(e.currentTarget as HTMLElement));
   app.querySelector('#guide-open')!.addEventListener('click', openGuide);
   app.querySelector('#glossary-open')!.addEventListener('click', () => setView('glossary'));
   renderView();
@@ -324,12 +324,6 @@ function renderRank() {
   if (el) el.innerHTML = rankHtml();
 }
 
-function toggleTheme() {
-  const root = document.documentElement;
-  const isDark = root.dataset.theme === 'dark' || (!root.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  root.dataset.theme = isDark ? 'light' : 'dark';
-  writePref('dsg-theme', root.dataset.theme);
-}
 
 // ---------------------------------------------------------------- tutorials
 

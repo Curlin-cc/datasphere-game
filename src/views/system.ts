@@ -5,18 +5,17 @@ import { esc, openDialog, toast } from '../ui';
 import { THRESHOLDS, simulateStories } from '../perf';
 
 /**
- * System app with its pages in the side navigation (System ›): Configuration (tenant-wide settings), Administration and About. In the game, Configuration > Security
+ * System app with its pages in the side navigation (System ›, Bild 20): Configuration (tenant-wide settings) and Administration. About sits in the user menu (src/views/settings.ts). In the game, Configuration > Security
  * (trusted certificates) and Configuration > Data Integration (Cloud Connectors, agents) are interactive;
  * the other areas explain what they are for.
  */
 
 type Tab = 'integration' | 'security' | 'audit' | 'monitoring' | 'ip' | 'tasklogs' | 'dbaccess' | 'tenant' | 'workload';
 let tab: Tab = 'integration';
-export type SystemArea = 'configuration' | 'administration' | 'about';
+export type SystemArea = 'configuration' | 'administration';
 export const SYSTEM_PAGES: { id: SystemArea; label: string }[] = [
   { id: 'configuration', label: 'Configuration' },
   { id: 'administration', label: 'Administration' },
-  { id: 'about', label: 'About' },
 ];
 let area: SystemArea = 'configuration';
 /** Current page; with an argument, switch to that page (navigation). */
@@ -75,11 +74,6 @@ export function renderSystem(main: HTMLElement) {
         </nav>
         ${ADMIN_TABS.find((x) => x.id === adminTab)!.sections.map(([h, text]) => `<section class="sys-section"><h2>${esc(h)}</h2>
           <div class="sys-content panel"><p class="sys-lead">${esc(text)}</p><p class="muted">Set up by the tenant owner; not part of this game.</p></div></section>`).join('')}`
-      : area === 'about' ? `<section class="sys-section"><h2>About</h2><div class="sys-content panel">
-          <dl class="props-list wide-dl"><dt>Tenant</dt><dd>Stadtwerke Rheinau, training tenant</dd>
-            <dt>Capacity</dt><dd>${CAPACITY.diskGB} GB disk, ${CAPACITY.memoryGB} GB in-memory</dd>
-            <dt>Version</dt><dd>Datasphere Game, simulated</dd></dl>
-          <p class="muted">In a real tenant, About shows the version, the tenant URL and the license figures.</p></div></section>`
       : `<nav class="sys-tabs sub-nav" aria-label="Configuration areas">
           ${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
         </nav>

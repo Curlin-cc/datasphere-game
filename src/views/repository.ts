@@ -1,6 +1,6 @@
 import { ctx } from '../ctx';
 import { objectKey, STATUS_LABEL, OBJECT_KINDS } from '../repo';
-import { esc, spaceChip, icon, ICONS } from '../ui';
+import { esc, spaceChip, icon, ICONS, shownName } from '../ui';
 import { openObjectInBuilder, typeIcon, fmtStamp } from './builder';
 
 /** Repository Explorer: search all objects of all spaces you are a member of, open them in their editor. */
@@ -62,7 +62,7 @@ export function renderRepository(main: HTMLElement) {
     count.textContent = `(${rows.length} of ${t.objects.length})`;
     body.innerHTML = rows.length
       ? rows.map((o) => `<tr>
-          <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+          <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(shownName(o))}</button></td>
           <td>${esc(o.name)}</td>
           <td>${esc(o.kind)}${o.kind === 'Analytic Model' || o.kind === 'Replication Flow' ? '' : ` <span class="muted">(${esc(o.semanticUsage)})</span>`}</td>
           <td>${esc(o.space)}</td>
