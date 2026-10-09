@@ -199,9 +199,13 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
 - [x] System › Configuration wie Bild 15: Reiterleiste oben (Data Integration · Security · Audit · Monitoring · IP Allowlist · Tasks · Database Access ·
       Tenant Configuration · Workload Management), Abschnitte links Titel, rechts Inhalt auf grauem Grund; „About“ als Pille rechts
 
+- [x] Security mit Unterpunkten in der Navigation (Users · Roles · Authorization Overview, aufgeklappt solange die App offen ist), jede Seite im Stil D:
+      weißer Kopf mit Titel, Satz und Filterzeile, Tabelle „Users (n)“ / „Scoped Roles (n)“ / „Authorizations (n)“ mit Textaktionen auf grauem Grund;
+      Vorlagenkarten der Rollen als eigene Tabelle-Panels darunter. Authorization Overview zeigt je Benutzer, Space und Vorlage, was erlaubt ist (lesend)
+- [x] System mit Unterpunkten Configuration · Administration · About in der Navigation (statt „About“-Pille); Administration mit Reitern
+      System Configuration · Data Source Configuration · Security · App Integration · Notifications, nur erklärend. Klick auf „System“ öffnet Configuration
+
 Noch offen:
-- [ ] Security-Listen (Roles, Users) im Tabellenstil wie D
-- [ ] System: Unterpunkte Configuration · Administration in der Navigation (heute ein Eintrag mit Reiterleiste und „About“ rechts)
 - [ ] Import-Kacheln: im Original im Import-Menü der Werkzeugleiste (Bild 19); im Spiel als Kacheln rechts vom Trenner, damit die Tutorials sie zeigen können
 - [ ] Settings-Dialog (Bild 20) statt einzelner Shell-Buttons
 

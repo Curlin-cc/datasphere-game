@@ -142,6 +142,40 @@ with sync_playwright() as p:
     print('   Show me finished, tour open:', pg.locator('.tour-card').count())
     g.done()
 
+# ---------------- c02-m01 / c02-m02: Security pages in the side navigation (Roles, Users)
+with sync_playwright() as p:
+    g = Game(p, S)
+    pg = g.pg
+    T2 = {"spaces": SPACES, "shares": [], "activeSpace": "RHN_IN"}
+    g.start(save_before(2, 'c02-m01', T2))
+    nexts(pg)  # intro
+    while title(pg) != 'Open Security': nexts(pg)
+    expect(pg, 'Open Security'); pg.click('.nav [data-view="security"]')
+    expect(pg, 'Roles'); pg.click('.nav [data-sec="users"]'); pg.wait_for_timeout(200)
+    print('   still on Roles step after Users:', title(pg))
+    pg.click('.nav [data-sec="roles"]')
+    expect(pg, 'The templates'); nexts(pg)
+    expect(pg, 'Create a scoped role')
+    g.skip_tutorial()
+    pg.click('#next-mission') if pg.locator('#next-mission').count() else None
+    g.done()
+
+with sync_playwright() as p:
+    g = Game(p, S)
+    pg = g.pg
+    sv = save_before(2, 'c02-m02', {"spaces": SPACES, "shares": [], "activeSpace": "RHN_IN",
+        "roles": [{"id": "RHN_MODELER", "template": "MODELER", "scope": ["RHN_HARM"]}], "assignments": []})
+    sv['missions']['c02-m01'] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 25, "events": []}
+    g.start(sv)
+    while title(pg) != 'Open Security': nexts(pg)
+    pg.click('.nav [data-view="security"]')
+    expect(pg, 'Users'); pg.click('.nav [data-sec="users"]')
+    expect(pg, 'Read the jobs'); nexts(pg)
+    expect(pg, 'Edit roles'); pg.click('[data-user="tschulz"]')
+    expect(pg, 'Tick the spaces'); pg.check('.dialog [name="r:RHN_MODELER"][value="RHN_HARM"]'); pg.click('.dialog [type="submit"]')
+    expect(pg, 'Everyone else')
+    g.done()
+
 # ---------------- c05-m01 and c05-m02: build and change a harmonization view while the tour waits
 from chapter5_data import CONTRACTS, KEYS, TENANT5  # noqa: E402
 

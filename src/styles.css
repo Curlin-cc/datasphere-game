@@ -1405,6 +1405,12 @@ table.grid.object-table .status { white-space: nowrap; }
 .mon-table-head .spacer { flex: 1; }
 .mon-table .run-log, .mon-table > table { margin: 0 16px 8px; }
 .mon-note { margin: 8px 16px 0; font-size: 12.5px; }
+.mon-lead { margin: -6px 0 0; color: var(--ink-soft); max-width: 110ch; }
+.mon-head:not(:has(.mon-filters)) { padding-bottom: 18px; }
+.mon-head .mon-filters:last-child { padding-bottom: 18px; }
+.mon-cards { padding: 0 16px 8px; }
+.mon-table .row-actions { white-space: nowrap; }
+.mon-table .row-actions .text-act + .text-act { margin-left: 12px; }
 .text-act { font: inherit; background: none; border: 0; color: var(--link); cursor: pointer; padding: 2px 0; }
 .text-act:disabled { color: var(--ink-faint); cursor: default; opacity: .7; }
 td.act { color: var(--link); }
@@ -1423,6 +1429,9 @@ td.act { color: var(--link); }
 .sys-section > h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
 .sys-content { min-width: 0; }
 .sys-content.system-body { padding: 0; }
+.sys-content.panel { padding: 14px 18px; }
+.sys-content.panel .sys-lead { margin-bottom: 6px; }
+.sys-content.panel > :last-child { margin-bottom: 0; }
 .sys-lead { margin: 0 0 12px; color: var(--ink); max-width: 110ch; }
 .sys-content table.grid { background: var(--surface); width: 100%; }
 @media (max-width: 1100px) {

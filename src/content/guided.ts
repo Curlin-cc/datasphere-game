@@ -17,7 +17,8 @@ import type { TourStep } from '../tutorial';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s);
 const val = (s: string) => ($<HTMLInputElement>(s)?.value ?? '').trim();
-const appOpen = (id: string) => !!$(`.nav [data-view="${id}"][aria-current="page"]`);
+/** The app is open: its entry is selected, or (Security, System) it is expanded with its pages below. */
+const appOpen = (id: string) => !!$(`.nav [data-view="${id}"][aria-current="page"], .nav [data-view="${id}"][aria-expanded="true"]`);
 const builderSpace = (space: string) => !!$('#space-switch')?.textContent?.includes(space) && !!$('#new-tiles');
 const editorOf = (key: string) => !!$('.ed-title small')?.textContent?.includes(key);
 const noDialog = () => !$('.guide-overlay');
@@ -1133,7 +1134,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 2
   'c02-m01': [
     [
-      nav('security', 'Security', `<p>Users, roles and who may do what.</p>`),
+      nav('security', 'Security', `<p>Users, roles and who may do what. Security opens its pages below the entry.</p>`),
+      {
+        title: 'Roles',
+        target: '.nav [data-sec="roles"]',
+        body: `<p>Roles are built from templates. One role per job, valid in the spaces of its scope.</p>`,
+        action: { do: 'Click <b>Roles</b> under Security in the side navigation.', check: () => !!$('.nav [data-sec="roles"][aria-current="page"]') },
+      },
       {
         title: 'The templates',
         target: '#templates',
@@ -1172,12 +1179,12 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c02-m02': [
     [
-      nav('security', 'Security', `<p>People are on the second tab.</p>`),
+      nav('security', 'Security', `<p>Security has its own pages in the side navigation: Users, Roles and the Authorization Overview.</p>`),
       {
         title: 'Users',
-        target: '[data-tab="users"]',
+        target: '.nav [data-sec="users"]',
         body: `<p>Eight people need access. Each row says what the person does, in their own words.</p>`,
-        action: { do: 'Open the <b>Users</b> tab.', check: () => tabOn('[data-tab="users"]') },
+        action: { do: 'Click <b>Users</b> under Security in the side navigation.', check: () => !!$('.nav [data-sec="users"][aria-current="page"]') },
       },
       {
         title: 'Read the jobs',
@@ -1215,9 +1222,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       nav('security', 'Security', `<p>Nina is in the user list now.</p>`),
       {
         title: 'Users',
-        target: '[data-tab="users"]',
+        target: '.nav [data-sec="users"]',
         body: `<p>Find Nina Krüger, starting on Monday.</p>`,
-        action: { do: 'Open the <b>Users</b> tab.', check: () => tabOn('[data-tab="users"]') },
+        action: { do: 'Click <b>Users</b> under Security in the side navigation.', check: () => !!$('.nav [data-sec="users"][aria-current="page"]') },
       },
       {
         title: 'The joiner',

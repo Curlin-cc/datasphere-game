@@ -5,14 +5,50 @@ import { esc, openDialog, toast } from '../ui';
 import { THRESHOLDS, simulateStories } from '../perf';
 
 /**
- * System app: Configuration (tenant-wide settings) and About. In the game, Configuration > Security
+ * System app with its pages in the side navigation (System ›): Configuration (tenant-wide settings), Administration and About. In the game, Configuration > Security
  * (trusted certificates) and Configuration > Data Integration (Cloud Connectors, agents) are interactive;
  * the other areas explain what they are for.
  */
 
 type Tab = 'integration' | 'security' | 'audit' | 'monitoring' | 'ip' | 'tasklogs' | 'dbaccess' | 'tenant' | 'workload';
 let tab: Tab = 'integration';
-let area: 'configuration' | 'about' = 'configuration';
+export type SystemArea = 'configuration' | 'administration' | 'about';
+export const SYSTEM_PAGES: { id: SystemArea; label: string }[] = [
+  { id: 'configuration', label: 'Configuration' },
+  { id: 'administration', label: 'Administration' },
+  { id: 'about', label: 'About' },
+];
+let area: SystemArea = 'configuration';
+/** Current page; with an argument, switch to that page (navigation). */
+export function systemArea(next?: SystemArea) {
+  if (next) area = next;
+  return area;
+}
+
+type AdminTab = 'system' | 'sources' | 'security' | 'apps' | 'notifications';
+let adminTab: AdminTab = 'system';
+/** Administration tabs as in the real tenant. Only explained in the game. */
+const ADMIN_TABS: { id: AdminTab; label: string; sections: [string, string][] }[] = [
+  { id: 'system', label: 'System Configuration', sections: [
+    ['Session Timeout', 'How long an idle browser session stays logged on.'],
+    ['Allow SAP support user creation', 'Lets SAP support log on to analyse an incident, only for as long as the incident is open.'],
+  ] },
+  { id: 'sources', label: 'Data Source Configuration', sections: [
+    ['SAP BTP Core Account', 'The subaccount the Cloud Connectors register in. Needed before any on-premise source can be reached.'],
+    ['Live Data Sources', 'Which Cloud Connector location carries live connections to on-premise systems.'],
+  ] },
+  { id: 'security', label: 'Security', sections: [
+    ['Authentication Method', 'Who checks the passwords: SAP Cloud Identity Services by default, or the company\'s own identity provider (SAML single sign-on).'],
+    ['User ID', 'Which attribute of the identity provider becomes the user name in Security › Users.'],
+  ] },
+  { id: 'apps', label: 'App Integration', sections: [
+    ['OAuth Clients', 'Technical clients for tools and scripts that call the tenant, for example an OData consumer or the command line interface.'],
+    ['Trusted Identity Providers', 'Identity providers whose tokens the tenant accepts for OAuth clients.'],
+  ] },
+  { id: 'notifications', label: 'Notifications', sections: [
+    ['Email Notifications', 'Whether users get an email in addition to the bell in the shellbar, for example when a task chain fails.'],
+  ] },
+];
 
 /** Configuration tabs in the order of the real tenant (Bild 15). */
 const TABS: { id: Tab; label: string; text: string }[] = [
@@ -34,24 +70,26 @@ export function renderSystem(main: HTMLElement) {
   main.classList.add('bleed');
   main.innerHTML = `
     <div class="sys-page">
-      <nav class="sys-tabs sub-nav" aria-label="Configuration areas">
-        ${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${area === 'configuration' && x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
-        <span class="spacer"></span>
-        <button type="button" class="sys-more" data-area="${area === 'about' ? 'configuration' : 'about'}" ${area === 'about' ? 'aria-current="page"' : ''}>About</button>
-      </nav>
-      ${area === 'about' ? `<section class="sys-section"><h2>About</h2><div class="sys-content panel">
+      ${area === 'administration' ? `<nav class="sys-tabs sub-nav" aria-label="Administration areas">
+          ${ADMIN_TABS.map((x) => `<button type="button" data-admin="${x.id}" ${x.id === adminTab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
+        </nav>
+        ${ADMIN_TABS.find((x) => x.id === adminTab)!.sections.map(([h, text]) => `<section class="sys-section"><h2>${esc(h)}</h2>
+          <div class="sys-content panel"><p class="sys-lead">${esc(text)}</p><p class="muted">Set up by the tenant owner; not part of this game.</p></div></section>`).join('')}`
+      : area === 'about' ? `<section class="sys-section"><h2>About</h2><div class="sys-content panel">
           <dl class="props-list wide-dl"><dt>Tenant</dt><dd>Stadtwerke Rheinau, training tenant</dd>
             <dt>Capacity</dt><dd>${CAPACITY.diskGB} GB disk, ${CAPACITY.memoryGB} GB in-memory</dd>
             <dt>Version</dt><dd>Datasphere Game, simulated</dd></dl>
           <p class="muted">In a real tenant, About shows the version, the tenant URL and the license figures.</p></div></section>`
-      : `<section class="sys-section"><h2>${esc(info.label)}</h2>
+      : `<nav class="sys-tabs sub-nav" aria-label="Configuration areas">
+          ${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
+        </nav>
+        <section class="sys-section"><h2>${esc(info.label)}</h2>
           <div class="sys-content system-body" id="system-body">${body(tab, used)}</div></section>`}
     </div>`;
 
-  main.querySelectorAll<HTMLButtonElement>('[data-area]').forEach((b) =>
+  main.querySelectorAll<HTMLButtonElement>('[data-admin]').forEach((b) =>
     b.addEventListener('click', () => {
-      area = b.dataset.area as typeof area;
-      ctx.track(`system:${area}`);
+      adminTab = b.dataset.admin as AdminTab;
       renderSystem(main);
     }),
   );

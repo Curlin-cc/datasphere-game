@@ -71,10 +71,10 @@ src/views/semantics.ts ← Kapitel 6+: Spaltenrollen (Key/Attribute/Measure/Pare
 src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
 src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces, öffnet Objekte im Data Builder
 src/views/spaces.ts  ← Space Management (Kacheln, Anlegen/Bearbeiten/Löschen)
-src/views/security.ts ← Security (Roles, Users)
+src/views/security.ts ← Security mit Unterseiten Users · Roles · Authorization Overview (`SECURITY_PAGES`, `securityTo`), Monitoring-Listenstil
 src/views/connections.ts ← Connections: Space-Auswahl, Liste, Create (Typ-Auswahl mit Features), Edit, Validate, Delete
 src/views/monitor.ts ← Data Integration Monitor: Remote Tables (Snapshot, Remove, Schedule), Views ab Kapitel 9 (Persistenz, Schedule, Läufe, View Analyzer), Task Chains ab Kapitel 10 (Run, Schedule, Schritte mit Sprung in den Detailmonitor), Flows (Run, Schedule, Lauf-Log), Remote Queries, Consent
-src/views/system.ts  ← System: Configuration (Monitoring = Expensive Statement Tracing ab Kapitel 9, Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
+src/views/system.ts  ← System mit Unterseiten Configuration · Administration · About (`SYSTEM_PAGES`, `systemArea`); Configuration (Monitoring = Expensive Statement Tracing ab Kapitel 9, Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
 src/views/flow.ts    ← Data Builder: „Import Remote Tables“-Dialog, Replication-Flow-Editor, `flowError` (Deploy-Prüfung)
 src/integration.ts   ← Kapitel 3: Verbindungstypen + Features, Quellsysteme, validateConnection, Remote Tables, runFlow, truncateRisk, Space-Sperre (`lockError`), Wiederherstellung nach Reload
 src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload, Impact/Lineage (`readsFrom`, `usedBy`), Semantik (`Semantics`, `semanticsOf`) im Design- und Deploy-Stand
@@ -151,7 +151,7 @@ und gekennzeichnet bauen. Abgleich und offene Punkte: `docs/HANDBUCH_ABGLEICH.md
 Ab Kapitel 5 prüfen Missionen die **deployte View** (`ResultCheck.object` + `columns`), nicht den Editor; `metric`-Prüfungen liefern fachliche Kennzahlen.
 Ab Kapitel 7 fragen `model`-Prüfungen das **deployte Analytic Model** ab (Zeilen = Attribut-IDs wie `RHN_REP_D_GRID_AREA.REGION`, Measures nach Namen).
 
-Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `space:builder:RHN_IN`,
+Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `security:<users|roles|authorization>`, `system:<configuration|administration|about>`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,
 Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-remote:…`, `snapshot:…`, `schedule:…`, `run:<Flow>:<Status>`,
 `monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 12: `expose:<Objekt>:on|off`, `dbaccess:<Space>`, `dbuser:<Space>#<Suffix>:r|w|rw`, `transport:<Seite>`, `package-add:<Objekt>`, `package-require:<Paket>`, `package-validate:<Paket>:ok|fail`, `package-save:<Paket>`, `export:<Paket>:Success|Failed`, `import-dialog:<Paket>`, `catalog-open:<Objekt>`, `asset-tag:<Objekt>:<Tag>`, `asset-term:<Objekt>:<Begriff>`, `asset-publish:<Objekt>`, `term-create:<Begriff>`, `term-publish:<Begriff>`, `bb-space:<Space>`, `bb-open:<Space>.<Objekt>`, `bb-tab:<Objekt>:<Reiter>`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`; Kapitel 10: `chain-add:<Objekt>`, `chain-refused:<Objekt>`, `chain-run:<Kette>:<Status>`, `chain-step-open:<Objekt>`, `tasklogs-status:…`, `tasklogs-space:…`, `tasklog-open:<Objekt>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
@@ -165,11 +165,10 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. Curlin spielt die Exkurse am Artifact durch; offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` (Punkte 6, 7) am echten Tenant prüfen,
    v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
-2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Security-Listen im Tabellenstil, System-Unterpunkte,
-   Import-Kacheln, Settings-Dialog. Echten Screenshot der Connections-App besorgen (Bild 12 zeigt Translation)
-3. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
-4. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
-5. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Import-Kacheln ins Import-Menü (Tutorials anpassen),
+   Settings-Dialog (Bild 20). Echte Screenshots fehlen für Connections (Bild 12 zeigt Translation) und Security › Users/Roles (Stil D angenommen)
+3. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
+4. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
    und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
    erneutes Deploy die persistierten Daten entfernt; Kapitel 10: ob Task Chains Objekte anderer Spaces nur über geteilte Ketten erreichen
-6. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+5. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)

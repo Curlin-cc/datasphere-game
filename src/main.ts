@@ -21,10 +21,10 @@ import { esc, icon, ICONS, setCrumb } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
-import { renderSecurity } from './views/security';
+import { renderSecurity, securityTo, securityPage, SECURITY_PAGES, type SecurityPage } from './views/security';
 import { renderConnections } from './views/connections';
 import { renderMonitor, monitorTo } from './views/monitor';
-import { renderSystem, systemTo } from './views/system';
+import { renderSystem, systemTo, systemArea, SYSTEM_PAGES, type SystemArea } from './views/system';
 import { renderStatements } from './views/statements';
 import { renderTaskLogs } from './views/tasklogs';
 import { restoreIntegration } from './integration';
@@ -171,6 +171,20 @@ function navHtml() {
       ${open ? `<div class="nav-children">${TRANSPORT_PAGES.map((p) => `<button type="button" class="child" data-view="transport" data-tsub="${p.id}"
         ${ctx.view === 'transport' && transportPage() === p.id ? 'aria-current="page"' : ''}><span class="label">${p.label}</span></button>`).join('')}</div>` : ''}`;
   };
+  /** Security and System open their pages below the entry while the app is open (Bild 1: Security ›, System ›). */
+  const bottomItem = (id: AppId) => {
+    const a = appById(id)!;
+    const live = a.interactive !== undefined && a.interactive <= currentChapter();
+    if (!live || (id !== 'security' && id !== 'system')) return item(id);
+    const open = ctx.view === id;
+    const pages = id === 'security' ? SECURITY_PAGES : SYSTEM_PAGES;
+    const current = id === 'security' ? securityPage() : systemArea();
+    const attr = id === 'security' ? 'data-sec' : 'data-sys';
+    return `<button type="button" data-view="${a.id}" title="${esc(a.label)}: ${esc(a.summary)}" aria-expanded="${open}">
+        ${icon(a.icon)}<span class="label">${esc(a.label)}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
+      ${open ? `<div class="nav-children">${pages.map((p) => `<button type="button" class="child" ${attr}="${p.id}"
+        ${current === p.id ? 'aria-current="page"' : ''}><span class="label">${p.label}</span></button>`).join('')}</div>` : ''}`;
+  };
   const section = (sec: NavSection) => {
     const ids = NAV_ORDER[sec];
     const exp = EXPANDABLE[sec];
@@ -186,7 +200,7 @@ function navHtml() {
       return `<button type="button" class="nav-title" data-group="${sec}" aria-expanded="${open}"><span class="label">${title}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
         ${open ? ids.map((id) => (id === 'transport' && currentChapter() >= EXCURSIONS ? transportItem() : item(id))).join('') : ''}`;
     }
-    return ids.map((id) => item(id)).join('');
+    return ids.map((id) => (sec === 'bottom' ? bottomItem(id) : item(id))).join('');
   };
   return `${section('top')}${section('monitoring')}${section('catalog')}${section('apps')}${section('utilities')}
     <div class="nav-spacer"></div><div class="nav-sep"></div>${section('bottom')}`;
@@ -199,7 +213,22 @@ function bindNav() {
       if (b.dataset.tsub) transportTo(b.dataset.tsub as TransportPage);
       if (b.dataset.view === 'catalog') catalogReset();
       if (b.dataset.view === 'business') businessReset();
+      if (b.dataset.view === 'system' && ctx.view !== 'system') systemArea('configuration');
       setView(b.dataset.view as ViewId, true);
+    }),
+  );
+  app.querySelectorAll<HTMLButtonElement>('.nav [data-sec]').forEach((b) =>
+    b.addEventListener('click', () => {
+      securityTo(b.dataset.sec as SecurityPage);
+      ctx.track(`security:${b.dataset.sec}`);
+      setView('security', true);
+    }),
+  );
+  app.querySelectorAll<HTMLButtonElement>('.nav [data-sys]').forEach((b) =>
+    b.addEventListener('click', () => {
+      systemArea(b.dataset.sys as SystemArea);
+      ctx.track(`system:${b.dataset.sys}`);
+      setView('system', true);
     }),
   );
   app.querySelectorAll<HTMLButtonElement>('.nav [data-group]').forEach((b) =>

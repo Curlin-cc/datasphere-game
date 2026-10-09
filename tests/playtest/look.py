@@ -29,4 +29,6 @@ with sync_playwright() as p:
     pg.wait_for_selector('#am-canvas'); g.shot('look-analytic' + sfx)
     for app in ['repository', 'spaces', 'monitor', 'connections', 'security', 'system', 'tasklogs']:
         g.nav(app); pg.wait_for_timeout(300); g.shot(f'look-{app}' + sfx)
+    for sub, attr, app in [('users', 'sec', 'security'), ('authorization', 'sec', 'security'), ('administration', 'sys', 'system'), ('about', 'sys', 'system')]:
+        g.nav(app); pg.click(f'.nav [data-{attr}="{sub}"]'); pg.wait_for_timeout(300); g.shot(f'look-{app}-{sub}' + sfx)
     g.done()
