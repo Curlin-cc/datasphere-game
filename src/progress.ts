@@ -33,9 +33,14 @@ export interface Progress {
   currentMission: string;
   missions: Record<string, MissionProgress>;
   tutorialsSeen: string[];
+  /** Version of the tutorials the player has seen. When the tutorials are rebuilt, older saves see them again. */
+  tutorialVersion?: number;
   /** Spaces, storage and shares the player set up (chapter 1+). */
   tenant: TenantState;
 }
+
+/** Raise when the tutorials change a lot: every save then sees them again (2 = hands-on tutorials, 2026-10-09). */
+export const TUTORIAL_VERSION = 2;
 
 /** Bonus for a solution without review notes. */
 export const CLEAN_BONUS = 5;
@@ -44,7 +49,7 @@ export const CLEAN_BONUS = 5;
 export const RANK_XP = [0, 100, 350, 750];
 
 export function freshProgress(): Progress {
-  return { version: 4, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tenant: defaultTenant() };
+  return { version: 4, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tutorialVersion: TUTORIAL_VERSION, tenant: defaultTenant() };
 }
 
 export function missionProgress(p: Progress, id: string): MissionProgress {
@@ -91,7 +96,8 @@ export function sanitize(data: unknown): Progress | null {
   }
   const p = freshProgress();
   p.xp = Math.max(0, Math.round(d.xp));
-  p.tutorialsSeen = Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
+  // Saves from before the current tutorials see every tutorial again; progress and XP stay.
+  p.tutorialsSeen = (d as { tutorialVersion?: number }).tutorialVersion === TUTORIAL_VERSION && Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
   p.tenant = sanitizeTenant(d.tenant);
   if (typeof d.currentMission === 'string' && MISSIONS.some((m) => m.id === d.currentMission)) p.currentMission = d.currentMission;
   for (const [id, mp] of Object.entries(d.missions)) {
