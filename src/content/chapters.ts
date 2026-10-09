@@ -212,4 +212,34 @@ export const GLOSSARY: GlossaryTerm[] = [
     text: 'Lineage shows where an object gets its data from; impact shows which objects use it. Check both before you change or delete something others build on.',
     realTenant: 'Data Builder editor toolbar > Impact and Lineage Analysis; across spaces in the Catalog.',
   },
+  {
+    term: 'Semantic usage',
+    text: 'Says what an entity means for analytics: Relational Dataset (no special purpose), Fact, Dimension, Text or Hierarchy. It decides which properties the editor offers and how analytic models can use it.',
+    realTenant: 'Properties of a table or view in the Data Builder > Semantic Usage.',
+  },
+  {
+    term: 'Fact',
+    text: 'An entity with measures: numbers that are aggregated in reports, such as kWh or amounts. It holds keys to its dimensions, not their descriptions. The source of an analytic model.',
+    realTenant: 'Semantic usage Fact; measures in the Measures section.',
+  },
+  {
+    term: 'Dimension',
+    text: 'Master data that describes facts, such as grid areas, tariffs or customers. It has a key that identifies one row, and attributes.',
+    realTenant: 'Semantic usage Dimension; key columns in the Attributes section.',
+  },
+  {
+    term: 'Measure, attribute, key',
+    text: 'A measure is aggregated (summed). An attribute is used to group and filter: codes, IDs, dates. A key identifies one row of a dimension.',
+    realTenant: 'Column roles in the properties of a fact or dimension.',
+  },
+  {
+    term: 'Association',
+    text: 'A semantic link from one entity to another: target plus key mapping. It becomes a join only when a consumer needs the target, e.g. the analytic model offering a dimension.',
+    realTenant: 'Associations section of a table or view, or drawn in an Entity-Relationship Model.',
+  },
+  {
+    term: 'Star schema',
+    text: 'Facts in the middle, shared dimensions around them, connected by keys. Each dimension exists once and serves every fact.',
+    realTenant: 'Facts and dimensions with associations in the reporting space; analytic models on top.',
+  },
 ];

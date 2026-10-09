@@ -15,3 +15,4 @@ laufen also unabhängig voneinander; `chapter4.py` prüft zusätzlich die Migrat
 Aus dem Ordner `tests/playtest/` starten, damit `common.py` gefunden wird.
 Neue Missionen: Skript für das Kapitel ergänzen, bevor committet wird.
 Kapitel 5: `chapter5.py` baut alle Views mit typischen Fehlern; SQL und Startzustand in `chapter5_data.py` (auch von `guided.py` genutzt).
+Kapitel 6: `chapter6.py` (Startzustand mit den Kapitel-5-Views in `chapter6_data.py`), Helfer `Game.semantics(usage, roles, assoc)`.

@@ -250,6 +250,8 @@ async function checkStructure(check: StructureCheck): Promise<CheckOutcome> {
   const have = new Set(found.columns.map((c) => c.toUpperCase()));
   const missing = (check.columns ?? []).filter((c) => !have.has(c.toUpperCase()));
   if (missing.length) return { label: check.label, ok: false, message: `${check.object} is missing the column ${missing.join(', ')}.` };
+  const extra = (check.absent?.columns ?? []).filter((c) => have.has(c.toUpperCase()));
+  if (extra.length) return { label: check.label, ok: false, message: `${check.object} has the column ${extra.join(', ')}. ${check.absent!.message}` };
   return { label: check.label, ok: true, message: `${check.space}.${check.object} is in place.` };
 }
 

@@ -1,7 +1,7 @@
 import type { TourStep } from '../tutorial';
 
 /**
- * Strongly guided, hands-on tutorials for chapters 0 to 3 and 5.
+ * Strongly guided, hands-on tutorials for chapters 0 to 3, 5 and 6.
  *
  * GUIDED_INTROS: the concepts of a mission (read, then Next).
  * GUIDED_TOURS: one list of steps per task of the mission (index = task). Steps with `action` wait until the player
@@ -76,7 +76,7 @@ const newView = (body: string): TourStep => ({
 });
 
 /** Name, save and deploy a new view in RHN_HARM. */
-const nameSaveDeploy = (name: string, business: string): TourStep[] => [
+const nameSaveDeploy = (name: string, business: string, space = 'RHN_HARM', deployToo = true): TourStep[] => [
   {
     title: 'Names',
     target: '#properties',
@@ -90,13 +90,45 @@ const nameSaveDeploy = (name: string, business: string): TourStep[] => [
     title: 'Save',
     target: '#ed-save',
     body: `<p>Save creates the object in the repository: status <b>Not Deployed</b>.</p>`,
-    action: { do: 'Press <b>Save</b>.', event: `save:RHN_HARM.${name}` },
+    action: { do: 'Press <b>Save</b>.', event: `save:${space}.${name}` },
+  },
+  ...(deployToo ? [deployStep(`${space}.${name}`, '<p>Only a deployed view exists in the database. The check reads what is deployed.</p>')] : []),
+];
+
+function deployStep(key: string, body: string): TourStep {
+  return { title: 'Deploy', target: '#ed-deploy', body, action: { do: 'Press <b>Deploy</b>.', event: `deploy:${key}` } };
+}
+
+/** Chapter 6: set the semantic usage of the open view. */
+const usageStep = (usage: string, body: string): TourStep => ({
+  title: 'Semantic Usage',
+  target: '#prop-semantic',
+  body,
+  action: { do: `Set <b>Semantic Usage</b> to <i>${usage}</i>.`, check: () => val('#prop-semantic') === usage },
+});
+
+/** Chapter 6: mark the key column of a dimension. */
+const keyStep = (column: string): TourStep => ({
+  title: 'The key',
+  target: '#column-roles',
+  body: `<p>Each column of the view is listed with its role. The key identifies one row: here <code>${column}</code>.
+    If the list is empty, run the Data Preview once.</p>`,
+  action: { do: `Set the role of <code>${column}</code> to <b>Key</b>.`, check: () => val(`#column-roles select[data-col="${column}"]`) === 'Key' },
+});
+
+/** Chapter 6: add one association from the open fact to a dimension. */
+const assocStep = (fact: string, dim: string): TourStep[] => [
+  {
+    title: `Associate ${dim.split('.')[1]}`,
+    target: '#assoc-add',
+    body: `<p>Opens the dialog for a new association.</p>`,
+    action: { do: 'Press <b>Add Association</b>.', appear: '#assoc-target' },
   },
   {
-    title: 'Deploy',
-    target: '#ed-deploy',
-    body: `<p>Only a deployed view exists in the database. The check reads what is deployed.</p>`,
-    action: { do: 'Press <b>Deploy</b>.', event: `deploy:RHN_HARM.${name}` },
+    title: 'Target and key mapping',
+    target: '.dialog',
+    body: `<p>Pick the target. The dialog then lists the key of the target and proposes the fact column with the same name. Check it, then add.</p>`,
+    action: { do: `Choose <code>${dim.split('.')[1]}</code>, check the mapping and press <b>Add</b>.`, event: `assoc:${fact}->${dim}` },
   },
 ];
 
@@ -352,6 +384,51 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'One layer up',
       body: `<p>Reporting builds only on harmonization. You share the harmonized views with <code>RHN_REP</code>, and the reporting query
         uses them as they are: no mapping, no unit conversion, no deduplication. That work is done once.</p>`,
+    },
+  ],
+  'c06-m01': [
+    {
+      title: 'Chapter 6: Semantics',
+      body: `<p>Up to now every view was a <b>Relational Dataset</b>: rows and columns, nothing more. The reporting layer tells consumers
+        what the data <b>means</b>:</p>
+        <ul><li><b>Fact</b>: holds measures, numbers you add up (kWh, amounts).</li>
+        <li><b>Dimension</b>: describes them (grid area, tariff, customer) and has a <b>key</b>.</li>
+        <li><b>Text</b> and <b>Hierarchy</b>: language-dependent names and drill-down paths for a dimension.</li></ul>`,
+    },
+    {
+      title: 'Where you set it',
+      body: `<p>In the properties of a saved view: <b>Semantic Usage</b>, then a role per column: <b>Key</b> or <b>Attribute</b> in a dimension,
+        <b>Measure</b> or <b>Attribute</b> in a fact. Like everything else: Save, then Deploy. The checks read what is deployed.</p>`,
+    },
+  ],
+  'c06-m02': [
+    {
+      title: 'Only what reports need',
+      body: `<p>A reporting view does not have to pass on every column of its source. Picking columns is the simplest data protection:
+        what never reaches the reporting layer cannot leak to the people who read it.</p>`,
+    },
+  ],
+  'c06-m03': [
+    {
+      title: 'A narrow fact',
+      body: `<p>A fact holds <b>keys</b> (GRID_AREA, TARIFF, CUSTOMER_ID), dates and <b>measures</b>. Names and regions stay in the dimensions.</p>
+        <p>Measure or attribute? Ask: does adding it up mean something? kWh: yes. A customer ID or a date: no, you group and filter by those.</p>`,
+    },
+  ],
+  'c06-m04': [
+    {
+      title: 'Associations',
+      body: `<p>An <b>association</b> is a semantic link from the fact to a dimension: a target and a key mapping
+        (fact column → key of the dimension). It is not a join in the fact's SQL. Consumers such as the analytic model join along it
+        when a query needs the dimension.</p>
+        <p>Only deployed dimensions with a key can be targets.</p>`,
+    },
+  ],
+  'c06-m05': [
+    {
+      title: 'Reuse the dimensions',
+      body: `<p>The second fact uses the same three dimensions. That is the point of keeping them separate: one grid area dimension,
+        one tariff dimension, one customer dimension for every fact. This shape is called a <b>star schema</b>.</p>`,
     },
   ],
 };
@@ -1339,5 +1416,220 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('Where does the mapping live, and what does ELSE do with a code it does not know?'),
+  ],
+
+  // ================================================================ chapter 6
+  'c06-m01': [
+    [
+      toSpace('RHN_HARM', `<p>First the 1:1 view in harmonization.</p>`),
+      newView(`<p>A view on the inbound table, without any logic.</p>`),
+      {
+        title: 'All columns, no logic',
+        target: '#editor',
+        body: `<p>List the columns of <code>RHN_IN.GRID_AREAS</code>; the Sources list inserts names for you.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+      ...nameSaveDeploy('RHN_HA_V_GRID_AREAS', 'Grid Areas (harmonized)'),
+      {
+        title: 'Back to the start page',
+        target: '#ed-back',
+        body: `<p>Sharing is done in the object list.</p>`,
+        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+      },
+      shareStep('RHN_HA_V_GRID_AREAS', 'RHN_REP', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_REP', `<p>The reporting space.</p>`),
+      newView(`<p>The dimension view.</p>`),
+      {
+        title: 'Three columns',
+        target: '#editor',
+        body: `<p>Read the shared harmonized view, with exactly the columns of the ticket.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+      },
+      ...nameSaveDeploy('RHN_REP_D_GRID_AREA', 'Grid Area', 'RHN_REP', false),
+    ],
+    [
+      usageStep('Dimension', `<p>Now that the view is saved, its semantic usage can be set.</p>`),
+      keyStep('GRID_AREA'),
+      deployStep('RHN_REP.RHN_REP_D_GRID_AREA', `<p>Deploy saves the roles and makes them active.</p>`),
+    ],
+    questions('Does the data describe something or hold numbers to add up? And remember the layer rule from chapter 1.'),
+  ],
+  'c06-m02': [
+    [
+      toSpace('RHN_IN', `<p>TARIFFS is not shared with harmonization yet.</p>`),
+      shareStep('TARIFFS', 'RHN_HARM'),
+      toSpace('RHN_HARM', `<p>The 1:1 view for the tariffs, like the grid areas.</p>`),
+      newView(`<p>All columns of TARIFFS, no logic.</p>`),
+      {
+        title: 'Write and preview',
+        target: '#editor',
+        body: `<p>Same pattern as <code>RHN_HA_V_GRID_AREAS</code>.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+      ...nameSaveDeploy('RHN_HA_V_TARIFFS', 'Tariffs (harmonized)'),
+      {
+        title: 'Back to the start page',
+        target: '#ed-back',
+        body: `<p>Now share both views with reporting.</p>`,
+        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+      },
+      shareStep('RHN_HA_V_TARIFFS', 'RHN_REP', 'RHN_HARM'),
+      shareStep('RHN_HA_V_CUSTOMERS', 'RHN_REP', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_REP', `<p>The tariff dimension.</p>`),
+      newView(`<p>Columns as in the ticket.</p>`),
+      {
+        title: 'Write and preview',
+        target: '#editor',
+        body: `<p>Read <code>RHN_HA_V_TARIFFS</code>.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+      },
+      ...nameSaveDeploy('RHN_REP_D_TARIFF', 'Tariff', 'RHN_REP', false),
+      usageStep('Dimension', `<p>A dimension again.</p>`),
+      keyStep('TARIFF'),
+      deployStep('RHN_REP.RHN_REP_D_TARIFF', `<p>Deploy it.</p>`),
+    ],
+    [
+      {
+        title: 'Back to the start page',
+        target: '#ed-back',
+        body: `<p>One more dimension.</p>`,
+        action: { do: 'Go back to the start page of RHN_REP.', check: () => builderSpace('RHN_REP') },
+      },
+      newView(`<p>The customer dimension.</p>`),
+      {
+        title: 'Which columns?',
+        target: '#editor',
+        body: `<p>Read <code>RHN_HA_V_CUSTOMERS</code>. Decide with the ticket which columns the board needs, and which stay in harmonization.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+      },
+      ...nameSaveDeploy('RHN_REP_D_CUSTOMER', 'Customer', 'RHN_REP', false),
+      usageStep('Dimension', `<p>And the third dimension.</p>`),
+      keyStep('CUSTOMER_ID'),
+      deployStep('RHN_REP.RHN_REP_D_CUSTOMER', `<p>Deploy it.</p>`),
+    ],
+    questions('Who reads the reporting layer, and what did audit ask for?'),
+  ],
+  'c06-m03': [
+    [
+      toSpace('RHN_REP', `<p>Facts live in reporting too.</p>`),
+      newView(`<p>The consumption fact.</p>`),
+      {
+        title: 'Readings plus keys',
+        target: '#sources',
+        body: `<p>Both harmonized views are under <b>Shared Objects</b>. Join them on <code>CONTRACT_ID</code> and take the keys from the contracts.</p>`,
+      },
+      {
+        title: 'Write and preview',
+        target: '#editor',
+        body: `<p>Exactly the six columns of the ticket: no names, no regions.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+      },
+      ...nameSaveDeploy('RHN_REP_F_CONSUMPTION', 'Consumption', 'RHN_REP', false),
+    ],
+    [
+      usageStep('Fact', `<p>A fact: it holds the measure.</p>`),
+      {
+        title: 'Measure or attribute',
+        target: '#column-roles',
+        body: `<p>For each column ask: does adding it up mean something? Only those are measures; everything else stays an attribute.</p>`,
+        action: { do: 'Give each column its role.', check: () => [...document.querySelectorAll<HTMLSelectElement>('#column-roles select')].some((x) => x.value === 'Measure') },
+      },
+      deployStep('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Deploy saves the roles and makes them active.</p>`),
+    ],
+    questions('Think about two facts that both need the region, and a grid area that is renamed.'),
+  ],
+  'c06-m04': [
+    [
+      {
+        title: 'A gap check',
+        view: 'builder:new-view:RHN_REP',
+        target: '#editor',
+        body: `<p>A scratch view: <code>LEFT JOIN</code> the fact to a dimension on its key and count the rows <code>WHERE d.key IS NULL</code>.
+          Zero means every key has its dimension row. Try it for all three.</p>`,
+        action: { do: 'Write a gap check and press <b>Data Preview</b>.', event: '^preview:draft' },
+      },
+    ],
+    [
+      {
+        title: 'Open the fact',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>The associations belong to the fact.</p>`,
+        action: { do: 'Open <b>RHN_REP_F_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_F_CONSUMPTION') },
+      },
+      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_GRID_AREA'),
+      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_TARIFF'),
+      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_CUSTOMER'),
+    ],
+    [
+      {
+        title: 'Save',
+        target: '#ed-save',
+        body: `<p>The associations are part of the design: status <b>Changes to Deploy</b> after saving.</p>`,
+        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_REP.RHN_REP_F_CONSUMPTION' },
+      },
+      deployStep('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Now they are active.</p>`),
+      ...questions('When does an association turn into a join?'),
+    ],
+  ],
+  'c06-m05': [
+    [
+      toSpace('RHN_IN', `<p>The invoices are not shared with harmonization yet.</p>`),
+      shareStep('BILLING_INVOICES', 'RHN_HARM'),
+      toSpace('RHN_HARM', `<p>The 1:1 view.</p>`),
+      newView(`<p>All columns of BILLING_INVOICES, no logic.</p>`),
+      {
+        title: 'Write and preview',
+        target: '#editor',
+        body: `<p>Same pattern as the other 1:1 views.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+      ...nameSaveDeploy('RHN_HA_V_INVOICES', 'Invoices (harmonized)'),
+      {
+        title: 'Back to the start page',
+        target: '#ed-back',
+        body: `<p>Share it with reporting.</p>`,
+        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+      },
+      shareStep('RHN_HA_V_INVOICES', 'RHN_REP', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_REP', `<p>The invoice fact.</p>`),
+      newView(`<p>Invoices joined with the harmonized contracts for the keys.</p>`),
+      {
+        title: 'Write and preview',
+        target: '#editor',
+        body: `<p>The ten columns of the ticket. Gross is not one of them.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+      },
+      ...nameSaveDeploy('RHN_REP_F_INVOICES', 'Invoices', 'RHN_REP', false),
+      usageStep('Fact', `<p>A fact again.</p>`),
+      {
+        title: 'Measures',
+        target: '#column-roles',
+        body: `<p>Which columns make sense to add up?</p>`,
+        action: { do: 'Give each column its role.', check: () => [...document.querySelectorAll<HTMLSelectElement>('#column-roles select')].some((x) => x.value === 'Measure') },
+      },
+    ],
+    [
+      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_GRID_AREA'),
+      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_TARIFF'),
+      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_CUSTOMER'),
+      deployStep('RHN_REP.RHN_REP_F_INVOICES', `<p>Deploy saves the roles and associations and makes them active.</p>`),
+    ],
+    [
+      {
+        title: 'Region from the dimension',
+        view: 'builder:new-view:RHN_REP',
+        target: '#editor',
+        body: `<p>Join the fact with <code>RHN_REP_D_GRID_AREA</code>, filter the invoice year and group by <code>REGION</code>.</p>`,
+        action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:draft' },
+      },
+      ...questions('Region NORTH has two grid areas. Sum NET_AMOUNT.'),
+    ],
   ],
 };

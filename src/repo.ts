@@ -14,7 +14,41 @@ import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadF
 export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow';
 export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
-export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text';
+export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text' | 'Hierarchy';
+
+/**
+ * Role of an output column (Handbuch 6.4.1, 6.5.3): in a Fact a column is a Measure or an Attribute, in a Dimension
+ * a Key or an Attribute. A Hierarchy (parent-child, simplified) names its Parent and Child columns.
+ */
+export type ColumnRole = 'Attribute' | 'Key' | 'Measure' | 'Parent' | 'Child';
+
+/** Roles a column can take, per semantic usage. */
+export const ROLES_FOR: Record<SemanticUsage, ColumnRole[]> = {
+  'Relational Dataset': ['Attribute'],
+  Fact: ['Attribute', 'Measure'],
+  Dimension: ['Attribute', 'Key'],
+  Text: ['Attribute', 'Key'],
+  Hierarchy: ['Attribute', 'Parent', 'Child'],
+};
+
+/**
+ * Association (Handbuch 6.5.4): a semantic relation to a target entity with a key mapping, used as a join only when
+ * a consumer needs it. Cardinality is fixed to many-to-one in the game (simplified).
+ */
+export interface Association {
+  /** SPACE.NAME of the target. */
+  target: string;
+  /** Source column → target column. */
+  mapping: { from: string; to: string }[];
+}
+
+/** Semantic definition of an entity: usage, column roles, associations. Part of design time and of what is deployed. */
+export interface Semantics {
+  semanticUsage: SemanticUsage;
+  /** Every output column with its role. */
+  columnRoles?: Record<string, ColumnRole>;
+  associations?: Association[];
+}
 
 export interface RepoObject {
   space: string;
@@ -23,10 +57,13 @@ export interface RepoObject {
   kind: ObjectKind;
   businessName: string;
   semanticUsage: SemanticUsage;
+  /** Column roles and associations (chapter 6+), see Semantics. */
+  columnRoles?: Record<string, ColumnRole>;
+  associations?: Association[];
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string; flow?: FlowDef };
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef } & Partial<Semantics>;
   /** Remote tables: connection, source object, data access. */
   remote?: RemoteInfo;
   /** Replication flows: the saved definition. */
@@ -51,7 +88,7 @@ export const STATUS_HELP: Record<DeployStatus, string> = {
   changes: 'There are saved changes that are not active yet. The runtime still uses the last deployed version.',
 };
 
-export const SEMANTIC_USAGES: SemanticUsage[] = ['Relational Dataset', 'Fact', 'Dimension', 'Text'];
+export const SEMANTIC_USAGES: SemanticUsage[] = ['Relational Dataset', 'Fact', 'Dimension', 'Text', 'Hierarchy'];
 
 export const objectKey = (o: { space: string; name: string }) => `${o.space}.${o.name}`;
 
@@ -84,7 +121,8 @@ export const suggestTechnicalName = (business: string) =>
 export function statusAfterSave(o: RepoObject): DeployStatus {
   if (!o.deployed) return 'not_deployed';
   const same = o.deployed.businessName === o.businessName && (o.kind !== 'SQL View' || o.deployed.sql === o.sql)
-    && (o.kind !== 'Replication Flow' || JSON.stringify(o.deployed.flow) === JSON.stringify(o.flow));
+    && (o.kind !== 'Replication Flow' || JSON.stringify(o.deployed.flow) === JSON.stringify(o.flow))
+    && JSON.stringify(semanticsOf(o.deployed)) === JSON.stringify(semanticsOf(o));
   return same ? 'deployed' : 'changes';
 }
 
@@ -93,6 +131,15 @@ const now = () => new Date().toISOString();
 export function touch(o: RepoObject) {
   o.changedAt = now();
   o.status = statusAfterSave(o);
+}
+
+/** The semantic part of an object or of its deployed version, normalized for comparing. */
+export function semanticsOf(o: Partial<Semantics>): Semantics {
+  return {
+    semanticUsage: o.semanticUsage ?? 'Relational Dataset',
+    columnRoles: o.columnRoles && Object.keys(o.columnRoles).length ? o.columnRoles : undefined,
+    associations: o.associations?.length ? o.associations : undefined,
+  };
 }
 
 /** Runs the deployment. Returns an error text, or null on success. */
@@ -104,7 +151,7 @@ export async function deploy(o: RepoObject): Promise<string | null> {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
-  o.deployed = { businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined };
+  o.deployed = { businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined, ...structuredClone(semanticsOf(o)) };
   o.status = 'deployed';
   o.changedAt = now();
   return null;
@@ -182,13 +229,14 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       name: o.name,
       kind: o.kind,
       businessName: String(o.businessName ?? o.name).slice(0, 120),
-      semanticUsage: SEMANTIC_USAGES.includes(o.semanticUsage) ? o.semanticUsage : 'Relational Dataset',
+      ...sanitizeSemantics(o),
       sql: typeof o.sql === 'string' ? o.sql : undefined,
       deployed: o.deployed && typeof o.deployed === 'object'
         ? {
             businessName: String(o.deployed.businessName ?? o.businessName),
             sql: typeof o.deployed.sql === 'string' ? o.deployed.sql : undefined,
             flow: sanitizeFlow(o.deployed.flow),
+            ...sanitizeSemantics(o.deployed),
           }
         : undefined,
       remote: o.kind === 'Remote Table' ? sanitizeRemote(o.remote) : undefined,
@@ -202,4 +250,27 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
     });
   }
   return out;
+}
+
+const ROLES: ColumnRole[] = ['Attribute', 'Key', 'Measure', 'Parent', 'Child'];
+const COLUMN = /^[A-Za-z_][A-Za-z0-9_]{0,99}$/;
+
+function sanitizeSemantics(d: Record<string, unknown>): Semantics {
+  const usage = SEMANTIC_USAGES.includes(d.semanticUsage as SemanticUsage) ? (d.semanticUsage as SemanticUsage) : 'Relational Dataset';
+  const roles: Record<string, ColumnRole> = {};
+  if (d.columnRoles && typeof d.columnRoles === 'object') {
+    for (const [c, r] of Object.entries(d.columnRoles as Record<string, unknown>).slice(0, 200)) {
+      if (COLUMN.test(c) && ROLES.includes(r as ColumnRole)) roles[c] = r as ColumnRole;
+    }
+  }
+  const assoc: Association[] = [];
+  for (const a of Array.isArray(d.associations) ? d.associations.slice(0, 20) : []) {
+    if (!a || typeof a.target !== 'string' || !/^[A-Z0-9_]{1,20}\.[A-Z_][A-Z0-9_]{0,49}$/.test(a.target)) continue;
+    const mapping = (Array.isArray(a.mapping) ? a.mapping : [])
+      .filter((m: { from?: unknown; to?: unknown }) => m && typeof m.from === 'string' && typeof m.to === 'string' && COLUMN.test(m.from) && COLUMN.test(m.to))
+      .map((m: { from: string; to: string }) => ({ from: m.from, to: m.to }))
+      .slice(0, 10);
+    if (mapping.length) assoc.push({ target: a.target, mapping });
+  }
+  return semanticsOf({ semanticUsage: usage, columnRoles: roles, associations: assoc });
 }

@@ -49,6 +49,8 @@ export interface StructureCheck {
   kind?: 'Table' | 'View';
   /** Columns that must exist (case-insensitive). */
   columns?: string[];
+  /** Columns that must not exist, with the reason shown when one does (e.g. personal data in reporting). */
+  absent?: { columns: string[]; message: string };
 }
 
 /** A question about what the player found. Rendered as choices in the mission panel. */

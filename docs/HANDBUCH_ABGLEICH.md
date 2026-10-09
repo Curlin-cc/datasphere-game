@@ -13,7 +13,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 3 Data Integration | 5, 6.4, 6.7, 10 | ja, gebaut am 09.10.2026 | Feature-Matrix je Verbindungstyp und Button-Texte „nicht verifiziert“ |
 | 4 Inbound Layer | 6.4, 6.11 | ja (Data Preview, lokale Tabellen) | SQL-Grundlagen kommen nicht aus dem Handbuch |
 | 5 Harmonization | 6.5.2, 6.11.2, 6.11.4 | ja, gebaut am 09.10.2026: SQL Views, Sharing, Impact and Lineage (vereinfacht) | Lineage-Diagramm im Handbuch ohne Details; Spiel zeigt nur Liste im Properties-Panel |
-| 6 Semantics | 6.5.3, 6.5.4, 6.6 | ja: Fact, Dimension, Text, Hierarchy (+ with Directory), Assoziationen, E/R-Modell | Spiel kennt bisher nur Relational Dataset/Fact/Dimension/Text → Hierarchy ergänzen |
+| 6 Semantics | 6.4.1, 6.5.3, 6.5.4, 6.6 | ja, gebaut am 09.10.2026: Semantic Usage inkl. Hierarchy, Key/Attribute/Measure, Associations mit Key-Mapping | Hierarchy with Directory, Analytical Dataset, semantische Spaltentypen (Betrag mit Währung …), E/R-Modell und Kardinalitäten nicht simuliert |
 | 7 Analytic Model | 6.10 | ja: Kennzahlarten (calculated, restricted, count distinct …), Variablen | – |
 | 8 Data Access Controls | 9.3 | ja: Single Values, Operator and Values, Hierarchy, Zuweisung | – |
 | 9 Persistence | 6.5.6, 10.3.4 | ja: Persistenz, Partitionierung, View Analyzer | – |
@@ -49,4 +49,14 @@ Nicht simuliert: Real-Time-Replikation, Data Provisioning Agent, Data Flows, Cus
 - Bereitstellungsreihenfolge: Deploy einer View scheitert, solange eine Quelle nicht geteilt ist (6.13)
 
 Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (kommt in Kapitel 9), Intelligent Lookup (nur erwähnt).
+
+## Was Kapitel 6 aus dem Handbuch umsetzt
+
+- Semantic Usage je Entität: Relational Dataset, Fact, Dimension, Text, Hierarchy (6.5.3)
+- Spalten von Fact/Dimension als Measure oder Attribut, Key-Kennzeichen (6.4.1)
+- Associations mit Ziel und Schlüsselzuordnung; Fact → Dimension; wirken erst bei Nutzung als Join (6.5.4)
+- Dimensionen ergeben sich im Analytic Model aus den Associations des Facts (6.10.4) – Grundlage für Kapitel 7
+
+Vereinfacht und gekennzeichnet: Kardinalität immer „many to one“; Associations nur im Properties-Panel (kein E/R-Modell);
+Hierarchy wählbar, Mission folgt später. Nicht simuliert: Hierarchy with Directory, semantische Spaltentypen, Expose for Consumption (Kapitel 12).
 

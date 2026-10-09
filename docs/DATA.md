@@ -58,3 +58,16 @@ Fallen, die die Prüfungen gezielt erkennen:
 - **E-Mails:** Großbuchstaben kommen nur bei Dubletten vor; `lower(EMAIL)` ändert beim ältesten Datensatz nichts
 - 2025 falsch: ohne MWh-Umrechnung 6,96 GWh, mit Dubletten 7,88 GWh, beides falsch 7,10 GWh
 
+## Reporting-Objekte (Kapitel 6)
+
+| Objekt in `RHN_REP` | Usage | Zeilen | Key / Measures |
+| --- | --- | --- | --- |
+| `RHN_REP_D_GRID_AREA` | Dimension | 4 | Key GRID_AREA |
+| `RHN_REP_D_TARIFF` | Dimension | 5 | Key TARIFF |
+| `RHN_REP_D_CUSTOMER` | Dimension | 900 | Key CUSTOMER_ID (ohne EMAIL, STREET) |
+| `RHN_REP_F_CONSUMPTION` | Fact | 5726 | Measure CONSUMPTION_KWH |
+| `RHN_REP_F_INVOICES` | Fact | 5726 | Measures NET_AMOUNT, TAX_AMOUNT |
+
+Netto 2025 (Rechnungsdatum) je Region: NORTH 871.074,11 EUR, SOUTH 746.381,41 EUR. Fallen: nur Netzgebiet NORTH 530.628 EUR;
+Rohdaten ohne Legacy-Mapping 785.429 EUR; brutto 1,04 Mio. EUR.
+

@@ -174,3 +174,33 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c06-m01: 1:1 view, share, dimension with key while the tour waits
+from chapter6_data import TENANT6  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(6, 'c06-m01', TENANT6))
+    expect(pg, 'Chapter 6: Semantics'); nexts(pg, 2)
+    expect(pg, 'Space RHN_HARM'); pg.click('#space-switch'); pg.click('[data-space="RHN_HARM"]')
+    expect(pg, 'New SQL View'); pg.click('[data-new="sqlview"]')
+    expect(pg, 'All columns, no logic'); g.sql('SELECT GRID_AREA, GRID_AREA_NAME, REGION, SRC_SYS_ID FROM RHN_IN.GRID_AREAS'); pg.click('#run')
+    expect(pg, 'Names'); pg.fill('#prop-business', 'Grid Areas (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_V_GRID_AREAS')
+    expect(pg, 'Save'); pg.click('#ed-save')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Back to the start page'); pg.click('#ed-back')
+    expect(pg, 'Share RHN_HA_V_GRID_AREAS')
+    pg.click('[data-share="RHN_HARM.RHN_HA_V_GRID_AREAS"]'); pg.check('.share-targets input[value="RHN_REP"]'); pg.click('.dialog button[type="submit"]')
+    expect(pg, 'Space RHN_REP'); pg.click('#space-switch'); pg.click('[data-space="RHN_REP"]')
+    expect(pg, 'New SQL View'); pg.click('[data-new="sqlview"]')
+    expect(pg, 'Three columns'); g.sql('SELECT GRID_AREA, GRID_AREA_NAME, REGION FROM RHN_HARM.RHN_HA_V_GRID_AREAS'); pg.click('#run')
+    expect(pg, 'Names'); pg.fill('#prop-business', 'Grid Area'); pg.fill('#prop-technical', 'RHN_REP_D_GRID_AREA')
+    expect(pg, 'Save'); pg.click('#ed-save')
+    expect(pg, 'Semantic Usage'); pg.select_option('#prop-semantic', 'Dimension')
+    expect(pg, 'The key'); pg.wait_for_selector('#column-roles'); g.shot('g-c06-key')
+    pg.select_option('#column-roles select[data-col="GRID_AREA"]', 'Key')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Your answers'); g.answer('usage', 1); g.answer('layer', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

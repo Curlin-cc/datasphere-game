@@ -57,6 +57,7 @@ src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-
 src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
 src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebnistabelle
 src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
+src/views/semantics.ts ← Kapitel 6+: Spaltenrollen (Key/Attribute/Measure/Parent/Child) und Associations im Properties-Panel, `viewColumns`
 src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
 src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces, öffnet Objekte im Data Builder
 src/views/spaces.ts  ← Space Management (Kacheln, Anlegen/Bearbeiten/Löschen)
@@ -66,13 +67,13 @@ src/views/monitor.ts ← Data Integration Monitor: Remote Tables (Snapshot, Remo
 src/views/system.ts  ← System: Configuration (Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
 src/views/flow.ts    ← Data Builder: „Import Remote Tables“-Dialog, Replication-Flow-Editor, `flowError` (Deploy-Prüfung)
 src/integration.ts   ← Kapitel 3: Verbindungstypen + Features, Quellsysteme, validateConnection, Remote Tables, runFlow, truncateRisk, Space-Sperre (`lockError`), Wiederherstellung nach Reload
-src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload, Impact/Lineage (`readsFrom`, `usedBy`)
+src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload, Impact/Lineage (`readsFrom`, `usedBy`), Semantik (`Semantics`, `semanticsOf`) im Design- und Deploy-Stand
 src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces = DuckDB-Schemas)
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
-src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c05.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
+src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c06.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric), Review-Regeln, XP
 src/missions/engine.ts ← Prüf-Engine: Ergebnis (SQL im SQL-View-Editor vs. Musterlösung, `diagnose`), Struktur, Fragen, Regeln auf Tenant + Ereignissen
 src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound, case_else); bei View-Missionen auf dem deployten SQL
@@ -82,7 +83,7 @@ src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scope
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
-src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
+src/content/guided.ts ← Geführte Tutorials Kapitel 0–3, 5 und 6: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
@@ -100,12 +101,13 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (26 Missionen):
+Spielbar (31 Missionen):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
 - Kapitel 4 Inbound Layer: SQL-Profiling im Scratch-SQL-View
 - Kapitel 5 Harmonization: deployte SQL Views in `RHN_HARM` (`RHN_HA_V_CONTRACTS`, `RHN_HA_V_CUSTOMERS`, `RHN_HA_V_METER_READINGS`), Sharing nach `RHN_REP`
+- Kapitel 6 Semantics: Dimensionen `RHN_REP_D_GRID_AREA/_TARIFF/_CUSTOMER`, Facts `RHN_REP_F_CONSUMPTION/_INVOICES` mit Spaltenrollen und Associations; 1:1-Views `RHN_HA_V_GRID_AREAS/_TARIFFS/_INVOICES`
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
@@ -125,10 +127,11 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 6 (Semantics): Semantic Usage im Properties-Panel freischalten (Fact, Dimension, Text, **Hierarchy** ergänzen), Reporting-Views in
-   `RHN_REP` auf den geteilten Harmonization-Views (`RHN_REP_F_…`, `RHN_REP_D_…`), Associations Fact → Dimension. Quelle: Handbuch 6.5.3–6.6
-2. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen (Editor füllen, Data Preview, Ergebnis lesen)
+1. Kapitel 7 (Analytic Model): neue App-Kachel „Analytic Model“ im Data Builder (`NEW_TILES` id `analytic`), Editor mit genau einem Fact
+   (`RHN_REP_F_INVOICES`), Dimensionen aus dessen Associations, Measures auswählen, **Calculated Measure** `GROSS_AMOUNT = NET + TAX`
+   (Versprechen aus c04-m02), **Restricted Measure** (z. B. offene Forderungen), Variable (Jahr), Data Preview wie SAC. Quelle: Handbuch 6.10
+2. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
 3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-4. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
-5. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin): Reihenfolge der Seitennavigation, eigener Eintrag
-   „Data Access Controls“, Gruppe „Monitoring“, Namen der Standardrollen
+4. Hierarchy-Mission (Netzgebiet → Region) nachziehen, sobald klar ist, ob Ebenen-Hierarchie oder Eltern-Kind mit eigenen Knoten-IDs
+5. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
+6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin)

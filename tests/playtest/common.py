@@ -14,6 +14,7 @@ CH = {
     3: ['c03-m01', 'c03-m02', 'c03-m03', 'c03-m04', 'c03-m05', 'c03-m06'],
     4: ['c04-m01', 'c04-m02', 'c04-m03', 'c04-m04'],
     5: ['c05-m01', 'c05-m02', 'c05-m03', 'c05-m04', 'c05-m05'],
+    6: ['c06-m01', 'c06-m02', 'c06-m03', 'c06-m04', 'c06-m05'],
 }
 
 
@@ -117,6 +118,19 @@ class Game:
         self.pg.click(f'#object-list [data-open="{key}"]'); self.pg.wait_for_selector('#editor')
         self.sql(sql)
         self.pg.click('#ed-deploy' if deploy else '#ed-save'); self.pg.wait_for_timeout(600)
+
+    def semantics(self, usage, roles=None, assoc=None, deploy=True):
+        """In the open saved view: semantic usage, column roles {col: role}, associations [target key], then deploy."""
+        self.pg.select_option('#prop-semantic', usage)
+        self.pg.wait_for_selector('#column-roles')
+        for col, role in (roles or {}).items():
+            self.pg.select_option(f'#column-roles select[data-col="{col}"]', role)
+        for target in assoc or []:
+            self.pg.click('#assoc-add')
+            self.pg.select_option('#assoc-target', target)
+            self.pg.click('.dialog button[type="submit"]'); self.pg.wait_for_timeout(150)
+        if deploy:
+            self.pg.click('#ed-deploy'); self.pg.wait_for_timeout(600)
 
     def toast(self):
         t = self.pg.locator('.toast').all_inner_texts()

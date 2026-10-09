@@ -496,6 +496,8 @@ table.grid th.num { text-align: right; }
   background: var(--surface); color: var(--ink);
 }
 .form-grid input[readonly] { background: var(--surface-sunk); color: var(--ink-soft); }
+.form-grid.one { grid-template-columns: 1fr; margin-bottom: 12px; }
+#assoc-mapping .muted { margin: 0 0 8px; }
 .form-error { min-height: 1.2em; margin: 10px 0 0; color: var(--critical); font-size: 13px; }
 .share-targets label { align-items: center; }
 
@@ -667,6 +669,17 @@ td.job { white-space: normal; max-width: 34ch; color: var(--ink-soft); font-size
 .props-list dt { color: var(--ink-faint); }
 .props-list dd { margin: 0; }
 .props-list dd .muted { margin: 4px 0 0; font-size: 12px; line-height: 1.4; }
+.sem { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.sem h3.sem-sub { margin-top: 16px; }
+.sem .grid.compact td, .sem .grid.compact th { padding: 4px 6px; }
+.sem .grid thead th { position: static; }
+.sem select { font: inherit; padding: 2px 4px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); }
+.sem .muted { margin: 4px 0; font-size: 12px; line-height: 1.4; }
+.assoc-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.assoc-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); }
+.assoc-list li > div { display: flex; align-items: center; gap: 6px; }
+.assoc-list li small { grid-column: 1; color: var(--ink-soft); }
+.assoc-list li button { grid-row: 1 / span 2; grid-column: 2; }
 .lineage { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
 .lineage h4 { margin: 10px 0 4px; font-size: 12px; font-weight: 500; color: var(--ink-faint); }
 .lineage .muted { margin: 2px 0; font-size: 12px; line-height: 1.4; }

@@ -9,6 +9,7 @@ import {
 import { accessError, isShared } from '../tenant';
 import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
 import { openImportRemote, renderFlowEditor } from './flow';
+import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
 import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable, fmtDate } from '../ui';
@@ -321,6 +322,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
               <dt>Data Access</dt><dd>${esc(remote.access)}<p class="muted">${remote.access === 'Remote' ? 'Each query reads the source live.' : 'Reads the copy stored in this space.'} Change it in the Data Integration Monitor.</p></dd>` : ''}
             ${o?.loadFrom ? `<dt>Filled by</dt><dd>Replication from ${esc(o.loadFrom.connection)}</dd>` : ''}
           </dl>
+          ${isView && chapter >= 6 ? `<section class="sem" id="semantics">${o ? '' : '<h3>Attributes</h3><p class="muted">Save the view to give its columns a role.</p>'}</section>` : ''}
           ${o ? lineageHtml(o) : ''}
         </aside>
       </div>
@@ -340,6 +342,15 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   business.addEventListener('input', () => {
     if (!technicalTouched) technical.value = suggestTechnicalName(business.value);
   });
+
+  // Chapter 6+: column roles and associations of a saved SQL view.
+  let sem: SemanticsDraft | null = null;
+  const semHost = main.querySelector<HTMLElement>('#semantics');
+  if (semHost && o) {
+    sem = mountSemantics(semHost, o, o.semanticUsage, readOnly);
+    semantic.addEventListener('change', () => sem?.setUsage(semantic.value as SemanticUsage));
+    viewColumns(o.sql ?? '', space).then((cols) => cols && sem?.setColumns(cols));
+  }
 
   if (isView) {
     ctx.sqlOwner = key;
@@ -427,6 +438,10 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
     o.businessName = bn;
     o.sql = sql;
     o.semanticUsage = semantic.value as SemanticUsage;
+    if (sem) {
+      o.columnRoles = sem.roles();
+      o.associations = sem.associations();
+    }
     touch(o);
     ctx.sql = sql;
     ctx.track(`save:${objectKey(o)}`);
@@ -469,6 +484,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         });
         if (!conn?.validation?.ok) toast('The connection of this remote table is not valid; the source may not answer in a real tenant.', 'info');
       }
+      if (isView) sem?.setColumns(res.columns);
       const rows = res.rows.length;
       out.innerHTML = `
         <div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'}${isView ? '' : ' (first 100)'} in ${res.ms.toFixed(0)} ms</div>

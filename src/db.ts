@@ -58,8 +58,13 @@ export async function runSql(sql: string): Promise<QueryResult> {
   const fields = table.schema.fields;
   const columns = fields.map((f) => f.name);
   const kinds = fields.map((f) => String(f.type));
+  // Arrow hands DECIMAL values over unscaled (465.41 arrives as 46541): divide by 10^scale.
+  const scales = fields.map((f) => {
+    const t = f.type as unknown as { typeId?: number; scale?: number };
+    return t.typeId === 7 && typeof t.scale === 'number' ? t.scale : 0;
+  });
   const rows = table.toArray().map((r) =>
-    columns.map((col, i) => formatTemporal(normalize(r[col]), kinds[i])),
+    columns.map((col, i) => formatTemporal(scaleDecimal(normalize(r[col]), scales[i]), kinds[i])),
   );
   return { columns, rows, ms };
 }
@@ -103,6 +108,12 @@ function formatTemporal(v: unknown, kind: string): unknown {
   if (kind.startsWith('Date')) return new Date(v).toISOString().slice(0, 10);
   if (kind.startsWith('Timestamp')) return new Date(v).toISOString().replace('T', ' ').slice(0, 19);
   return v;
+}
+
+function scaleDecimal(v: unknown, scale: number): unknown {
+  if (!scale || v === null || v === undefined) return v;
+  const n = typeof v === 'number' ? v : typeof v === 'bigint' ? Number(v) : Number(String(v));
+  return Number.isFinite(n) ? Number((n / 10 ** scale).toFixed(scale)) : v;
 }
 
 function normalize(v: unknown): unknown {

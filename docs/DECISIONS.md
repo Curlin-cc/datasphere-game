@@ -4,6 +4,13 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Semantik (Usage, Spaltenrollen, Associations) ist Design-Zeit-Eigenschaft wie SQL: Save → *Changes to Deploy*, Prüfungen lesen die deployte Version | Wie im echten Editor; ein Lernziel weniger zum Umdenken |
+| 2026-10-09 | Spaltenrollen je Usage: Fact = Measure/Attribute, Dimension/Text = Key/Attribute, Hierarchy = Parent/Child/Attribute | Handbuch 6.4.1: Spalten von Fact/Dimension sind Kennzahl oder Attribut, dazu Key-Kennzeichen |
+| 2026-10-09 | Associations mit fester Kardinalität n:1, Ziele nur deployte Dimension/Text/Hierarchy mit Key | Handbuch 6.5.4 nennt Kardinalität ohne Details; vereinfacht und im Dialog gekennzeichnet |
+| 2026-10-09 | Reporting liest auch unbereinigte Stammdaten nur über 1:1-Views in Harmonization (`RHN_HA_V_GRID_AREAS` usw.) | Schichtregel aus Kapitel 1 ohne Ausnahme; spätere Bereinigung an einer Stelle |
+| 2026-10-09 | Brutto ist keine Spalte des Rechnungs-Facts, sondern kommt als Calculated Measure im Analytic Model (Kapitel 7) | Versprechen aus c04-m02: Formel einmal als Kennzahl definieren |
+| 2026-10-09 | Hierarchy als Semantic Usage wählbar, aber noch ohne Mission | Netzgebiet → Region ist eine Ebenen-Hierarchie; Codes NORTH/SOUTH kommen als Region und Netzgebiet vor, eine Eltern-Kind-Hierarchie wäre verwirrend. Später mit eigenen Knoten-IDs oder als Drill-Pfad im Analytic Model |
+| 2026-10-09 | DECIMAL-Werte werden in `runSql` mit ihrer Skala umgerechnet | Arrow liefert DECIMAL unskaliert; Spieler sahen 100-fache Beträge |
 | 2026-10-09 | Ab Kapitel 5 prüfen Missionen die **deployte** View (Laufzeitversion), nicht den Editor; gespeicherte, nicht deployte Änderungen werden ausdrücklich gemeldet | Lernziel Save vs. Deploy; im echten System konsumieren andere nur, was deployt ist |
 | 2026-10-09 | Ticket gibt die Spaltennamen der View vor, Prüfung vergleicht nach Spaltennamen (nur die geprüften Spalten, zusätzliche erlaubt) | Views sind Schnittstellen für andere; Namen sind Teil des Vertrags. Spart die Permutationssuche über viele Spalten |
 | 2026-10-09 | Neuer Prüftyp `metric` (eine Zahl per SQL, z. B. „Verträge ohne Kunde“) | Fachliches Feedback unabhängig davon, wie der Spieler die View schreibt |
