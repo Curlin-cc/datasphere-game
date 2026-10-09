@@ -1,6 +1,7 @@
 # AI_CONTEXT – Datasphere Game
 
 > Einstieg für jede neue AI-Session. Zuerst diese Datei lesen, dann `docs/STATUS.md`.
+> Vor jeder UI-Arbeit: `docs/design/README.md` (verbindliches Design nach Curlins Screenshots).
 > Am Ende jeder Session: `docs/STATUS.md` und Abschnitt „Nächster Schritt“ unten aktualisieren,
 > neue Architektur-Entscheidungen in `docs/DECISIONS.md` eintragen.
 
@@ -20,7 +21,9 @@ hat aber noch nicht selbst modelliert).
 - Spieltexte und UI **komplett Englisch** (wie die echte Datasphere-Oberfläche)
 - Projektdokumentation (diese Dateien) auf Deutsch
 - **Grundlage ist der Aufbau von Datasphere, nicht SQL:** gleiche Apps, Namen und Abläufe (Seitennavigation, Space wählen,
-  Objektliste, Save/Deploy, Properties-Panel). Eigener Look, keine SAP-Logos
+  Objektliste, Save/Deploy, Properties-Panel)
+- **Optik wie die echte SAP Datasphere (Theme Horizon)** nach `docs/design/` (21 Screenshots + Beschreibung von Curlin): Shell, Navigation,
+  Farben, Seitentypen, Beschriftungen. Keine SAP-Logos, -Bilder oder -Schriftdateien
 - Modellierung per **SQL View**, keine Graphical Views (Kachel zeigt nur Erklärung)
 - Standard-SQL via DuckDB-WASM; HANA-Unterschiede nur als Info-Karten
 - Ruhige Business-Simulation mit Karriere-Rängen und Badges, keine laute Spieloptik
@@ -29,7 +32,7 @@ hat aber noch nicht selbst modelliert).
   (Kapitel 0–1 mit konkreten Werten, ab Kapitel 2 bleiben Entscheidungen als erklärende Schritte beim Spieler)
 - Mentor im Spiel: Calin Mucea
 - Tipp-Stufen je Kapitel (`guidance`): 0–1 alle offen, 2–4 nur Richtung frei, 5–10 nur gegen XP, 11 keine
-- Keine SAP-Logos, keine pixelgenaue Kopie der SAP-Oberfläche (Struktur echt, Optik eigenständig)
+- Keine SAP-Logos/Wortmarke/Bilder; Spielmarke „Datasphere Game“ an der Logo-Stelle; Missions-Panel als Horizon-Seitenpanel
 
 ## Stack
 
@@ -51,6 +54,7 @@ docs/PLAN.md         ← vollständiger Plan (Kapitel, Mechaniken, Architektur)
 docs/STATUS.md       ← Checkliste + Session-Log
 docs/DECISIONS.md    ← Architektur-Entscheidungen
 docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen, Quellsysteme
+docs/design/         ← verbindliches Design: README (Regeln, Farben, Seitentypen, Abgleich), screenshots/ (21 Bilder), BILDBESCHREIBUNGEN.md, quelle/ (docx)
 docs/handbuch/       ← Curlins SAP-Datasphere-Handbuch: docx + Markdown je Kapitel (fachliche Quelle, README = Inhaltsverzeichnis)
 docs/HANDBUCH_ABGLEICH.md ← Abgleich mit Curlins SAP-Datasphere-Handbuch: was abgedeckt ist, was dort „nicht verifiziert“ ist
 src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
@@ -86,7 +90,7 @@ src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabi
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
 src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–7: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
-src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
+src/styles.css       ← Design-Tokens (noch Shell navy/Akzent teal – Umbau auf Horizon laut docs/design offen), Layer-Farben IN/HARM/REP, Hell/Dunkel
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
 
@@ -131,11 +135,14 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 8 (Data Access Controls, Handbuch 9.3): Kachel „Data Access Control“ (`NEW_TILES` id `dac`), DAC mit Kriterium `REGION`
+1. **Oberfläche auf das Datasphere-Design umstellen** (`docs/design/README.md`, Abschnitt 4 als Checkliste): zuerst Shell, Seitennavigation
+   mit Gruppen und Farben/Tokens, dann Data Builder (Willkommensseite, Reiter, Kachelleiste, Tabelle), Editor mit „Model Properties“,
+   danach die übrigen Apps. Tutorials und Playtests nutzen IDs/Selektoren – beim Umbau die `id`/`data-*`-Attribute behalten oder mitziehen
+2. Kapitel 8 (Data Access Controls, Handbuch 9.3): Kachel „Data Access Control“ (`NEW_TILES` id `dac`), DAC mit Kriterium `REGION`
    (Single Values bzw. Operator and Values) und Berechtigungstabelle (Benutzer → Region); Zuweisung an `RHN_REP_D_GRID_AREA` bzw. die Facts;
-   Data Preview „als Benutzer“ (Markus sieht nur NORTH, Aylin nur SOUTH, Petra alles). Offener Punkt im Handbuch: DAC-Navigation (Abgleich Nr. 1)
-2. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
-3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-4. Hierarchy-Mission (Netzgebiet → Region) nachziehen, sobald klar ist, ob Ebenen-Hierarchie oder Eltern-Kind mit eigenen Knoten-IDs
-5. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
-6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+   Data Preview „als Benutzer“ (Markus sieht nur NORTH, Aylin nur SOUTH, Petra alles). DAC liegt laut Screenshots im Data Builder (Reiter + Kachel), kein eigener Navigationseintrag
+3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
+4. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
+5. Hierarchy-Mission (Netzgebiet → Region) nachziehen, sobald klar ist, ob Ebenen-Hierarchie oder Eltern-Kind mit eigenen Knoten-IDs
+6. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
+7. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen

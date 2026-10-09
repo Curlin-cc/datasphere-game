@@ -22,9 +22,9 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 
 ## Widersprüche und offene Punkte (am echten Tenant prüfen)
 
-1. **Data Access Controls:** 2.3.2 listet einen eigenen Navigationseintrag, 9.2 legt DACs im Data Builder an. Spiel: Kachel im Data Builder.
-2. **Gruppe „Monitoring“:** 10.2 nennt den Pfad *Monitoring › Data Integration › Flows*. Spiel: Data Integration Monitor oben, System Monitor unten, ohne Gruppe.
-3. **Reihenfolge der Seitennavigation:** laut 2.3.2 nicht verifiziert; ändert sich je Release.
+1. **Data Access Controls:** 2.3.2 listet einen eigenen Navigationseintrag, 9.2 legt DACs im Data Builder an. **Geklärt (Screenshots `docs/design/`, Bild 17):** kein eigener Navigationseintrag; Reiter „Data Access Controls“ und Kachel „New Data Access Control“ im Data Builder.
+2. **Gruppe „Monitoring“:** 10.2 nennt den Pfad *Monitoring › Data Integration › Flows*. **Geklärt (Bild 1/9):** Navigationsgruppe *Monitoring* mit System and Spaces, Capacities, Task Logs, Expensive Statement Logs, Elastic Compute Nodes, Data Integration. Spiel wird beim Design-Umbau angepasst.
+3. **Reihenfolge der Seitennavigation:** laut 2.3.2 nicht verifiziert; ändert sich je Release. **Stand 09.10.2026** siehe `docs/design/README.md`, Abschnitt 1.
 4. **Standardrollen:** nur DW Administrator, DW Viewer und Catalog User sind belegt.
 5. **Feature-Matrix der Verbindungstypen (5.4.2):** komplett nicht verifiziert; das Spiel nutzt eine vereinfachte Matrix.
 

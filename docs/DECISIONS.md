@@ -4,6 +4,8 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | **Optik folgt der echten SAP Datasphere (Horizon)** nach `docs/design/` (Screenshots und Beschreibung von Curlin); ersetzt „eigener Look, Struktur echt, Optik eigenständig“ (Eintrag vom selben Tag weiter unten). Ausnahmen: keine SAP-Logos, -Bilder, -Schriftdateien; Missions-Panel bleibt | Wunsch von Curlin: Wiedererkennen im echten Tenant ist Lernziel |
+| 2026-10-09 | Seitennavigation wie im Tenant: Monitoring › (System and Spaces, Capacities, Task Logs, …, Data Integration), Gruppen Apps und Utilities, Security/System unten | Bild 3/9/17 in `docs/design/`; klärt Abgleich-Punkte 1 und 2 |
 | 2026-10-09 | Analytic Model als eigener Objekttyp ohne DB-Objekt: Data Preview und Prüfungen erzeugen daraus eine SQL-Abfrage (`modelSql`), die eine Dimension nur joint, wenn die Abfrage sie braucht | Handbuch 6.10: Modell definiert, was Konsumenten sehen; zeigt nebenbei, wann aus einer Association ein Join wird |
 | 2026-10-09 | Neuer Prüftyp `model`: fragt das deployte Modell wie SAC ab (Zeilen + Measures), vergleicht nach Spaltennamen, Variablen werden dabei nicht angewendet | Prüft die fachlichen Zahlen unabhängig davon, wie der Spieler die Measures gebaut hat |
 | 2026-10-09 | Restricted Measures schränken innerhalb der Aggregation ein (CASE WHEN), Basis darf jede andere Kennzahl sein (auch calculated); Werte nur „in Liste“ | Handbuch nennt keine Details; funktioniert in jedem Drill-down. Vereinfacht gekennzeichnet |
