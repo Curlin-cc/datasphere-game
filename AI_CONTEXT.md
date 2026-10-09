@@ -82,7 +82,7 @@ src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces 
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
-src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
+src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt), heute nur Sammelstelle für `guided.ts` – jede neue Mission braucht beides!
 src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c12.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric, model), Review-Regeln, XP
 src/missions/engine.ts ← Prüf-Engine: Ergebnis (SQL im SQL-View-Editor vs. Musterlösung, `diagnose`), Struktur, Fragen, Regeln auf Tenant + Ereignissen
@@ -93,7 +93,7 @@ src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scope
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
-src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–8: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
+src/content/guided.ts ← Geführte Tutorials aller Kapitel 0–12 (Kapitel 11 nur Intro, keine Hilfe): GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Horizon-Design-Tokens (hell/dunkel) nach docs/design, Layer-Farben IN/HARM/REP; Seitentypen A–G am Dateiende
 src/brand.ts         ← MSC-Logo (Curlins Marke, aus Vorlage vektorisiert, Farben über --msc-* hell/dunkel) statt SAP-Logo
 src/perf.ts          ← Kapitel 9: View-Persistenz (Snapshot im Schema `persistence`), `persistError` (DAC-Grenze), Kostenmodell `analyze` (simulierte Produktionslaufzeit), Expensive Statements (`traceStatement`, `simulateStories`)
@@ -156,7 +156,7 @@ Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-r
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
-Intro + Hands-on-Schritte je Aufgabe in `src/content/guided.ts` (oder `TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`; Kapitel 4 ist noch passiv) (Ansichten für Touren: App-ID oder `builder:landing|new-view|spaces[:SPACE]`),
+Intro + Hands-on-Schritte je Aufgabe in `src/content/guided.ts` (Ansichten für Touren: App-ID oder `builder:landing|new-view|spaces[:SPACE]`, `monitor:<Reiter>[:SPACE]`, `system:<Reiter>`, `transport:<Seite>`; SQL-Schritte warten mit `ranWith(...)` auf Abfrage + Data Preview),
 Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
@@ -165,11 +165,10 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
    v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
 2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Security-Listen im Tabellenstil, System-Unterpunkte,
    Import-Kacheln, Settings-Dialog. Echten Screenshot der Connections-App besorgen (Bild 12 zeigt Translation)
-3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
-4. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-5. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
-6. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
-7. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
+4. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
+5. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
+6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
    und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
    erneutes Deploy die persistierten Daten entfernt; Kapitel 10: ob Task Chains Objekte anderer Spaces nur über geteilte Ketten erreichen
-8. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+7. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)

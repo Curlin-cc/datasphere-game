@@ -22,6 +22,10 @@ const builderSpace = (space: string) => !!$('#space-switch')?.textContent?.inclu
 const editorOf = (key: string) => !!$('.ed-title small')?.textContent?.includes(key);
 const noDialog = () => !$('.guide-overlay');
 const tabOn = (sel: string) => !!$(`${sel}[aria-selected="true"]`);
+/** SQL in the open editor (upper case, spaces collapsed), for chapter 4 steps that wait for a query. */
+const sqlText = () => ($('.cm-content')?.textContent ?? '').toUpperCase().replace(/\s+/g, ' ');
+/** The editor contains every word, and the Data Preview shows a result. */
+const ranWith = (...words: string[]) => () => !!$('#results-body .result-status.ok') && words.every((w) => sqlText().includes(w));
 const answered = () => {
   const sets = [...document.querySelectorAll('#questions fieldset')];
   return sets.length > 0 && sets.every((f) => f.querySelector('input:checked'));
@@ -640,6 +644,45 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       body: `<p><b>Expensive statement tracing</b> records SQL statements that exceed a threshold, with duration, peak memory and CPU time.
         It is off by default; an administrator switches it on in System › Configuration › Monitoring.</p>
         <p>In the game, runtimes are simulated for production volume: the training tenant only holds a sample.</p>`,
+    },
+  ],
+  // ================================================================ chapter 4 (SQL profiling)
+  'c04-m01': [
+    {
+      title: 'Chapter 4: Profile the inbound data',
+      body: `<p>Before anyone models, a data architect looks at the raw data. In this chapter you <b>profile</b> the inbound tables with SQL:
+        count, group, sum and join, and find what is wrong.</p>
+        <p>As in chapter 3, only the first hint is free. The tutorials stay free and walk you through every click; the SQL you write yourself.</p>`,
+    },
+    {
+      title: 'A scratch SQL view',
+      body: `<p>For profiling you open a <b>New SQL View</b> in the Data Builder of <b>RHN_IN</b> and only use <b>Data Preview</b>.
+        You do not save or deploy it: the inbound layer holds source data 1:1, without logic.</p>
+        <p><b>Check my solution</b> runs the SQL in your editor. Column names and order are up to you; only the result counts.</p>`,
+    },
+  ],
+  'c04-m02': [
+    {
+      title: 'A ticket from the CFO',
+      body: `<p>Your first ticket from the business. Petra Lindner, the CFO, wants to know how much money sits in each invoice status.</p>
+        <p>Business people speak in business terms. "Gross amount" is not a column, you have to calculate it: <b>net plus tax</b>.
+        The tenant's business "today" is 15 July 2026; it decides which invoices are open and which are overdue.</p>`,
+    },
+  ],
+  'c04-m03': [
+    {
+      title: 'A list instead of a summary',
+      body: `<p>This time the CFO does not want totals but single invoices: the 10 biggest overdue ones, biggest first.</p>
+        <p>You need three new pieces of SQL: a <b>filter</b> (<code>WHERE</code>), a <b>sort</b> (<code>ORDER BY</code>) and a <b>limit</b> (<code>LIMIT</code>).
+        Order matters this time, so the check also looks at the row order.</p>`,
+    },
+  ],
+  'c04-m04': [
+    {
+      title: 'Data from two tables',
+      body: `<p>The contracts know their grid area, but not the region. The region is in a second table, <b>RHN_IN.GRID_AREAS</b>.
+        To bring both together you need a <b>join</b>.</p>
+        <p>A good habit after every join: add up your counts and compare with the source table. If the numbers differ, rows were lost or duplicated.</p>`,
     },
   ],
   'c12-m01': [
@@ -2327,6 +2370,181 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('What does the view read, and what does that object have?'),
+  ],
+  // ================================================================ chapter 4 (SQL profiling)
+  'c04-m01': [
+    [
+      toSpace('RHN_IN', `<p>Profiling happens where the raw data is: the inbound space.</p>`),
+      {
+        title: 'Look at the contracts first',
+        target: '#object-list',
+        body: `<p>Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>: one row per supply contract, with <code>GRID_AREA</code>,
+          <code>TARIFF</code> and in <code>SRC_SYS_ID</code> the system it came from.</p>`,
+        action: { do: 'Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.BILLING_CONTRACTS$' },
+      },
+      {
+        title: 'Back to the start page',
+        view: 'builder:landing:RHN_IN',
+        target: '[data-new="sqlview"]',
+        body: `<p>Now the scratch view. It is never saved: it only exists while you profile.</p>`,
+        action: { do: 'Click <b>New SQL View</b>.', check: () => !!$('#editor') && !!$('.ed-title small')?.textContent?.includes('…') },
+      },
+      {
+        title: 'Sources',
+        target: '#sources',
+        body: `<p>The list on the left shows what this view may read: the deployed objects of the space and what is shared with it.
+          A click inserts the full name, for example <code>RHN_IN.BILLING_CONTRACTS</code>.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Count per value',
+        view: 'builder:new-view:RHN_IN',
+        target: '#editor',
+        body: `<p><code>COUNT(*)</code> counts rows. <code>GROUP BY column</code> makes one group per distinct value, so the count runs per group.
+          The example shows the pattern on another table; put it in and run it if you like.</p>`,
+        example: `SELECT CITY, COUNT(*) AS CUSTOMERS
+FROM RHN_IN.CRM_CUSTOMERS
+GROUP BY CITY
+ORDER BY CUSTOMERS DESC`,
+        action: {
+          do: 'Write a query that counts the contracts per <code>GRID_AREA</code> and press <b>Data Preview</b> (Ctrl+Enter).',
+          check: ranWith('BILLING_CONTRACTS', 'GROUP BY', 'GRID_AREA'),
+        },
+      },
+    ],
+    [
+      {
+        title: 'Read the result',
+        target: '#results-body',
+        body: `<p>Are all grid areas spelled the same way? Upper and lower case count.</p>`,
+      },
+      {
+        title: 'Follow the source',
+        target: '#editor',
+        body: `<p>Add <code>SRC_SYS_ID</code> to the <code>SELECT</code> and to the <code>GROUP BY</code> to see which system delivers the odd values.
+          Put your grid-area-only query back before you check.</p>`,
+        action: { do: 'Group by <code>SRC_SYS_ID</code> as well and run it.', check: ranWith('BILLING_CONTRACTS', 'GROUP BY', 'SRC_SYS_ID') },
+      },
+      ...questions('Which system wrote the odd values, and how many contracts carry them?'),
+    ],
+  ],
+  'c04-m02': [
+    [
+      toSpace('RHN_IN', `<p>The invoices are in the inbound space too.</p>`),
+      {
+        title: 'The invoices',
+        target: '#object-list',
+        body: `<p>Find <code>STATUS</code> and the two amounts <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>`,
+        action: { do: 'Open <b>BILLING_INVOICES</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.BILLING_INVOICES$' },
+      },
+    ],
+    [
+      { ...newView(`<p>A new scratch view for the query.</p>`), view: 'builder:landing:RHN_IN' },
+      {
+        title: 'Several numbers per group',
+        target: '#editor',
+        body: `<p>A query can return several aggregates per group: <code>COUNT(*)</code> and <code>SUM(column)</code> side by side. You can calculate
+          inside the sum, <code>SUM(a + b)</code>, and name each column with <code>AS</code>. The example works on the meter readings.</p>`,
+        example: `SELECT UNIT,
+       COUNT(*)   AS READINGS,
+       SUM(VALUE) AS TOTAL_VALUE
+FROM RHN_IN.METER_READINGS
+GROUP BY UNIT;`,
+        action: {
+          do: 'Write the query for the invoices: one row per status, the number of invoices and the gross amount. Run it.',
+          check: ranWith('BILLING_INVOICES', 'GROUP BY', 'STATUS', 'SUM('),
+        },
+      },
+    ],
+    [
+      {
+        title: 'Read your result',
+        target: '#results-body',
+        body: `<p>Not paid yet means OPEN and OVERDUE. Add their gross totals.</p>`,
+      },
+      ...questions('Open and overdue together, gross.'),
+    ],
+  ],
+  'c04-m03': [
+    [
+      toSpace('RHN_IN', `<p>Still the invoices of the inbound space.</p>`),
+      { ...newView(`<p>A new scratch view.</p>`), view: 'builder:landing:RHN_IN' },
+      {
+        title: 'Filter with WHERE',
+        target: '#editor',
+        body: `<p><code>WHERE</code> keeps only the rows that match a condition. Text goes in single quotes, spelled exactly as in the data.
+          The example takes the 5 biggest readings in MWh: filter, sort, limit.</p>`,
+        example: `SELECT METER_ID, READING_DATE, VALUE
+FROM RHN_IN.METER_READINGS
+WHERE UNIT = 'MWh'
+ORDER BY VALUE DESC
+LIMIT 5;`,
+        action: { do: 'Start your query on <code>BILLING_INVOICES</code> with a filter on the status, and run it.', check: ranWith('BILLING_INVOICES', 'WHERE', 'STATUS') },
+      },
+    ],
+    [
+      {
+        title: 'Four columns',
+        view: 'builder:new-view:RHN_IN',
+        target: '#editor',
+        body: `<p>Invoice ID, contract ID, due date and gross amount. A column can be a calculation, for example <code>PRICE * QUANTITY AS TOTAL</code>.</p>`,
+        action: { do: 'List the four columns of the ticket, the fourth calculated, and run it.', check: ranWith('BILLING_INVOICES', 'INVOICE_ID', 'CONTRACT_ID', 'DUE_DATE', '+') },
+      },
+    ],
+    [
+      {
+        title: 'Sort and cut',
+        view: 'builder:new-view:RHN_IN',
+        target: '#editor',
+        body: `<p><code>ORDER BY … DESC</code> sorts biggest first; without <code>DESC</code> smallest first. <code>LIMIT n</code> at the very end keeps n rows.</p>`,
+        action: { do: 'Sort by the gross amount, biggest first, keep 10 rows, and run it.', check: ranWith('ORDER BY', 'LIMIT') },
+      },
+      {
+        title: 'Check the order',
+        target: '#results-body',
+        body: `<p>The first row must be the biggest amount. If it is the smallest, <code>DESC</code> is missing.</p>`,
+      },
+    ],
+  ],
+  'c04-m04': [
+    [
+      toSpace('RHN_IN', `<p>The mapping table lives next to the contracts.</p>`),
+      {
+        title: 'The mapping table',
+        target: '#object-list',
+        body: `<p>Four rows: each grid area with its name and <code>REGION</code>. Which column also exists in the contracts?</p>`,
+        action: { do: 'Open <b>GRID_AREAS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.GRID_AREAS$' },
+      },
+    ],
+    [
+      { ...newView(`<p>A new scratch view for the join.</p>`), view: 'builder:landing:RHN_IN' },
+      {
+        title: 'How a join works',
+        target: '#editor',
+        body: `<p><code>JOIN … ON …</code> puts a row of one table next to the matching row of another; <code>ON</code> says what matching means.
+          Give each table a short alias (<code>FROM RHN_IN.BILLING_INVOICES i</code>) and address columns as <code>i.CONTRACT_ID</code>.
+          The example counts invoices per tariff of their contract.</p>`,
+        example: `SELECT c.TARIFF, COUNT(*) AS INVOICES
+FROM RHN_IN.BILLING_INVOICES i
+JOIN RHN_IN.BILLING_CONTRACTS c
+  ON i.CONTRACT_ID = c.CONTRACT_ID
+GROUP BY c.TARIFF;`,
+        action: {
+          do: 'Join the contracts with the grid areas, count the contracts per region, and run it.',
+          check: ranWith('BILLING_CONTRACTS', 'GRID_AREAS', 'JOIN', ' ON ', 'REGION', 'GROUP BY'),
+        },
+      },
+    ],
+    [
+      {
+        title: 'Compare totals',
+        target: '#results-body',
+        body: `<p>Add up the two regions and compare with all contracts (<code>SELECT COUNT(*) FROM RHN_IN.BILLING_CONTRACTS</code>).
+          A <code>LEFT JOIN</code> keeps contracts without a partner as <code>null</code>; both answers are accepted. Put your region query back before you check.</p>`,
+      },
+      ...questions('Remember mission 1: which contracts had grid area values that do not look like the codes in GRID_AREAS?'),
+    ],
   ],
   // ================================================================ chapter 12 (excursions)
   'c12-m01': [

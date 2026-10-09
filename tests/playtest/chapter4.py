@@ -10,8 +10,9 @@ with sync_playwright() as p:
     g = Game(p, S)
     pg = g.pg
     g.start(save_before(4, 'c04-m01', TENANT))
-    g.walk_tutorial()
-    print('   view after tutorial:', pg.inner_text('.ed-title'))
+    g.skip_tutorial()
+    g.space('RHN_IN'); pg.click('[data-new="sqlview"]'); pg.wait_for_selector('#editor')
+    print('   view:', pg.inner_text('.ed-title'))
     sql = g.sql
     # m01
     sql("SELECT * FROM RHN_IN.BILLING_CONTRACTS"); g.check('m01 select star')

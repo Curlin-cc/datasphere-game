@@ -4,6 +4,7 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | SQL-Schritte in Hands-on-Tutorials prüfen nur Bausteine (Tabelle, Klauseln, Spalten) plus eine erfolgreiche Data Preview, nie die Lösung selbst | Tutorial führt die Klicks, die Abfrage bleibt Aufgabe des Spielers; Bewertung macht weiter die Prüf-Engine |
 | 2026-10-09 | **Exkurse als Kapitel 12** (4 Missionen, Tipp-Stufe `light`): Verbrauch, Transport, Katalog, Business Builder; Apps Transport, Catalog & Marketplace › Search und Business Builder werden ab Kapitel 12 interaktiv | Neue Apps nach dem Spiel ohne Hinweise: wieder etwas Hilfe; Reihenfolge nach Nähe zum Gebauten (erst Daten nach außen, dann Produktion, Katalog, Altbestand) |
 | 2026-10-09 | *Expose for Consumption* als Teil der Semantik (`Semantics.exposed`), also Save/Deploy wie Spaltenrollen; Datenbankbenutzer im Tenant (`dbUsers`), Dialog „Database Access“ auf der Space-Karte | Freigabe wirkt erst nach Deploy (Handbuch 12.3); Datenbankbenutzer legt der Space-Administrator an (12.6) |
 | 2026-10-09 | **Transport vereinfacht:** ein Paket = Objekte eines Spaces, andere Spaces über erforderliche Pakete; Abhängigkeiten automatisch ermittelt (gelesene Objekte, Associations, DACs, Berechtigungsentität, Kettenschritte); Export simuliert; Import nur als erklärender Dialog; Kollegen-Pakete per `setup` | Handbuch 11.4.1/11.4.2 lassen Details offen; Lernziel ist Paketschnitt nach Schichten und Abhängigkeiten zuerst (11.7) |

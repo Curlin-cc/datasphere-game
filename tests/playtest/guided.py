@@ -343,3 +343,24 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c04-m01: profiling by hand while the tour waits for the SQL
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(4, 'c04-m01', {"spaces": SPACES, "shares": [], "activeSpace": "RHN_IN"}))
+    expect(pg, 'Chapter 4: Profile the inbound data'); nexts(pg, 2)
+    expect(pg, 'Space RHN_IN')  # the landing page of the active space RHN_IN already counts
+    expect(pg, 'Look at the contracts first'); pg.click('#object-list [data-open="RHN_IN.BILLING_CONTRACTS"]'); pg.wait_for_selector('#run'); pg.click('#run')
+    expect(pg, 'Back to the start page'); pg.click('[data-new="sqlview"]')
+    expect(pg, 'Sources'); nexts(pg)
+    expect(pg, 'Count per value')
+    g.sql("SELECT GRID_AREA, COUNT(*) AS CONTRACTS FROM RHN_IN.BILLING_CONTRACTS GROUP BY GRID_AREA"); pg.click('#run')
+    expect(pg, 'Read the result'); pg.wait_for_timeout(700); g.shot('g-c04-result'); nexts(pg)
+    expect(pg, 'Follow the source')
+    g.sql("SELECT GRID_AREA, SRC_SYS_ID, COUNT(*) AS CONTRACTS FROM RHN_IN.BILLING_CONTRACTS GROUP BY GRID_AREA, SRC_SYS_ID"); pg.click('#run')
+    expect(pg, 'Your answers'); g.answer('source', 1); g.answer('count', 2)
+    expect(pg, 'Check your work')
+    g.sql("SELECT GRID_AREA, COUNT(*) AS CONTRACTS FROM RHN_IN.BILLING_CONTRACTS GROUP BY GRID_AREA")
+    pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()
