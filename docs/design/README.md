@@ -22,8 +22,8 @@ im echten Tenant sofort zurecht.
 
 **Nicht übernehmen (bleibt anders):**
 - Kein SAP-Logo, keine SAP-Wortmarke, keine SAP-Bilder (Hero-Bild, Illustrationen, Blog-Inhalte). An die Stelle des Logos kommt
-  **MSC**, Curlins eigene Marke (`msc-logo.svg`, im Code `src/brand.ts`): fette Wortmarke im Big-4-Stil plus drei steigende, schräge Balken
-  in Lila `#5B2A86`, Weinrot `#7A1F3D` und Orange `#F07C1A`. Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
+  **MSC**, Curlins eigene Marke (`msc-logo.svg`, im Code `src/brand.ts`): fette Wortmarke im Big-4-Stil plus Symbol für Erfindergeist:
+  Glühbirne in Lila `#5B2A86` mit Glühfaden, Sockel in Weinrot `#7A1F3D`, Funke in Orange `#F07C1A`. Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
 - Keine Schriftdateien von SAP („72“). Schrift: `"72", "Segoe UI", "Helvetica Neue", Arial, sans-serif` – nutzt 72 nur, wenn es lokal installiert ist.
 - Das **Missions-Panel rechts** gibt es nur im Spiel. Es wird wie ein Horizon-Seitenpanel gestaltet (weiß, Rahmen links, Kopf wie „Model Properties“), damit es nicht stört.
 - Layer-Farben (IN/HARM/REP) nur als kleine Chips, nie als Flächenfarben.
@@ -177,6 +177,9 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
 - [x] Repository Explorer mit Suche oben, Filterspalte Collection/Space, Tabelle wie im Data Builder (E)
 - [x] Home: „Hello, Data Architect“, Kartenraster (Welcome mit MSC, Spaces mit Balken und „Working“, Data Builder – Top 5, How to play, Lernpfad, App-Übersicht, Fortschritt) (G)
 - [x] Missions-Panel als Horizon-Seitenpanel (blaues Kopfband)
+- [x] Einheitliche Kacheln (Wunsch von Curlin): alle Kacheln einer Art gleich groß (Data-Builder-Kacheln 124 × 86 px mit zweizeiliger Beschriftung,
+      Space-Karten, Home-Karten, App-Links, Verbindungstypen, Modell-Knoten), Karten einer Reihe gleich hoch; **Rand 1,5 px** in `--tile-border`
+      (`#A9B4BE`, dunkel `#5B6875`), beim Überfahren blau. Menüpunkte (Navigation, Menüs, Filterspalten, Reiter) einheitlich hoch, Navigation mit Rahmen bei Hover und Auswahl
 - [x] Übersichtlichkeit (Wunsch von Curlin): Grundschrift 500 statt 400, Überschriften/Tabellenköpfe 800, dunklere Sekundärtexte;
       **keine seitlichen Scrollbalken** in Navigation, Seitenpanels, Reitern und Objektlisten (Umbruch statt Scrollen, lange Namen mit „…“ und Tooltip);
       SQL-Editor bricht lange Zeilen um; schmale Bildschirme bis 1366 px (Spalten schmaler, Werkzeugleiste nur Icons). Nur die Datenvorschau scrollt seitlich (Daten)
