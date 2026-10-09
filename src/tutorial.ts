@@ -1,8 +1,24 @@
 /**
  * Step-by-step tutorial ("tour") that walks the player through a mission.
  * Each step can switch the view, spotlight one element and explain it.
+ *
+ * Hands-on steps (`action`): the spotlight stays, but the page underneath can be used. The card says what to do
+ * ("Your turn"), and the tour moves on by itself as soon as the player has done it: a tracked event happened,
+ * an element appeared, or a check function returns true. Conditions that already hold count as done.
+ *
  * Content lives in src/content/tutorials.ts, one tutorial per mission ID.
  */
+
+export interface TourAction {
+  /** What the player does, one short imperative sentence (HTML). */
+  do: string;
+  /** Done when a tracked event (ctx.track) starts with this text. A leading ^ makes it a regular expression. */
+  event?: string;
+  /** Done when an element matching this selector is visible. */
+  appear?: string;
+  /** Done when this returns true. Checked several times a second. */
+  check?: () => boolean;
+}
 
 export interface TourStep {
   title: string;
@@ -14,6 +30,8 @@ export interface TourStep {
   view?: string;
   /** SQL example the player can put into the editor with one click. */
   example?: string;
+  /** Hands-on step: the player does it, the tour waits. */
+  action?: TourAction;
 }
 
 export interface TourHooks {
@@ -22,24 +40,41 @@ export interface TourHooks {
   onFinish: () => void;
 }
 
+/** Fired by ctx.track for every action, also repeated ones. */
+export const TRACK_EVENT = 'dsg:track';
+
 let active: { close: () => void } | null = null;
+
+export const tourRunning = () => active !== null;
 
 /** finishLabel names the last button, e.g. 'Start the mission' or 'Got it'. */
 export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'Start the mission') {
   active?.close();
   let index = 0;
+  let timer = 0;
+  let doneTimer = 0;
+  let stepDone = false;
+  let lastRect = '';
 
   const root = document.createElement('div');
   root.className = 'tour';
   root.innerHTML = `<div class="tour-block"></div><div class="tour-spot" hidden></div>
-    <div class="tour-card panel" role="dialog" aria-modal="true" aria-labelledby="tour-title"></div>`;
+    <div class="tour-card panel" role="dialog" aria-labelledby="tour-title"></div>`;
   document.body.append(root);
   const spot = root.querySelector<HTMLElement>('.tour-spot')!;
   const card = root.querySelector<HTMLElement>('.tour-card')!;
 
+  const stopWaiting = () => {
+    clearInterval(timer);
+    clearTimeout(doneTimer);
+    timer = 0;
+  };
+
   const close = (finished: boolean) => {
+    stopWaiting();
     root.remove();
     window.removeEventListener('resize', place);
+    window.removeEventListener(TRACK_EVENT, onTrack);
     document.removeEventListener('keydown', onKey);
     active = null;
     if (finished) hooks.onFinish();
@@ -47,38 +82,87 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   active = { close: () => close(false) };
 
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') close(true);
+    const acting = !!steps[index]?.action;
+    // In hands-on steps the keyboard belongs to the page (forms, editor); only Escape leaves the tour.
+    if (e.key === 'Escape' && !document.querySelector('.guide-overlay')) close(true);
+    if (acting) return;
     if (e.key === 'ArrowRight') go(index + 1);
     if (e.key === 'ArrowLeft') go(index - 1);
   };
+  const onTrack = (e: Event) => {
+    const a = steps[index]?.action;
+    const ev = (e as CustomEvent<string>).detail;
+    if (!a?.event || stepDone) return;
+    const hit = a.event.startsWith('^') ? new RegExp(a.event).test(ev) : ev.startsWith(a.event);
+    if (hit) complete();
+  };
   document.addEventListener('keydown', onKey);
   window.addEventListener('resize', place);
+  window.addEventListener(TRACK_EVENT, onTrack);
 
   async function go(i: number) {
     if (i < 0) return;
+    stopWaiting();
     if (i >= steps.length) return close(true);
     index = i;
+    stepDone = false;
+    lastRect = '';
     const step = steps[i];
+    root.classList.toggle('acting', !!step.action);
     if (step.view) hooks.setView(step.view);
     const target = step.target ? await waitFor(step.target) : null;
+    if (index !== i) return;
     target?.scrollIntoView({ block: 'nearest' });
     render(step);
     place();
+    if (step.action) {
+      // Already done (for example the right app is open)? Count it, but give the player a moment to read.
+      timer = window.setInterval(() => {
+        place();
+        if (!stepDone && conditionHolds(step.action!)) complete();
+      }, 250);
+    }
+  }
+
+  function conditionHolds(a: TourAction) {
+    if (a.appear && visible(a.appear)) return true;
+    try {
+      if (a.check && a.check()) return true;
+    } catch {
+      /* the page is re-rendering; try again on the next tick */
+    }
+    return false;
+  }
+
+  function complete() {
+    if (stepDone) return;
+    stepDone = true;
+    card.classList.add('done');
+    const status = card.querySelector('.tour-do');
+    if (status) status.innerHTML = `<span class="tour-check">✓</span> Done`;
+    const at = index;
+    doneTimer = window.setTimeout(() => index === at && go(index + 1), 750);
   }
 
   function render(step: TourStep) {
     const last = index === steps.length - 1;
+    card.classList.remove('done');
+    card.classList.toggle('acting', !!step.action);
     card.innerHTML = `
-      <div class="tour-count">Step ${index + 1} of ${steps.length}</div>
+      <div class="tour-count">Step ${index + 1} of ${steps.length}${step.action ? ' · <span class="your-turn">Your turn</span>' : ''}</div>
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
+      ${step.action ? `<div class="tour-do" role="status"><span class="tour-arrow">▶</span><span>${step.action.do}</span></div>
+        <p class="tour-wait">The tutorial goes on by itself when you have done it.</p>` : ''}
       ${step.example ? `<pre class="tour-example"><code></code></pre>
         <button class="btn" type="button" data-act="example">Put this example in the editor</button>` : ''}
       <div class="tour-actions">
         <button class="btn link" type="button" data-act="skip">Skip tutorial</button>
         <span class="spacer"></span>
         <button class="btn" type="button" data-act="back" ${index === 0 ? 'disabled' : ''}>Back</button>
-        <button class="btn primary" type="button" data-act="next">${last ? finishLabel : 'Next'}</button>
+        ${step.action
+          ? `<button class="btn" type="button" data-act="next" title="Go on without doing this step">Skip step</button>`
+          : `<button class="btn primary" type="button" data-act="next">${last ? finishLabel : 'Next'}</button>`}
       </div>`;
     if (step.example) card.querySelector('.tour-example code')!.textContent = step.example;
     card.querySelector('[data-act="skip"]')!.addEventListener('click', () => close(true));
@@ -88,13 +172,16 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       hooks.insertExample(step.example!);
       (e.currentTarget as HTMLButtonElement).textContent = 'Added. Press Run after the tutorial';
     });
-    card.querySelector<HTMLButtonElement>('[data-act="next"]')!.focus();
+    if (!step.action) card.querySelector<HTMLButtonElement>('[data-act="next"]')!.focus();
   }
 
   /** Spotlights the target and puts the card next to it where there is room. */
   function place() {
     const step = steps[index];
-    const target = step.target ? document.querySelector<HTMLElement>(step.target) : null;
+    let target = step?.target ? firstVisible(step.target) : null;
+    // A dialog opened by the player's click (e.g. Upload) is where the work goes on: follow it instead of covering it.
+    const dialog = step?.action ? firstVisible('.guide-overlay .dialog') : null;
+    if (dialog && (!target || !dialog.contains(target))) target = dialog;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const cw = card.offsetWidth;
@@ -102,14 +189,20 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const gap = 14;
 
     if (!target) {
+      if (lastRect === 'none') return;
+      lastRect = 'none';
       spot.hidden = true;
-      root.classList.add('centered');
-      card.style.left = `${Math.max(16, (vw - cw) / 2)}px`;
-      card.style.top = `${Math.max(16, (vh - ch) / 2)}px`;
+      root.classList.toggle('centered', !step?.action);
+      // Hands-on step without a visible target (e.g. a dialog was closed): keep the card out of the way.
+      card.style.left = step?.action ? `${vw - cw - 24}px` : `${Math.max(16, (vw - cw) / 2)}px`;
+      card.style.top = step?.action ? `${vh - ch - 24}px` : `${Math.max(16, (vh - ch) / 2)}px`;
       return;
     }
-    root.classList.remove('centered');
     const r = target.getBoundingClientRect();
+    const key = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)},${cw},${ch}`;
+    if (key === lastRect) return;
+    lastRect = key;
+    root.classList.remove('centered');
     const pad = 6;
     spot.hidden = false;
     spot.style.left = `${r.left - pad}px`;
@@ -117,22 +210,35 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     spot.style.width = `${r.width + pad * 2}px`;
     spot.style.height = `${r.height + pad * 2}px`;
 
-    const clampY = (y: number) => Math.min(Math.max(16, y), vh - ch - 16);
+    const clampY = (y: number) => Math.min(Math.max(16, y), vh - card.offsetHeight - 16);
     const clampX = (x: number) => Math.min(Math.max(16, x), vw - cw - 16);
+    const leftRoom = r.left - gap - 16;
+    const rightRoom = vw - r.right - gap - 16;
     let left: number;
     let top: number;
-    if (r.left - cw - gap >= 16) {
+    card.style.width = '';
+    if (leftRoom >= cw) {
       left = r.left - cw - gap;
       top = clampY(r.top);
-    } else if (r.right + cw + gap <= vw - 16) {
+    } else if (rightRoom >= cw) {
       left = r.right + gap;
+      top = clampY(r.top);
+    } else if (Math.max(leftRoom, rightRoom) >= 250) {
+      // A wide target such as a dialog: a narrower card still fits beside it.
+      const w = Math.min(cw, Math.max(leftRoom, rightRoom));
+      card.style.width = `${w}px`;
+      left = leftRoom >= rightRoom ? r.left - w - gap : r.right + gap;
       top = clampY(r.top);
     } else if (r.bottom + ch + gap <= vh - 16) {
       left = clampX(r.left);
       top = r.bottom + gap;
-    } else {
+    } else if (r.top - ch - gap >= 16) {
       left = clampX(r.left);
-      top = clampY(r.top - ch - gap);
+      top = r.top - ch - gap;
+    } else {
+      // The target fills the screen: park the card top left, away from the buttons of a dialog.
+      left = 16;
+      top = 16;
     }
     card.style.left = `${left}px`;
     card.style.top = `${top}px`;
@@ -141,11 +247,16 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   go(0);
 }
 
+const firstVisible = (selector: string) =>
+  [...document.querySelectorAll<HTMLElement>(selector)].find((el) => el.getBoundingClientRect().height > 0) ?? null;
+
+const visible = (selector: string) => firstVisible(selector) !== null;
+
 /** Views render asynchronously; give the target a moment to appear. */
 async function waitFor(selector: string): Promise<HTMLElement | null> {
   for (let i = 0; i < 40; i++) {
-    const el = document.querySelector<HTMLElement>(selector);
-    if (el && el.getBoundingClientRect().height > 0) return el;
+    const el = firstVisible(selector);
+    if (el) return el;
     await new Promise((r) => setTimeout(r, 50));
   }
   return null;

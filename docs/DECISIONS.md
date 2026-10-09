@@ -4,6 +4,9 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Tutorials hands-on: Schritte warten auf die echte Aktion des Spielers, Seite bleibt bedienbar, Tour geht von selbst weiter | Wunsch von Curlin: „stark guided“; Lernen durch Tun statt Lesen |
+| 2026-10-09 | Missions-Tutorial = Intro + Hands-on-Schritte aller Aufgaben + Check; „Show me“ spielt dieselben Schritte einer Aufgabe | Eine Quelle für beide, keine doppelten Texte |
+| 2026-10-09 | Ab Kapitel 2 führen Tutorials jeden Klick, Entscheidungen (Rolle, Load Type, Truncate, Datenzugriff) bleiben erklärende Schritte ohne Prüfung | Tutorial soll nicht die Lösung vorgeben |
 | 2026-10-09 | Curlins „SAP Datasphere Handbuch“ ist fachliche Quelle; was es als „nicht verifiziert“ markiert, wird vereinfacht gebaut und im Code/Text als vereinfacht gekennzeichnet | Wunsch von Curlin; keine erfundenen Details als Fakten |
 | 2026-10-09 | Pilot-Tabellen in RHN_IN bleiben und sind Ziel der Replication Flows; Läufe zählen Datensätze, ändern die Daten aber nicht (Ausnahme: Zusatzspalten aus Projektionen, neue Zieltabellen) | Kapitel 0–2 und 4 bauen auf diesen Tabellen auf; Prüfungen bleiben stabil |
 | 2026-10-09 | Truncate auf Tabellen mit Zeilen anderer Quellen (LEGACY) wird beim Run von Lena gestoppt statt Daten zu löschen | Lerneffekt ohne zerstörte Daten für spätere Kapitel |

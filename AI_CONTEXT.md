@@ -25,7 +25,8 @@ hat aber noch nicht selbst modelliert).
 - Standard-SQL via DuckDB-WASM; HANA-Unterschiede nur als Info-Karten
 - Ruhige Business-Simulation mit Karriere-Rängen und Badges, keine laute Spieloptik
 - Tipps frei nutzbar, kosten aber XP; nie eine fertige Lösung anzeigen
-- Start mit 0 XP; jede Mission hat ein kostenloses Tutorial-Popup, das Schritt für Schritt alles erklärt
+- Start mit 0 XP; jede Mission hat ein kostenloses, stark geführtes Tutorial: zeigt jeden Klick und wartet, bis der Spieler ihn selbst gemacht hat
+  (Kapitel 0–1 mit konkreten Werten, ab Kapitel 2 bleiben Entscheidungen als erklärende Schritte beim Spieler)
 - Mentor im Spiel: Calin Mucea
 - Tipp-Stufen je Kapitel (`guidance`): 0–1 alle offen, 2–4 nur Richtung frei, 5–10 nur gegen XP, 11 keine
 - Keine SAP-Logos, keine pixelgenaue Kopie der SAP-Oberfläche (Struktur echt, Optik eigenständig)
@@ -79,7 +80,8 @@ src/tenant.ts        ← Tenant: Spaces (Storage, Priorität), Shares, aktiver S
 src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scoped Roles, `effectiveAccess`
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
-src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor
+src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
+src/content/guided.ts ← Geführte Tutorials Kapitel 0–3: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
@@ -112,13 +114,14 @@ Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-r
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
-`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts` (Ansichten für Touren: App-ID oder `builder:landing|new-view|spaces[:SPACE]`),
+Intro + Hands-on-Schritte je Aufgabe in `src/content/guided.ts` (oder `TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`; Kapitel 4 ist noch passiv) (Ansichten für Touren: App-ID oder `builder:landing|new-view|spaces[:SPACE]`),
 Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
 1. Kapitel 5 (Harmonization): SQL Views in `RHN_HARM` auf geteilten Inbound-Tabellen: Netzgebiete/Tarife mappen, Altschlüssel über
    LEGACY_CUSTOMER_MAP, CRM-Dubletten (jetzt mit `SRC_SYS_ID = 'CRM'`), MWh → kWh, doppelte Ablesungen. Quelle: Handbuch 6.5.2, 6.11.4
-2. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-3. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin): Reihenfolge der Seitennavigation, eigener Eintrag
+2. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen (Editor füllen, Data Preview, Ergebnis lesen)
+3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
+4. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin): Reihenfolge der Seitennavigation, eigener Eintrag
    „Data Access Controls“, Gruppe „Monitoring“, Namen der Standardrollen

@@ -764,3 +764,21 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .lock-chip .ic { width: 12px; height: 12px; }
 .lock-note { font-size: 12.5px; color: var(--critical); margin: 0 0 10px; }
 .tile-facts small.over { color: var(--critical); font-weight: 600; }
+
+/* ---------------------------------------------------------------- hands-on tutorial steps */
+.tour.acting { pointer-events: none; }
+.tour.acting .tour-block { display: none; }
+.tour.acting .tour-card { pointer-events: auto; }
+.tour.acting .tour-spot { box-shadow: 0 0 0 3px var(--accent), 0 0 0 9999px rgba(11, 21, 36, .32); animation: tour-pulse 1.6s ease-in-out infinite; }
+@keyframes tour-pulse { 50% { box-shadow: 0 0 0 6px var(--accent), 0 0 0 9999px rgba(11, 21, 36, .32); } }
+@media (prefers-reduced-motion: reduce) { .tour.acting .tour-spot { animation: none; } }
+.tour-card { transition: left .2s, top .2s; }
+.tour-card.acting { border: 2px solid var(--accent); }
+.your-turn { color: var(--warning); text-transform: uppercase; letter-spacing: .05em; }
+.tour-do { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 4px; padding: 10px 12px; border-radius: var(--radius-s);
+  background: var(--accent-soft); color: var(--ink); font-weight: 600; font-size: 13.5px; line-height: 1.45; }
+.tour-do code { font-weight: 500; }
+.tour-arrow { color: var(--accent); }
+.tour-wait { margin: 4px 0 0; font-size: 12px; color: var(--ink-faint); }
+.tour-card.done .tour-do { background: var(--ok-soft); color: var(--ok); }
+.tour-check { font-weight: 700; }

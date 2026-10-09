@@ -44,7 +44,7 @@ class Game:
 
     def walk_tutorial(self, show=True):
         n = 0
-        while self.pg.locator('.tour-card').count() and n < 15:
+        while self.pg.locator('.tour-card').count() and n < 80:
             if show:
                 print('  tour:', self.pg.inner_text('.tour-card h2'))
             self.pg.click('[data-act="next"]')

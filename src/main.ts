@@ -7,7 +7,7 @@ import { TUTORIALS, TASK_TOURS } from './content/tutorials';
 import { MISSIONS, missionById, missionsOfChapter } from './content/missions';
 import { checkMission, type CheckReport } from './missions/engine';
 import type { QuestionCheck } from './missions/types';
-import { startTour } from './tutorial';
+import { startTour, TRACK_EVENT, type TourStep } from './tutorial';
 import {
   loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
   exportProgress, importProgress, freshProgress, CLEAN_BONUS,
@@ -51,6 +51,8 @@ const currentChapter = () => unlockedChapter(ctx.progress);
 ctx.save = save;
 ctx.currentChapter = currentChapter;
 ctx.track = (event: string) => {
+  // Hands-on tutorial steps listen for every action, also repeated ones.
+  window.dispatchEvent(new CustomEvent(TRACK_EVENT, { detail: event }));
   const mp = missionProgress(ctx.progress, ctx.progress.currentMission);
   if (mp.events.includes(event)) return;
   mp.events.push(event);
@@ -244,9 +246,28 @@ function openTaskTour(missionId: string, task: number) {
   if (steps) startTour(steps, tourHooks(() => undefined), 'Got it');
 }
 
+/** Last step of every hands-on tutorial. */
+const CHECK_STEP: TourStep = {
+  title: 'Check your work',
+  target: '#check',
+  body: `<p>That was every step of the ticket. <b>Check my solution</b> gives you feedback for each part. If something is red,
+    the message says what is missing; fix it and check again. It costs nothing.</p>`,
+  action: { do: 'Press <b>Check my solution</b>.', appear: '.check-list' },
+};
+
+/**
+ * The mission tutorial: the intro (concepts), then, if the task tours are hands-on, all of them in order,
+ * so the player is walked through the whole mission doing every step.
+ */
+function tutorialSteps(missionId: string): TourStep[] {
+  const intro = TUTORIALS[missionId] ?? [];
+  const tasks = (TASK_TOURS[missionId] ?? []).flat();
+  return tasks.some((s) => s.action) ? [...intro, ...tasks, CHECK_STEP] : intro;
+}
+
 function openTutorial(missionId: string) {
-  const steps = TUTORIALS[missionId];
-  if (!steps) return;
+  const steps = tutorialSteps(missionId);
+  if (!steps.length) return;
   startTour(
     steps,
     tourHooks(() => {
@@ -263,7 +284,7 @@ function openTutorial(missionId: string) {
 const GUIDE_STEPS = [
   {
     title: 'Read the ticket',
-    text: 'Each mission starts with a ticket on the right and a tutorial that walks you through it. The ticket says what the business needs; how to do it is your job.',
+    text: 'Each mission starts with a ticket on the right and a tutorial that walks you through it. In steps marked Your turn you click yourself; the tutorial waits and goes on by itself.',
   },
   {
     title: 'Work in the tenant',
@@ -271,7 +292,7 @@ const GUIDE_STEPS = [
   },
   {
     title: 'Use hints when you are stuck',
-    text: 'Each task step has a Show me button with a quick tutorial. Hints come in three levels. In the first chapters they are free; later you buy them with XP. You start with 0 XP.',
+    text: 'Each task step has a Show me button that guides you through just that step again. Hints come in three levels. In the first chapters they are free; later you buy them with XP. You start with 0 XP.',
   },
   {
     title: 'Check your solution',

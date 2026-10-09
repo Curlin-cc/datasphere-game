@@ -133,6 +133,7 @@ function openRoleDialog(existing?: ScopedRole) {
       // Assignments can never reach beyond the scope.
       t.assignments.filter((a) => a.role === id).forEach((a) => (a.spaces = a.spaces.filter((s) => scope.includes(s))));
     } else t.roles.push({ id, template, scope });
+    ctx.track(`${existing ? 'edit' : 'create'}-role:${id}`);
     ctx.save();
     close();
     ctx.renderView();
@@ -165,6 +166,7 @@ function openUserDialog(user: string) {
       if (spaces.length) next.push({ user, role: r.id, spaces });
     }
     t.assignments = next;
+    ctx.track(`assign:${user}`);
     ctx.save();
     close();
     ctx.renderView();
