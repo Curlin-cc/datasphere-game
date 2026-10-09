@@ -466,6 +466,12 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>Every value you do not list goes to <code>ELSE</code>. Without <code>ELSE</code> it becomes <code>NULL</code>, and rows silently lose
         their value. <code>AS</code> names the result column.</p>`,
     },
+    {
+      title: 'Or: a mapping table',
+      body: `<p>The same translation can live in a small <b>table</b> in RHN_HARM: one row per legacy code and its S/4 code, typed in the
+        <b>Data Editor</b>. The view joins it with <code>LEFT JOIN</code> and keeps the original value with <code>COALESCE</code>.</p>
+        <p>The tutorial shows CASE. The mapping table is the way for longer lists; Hint 4 describes it.</p>`,
+    },
   ],
   'c05-m02': [
     {

@@ -55,7 +55,7 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 | 2026-10-09 | Neuer Prüftyp `metric` (eine Zahl per SQL, z. B. „Verträge ohne Kunde“) | Fachliches Feedback unabhängig davon, wie der Spieler die View schreibt |
 | 2026-10-09 | c05-m02 ändert die bestehende View statt eine zweite zu bauen; zweite View auf dieselbe Quelle wird als Kopie gemeldet | Best Practice „Logik einmal zentral“; Status *Changes to Deploy* wird erlebbar |
 | 2026-10-09 | Dubletten-Regel: gleiche E-Mail (ohne Groß/Klein) **und** gleiche Adresse, ältester Datensatz bleibt | Daten enthalten 3 echte Namensvettern-Paare mit gleicher E-Mail; Verträge zeigen auf die älteste ID. Lehrt: Regel an den Daten testen |
-| 2026-10-09 | Mapping per CASE statt Mapping-Tabelle | Spiel kann noch keine lokalen Tabellen anlegen; Mapping-Tabelle als Best Practice in Debrief/„In the real tenant“ erwähnt |
+| 2026-10-09 | Mapping per CASE statt Mapping-Tabelle (abgelöst, siehe unten: beide Wege) | Spiel konnte noch keine lokalen Tabellen anlegen |
 | 2026-10-09 | Impact and Lineage vereinfacht als Liste im Properties-Panel, berechnet aus `SPACE.OBJEKT`-Referenzen im gespeicherten SQL | Handbuch 6.11.2 beschreibt nur den Zweck; reicht für „vor dem Ändern prüfen, wer es nutzt“ |
 | 2026-10-09 | Kapitel-5-Hinweise und Tutorials HANA-kompatibel (ROW_NUMBER in Unterabfrage statt QUALIFY) | Spieler soll SQL lernen, das auch im echten Tenant läuft |
 | 2026-10-09 | Tutorials hands-on: Schritte warten auf die echte Aktion des Spielers, Seite bleibt bedienbar, Tour geht von selbst weiter | Wunsch von Curlin: „stark guided“; Lernen durch Tun statt Lesen |
@@ -110,3 +110,4 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 | 2026-10-08 | Business Case Stadtwerke Rheinau (Energieversorger) | Nah am Arbeitsumfeld (Energie, Abrechnung) |
 | 2026-10-08 | SQL statt Drag & Drop | Weniger Aufwand, mehr Lerneffekt |
 | 2026-10-08 | Fact-Views + Analytic Model als Standard, Business Builder nur Exkurs | SAP-Empfehlung, Analytical Dataset und Business-Builder-Objekte abgelöst (Business Builder im Tenant als „Deprecated“ betitelt, Bild 8) |
+| 2026-10-09 | c05-m01: Mapping-Tabelle als gleichwertiger zweiter Weg neben CASE; Kachel *New Table* ab Kapitel 5 | Lokale Tabellen gibt es seit Kapitel 8; geprüft wird nur die deployte View, beide Wege liefern dieselben Zeilen. Tutorial bleibt bei CASE, Mapping-Weg über Intro-Schritt und Hinweis 4 |

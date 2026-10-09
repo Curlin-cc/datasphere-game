@@ -132,7 +132,7 @@ Spielbar (57 Missionen, Hauptspiel und Exkurse komplett):
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
 - Kapitel 4 Inbound Layer: SQL-Profiling im Scratch-SQL-View
-- Kapitel 5 Harmonization: deployte SQL Views in `RHN_HARM` (`RHN_HA_V_CONTRACTS`, `RHN_HA_V_CUSTOMERS`, `RHN_HA_V_METER_READINGS`), Sharing nach `RHN_REP`
+- Kapitel 5 Harmonization: deployte SQL Views in `RHN_HARM` (`RHN_HA_V_CONTRACTS` per CASE oder Mapping-Tabelle `RHN_HA_T_CODE_MAP`, `RHN_HA_V_CUSTOMERS`, `RHN_HA_V_METER_READINGS`), Sharing nach `RHN_REP`
 - Kapitel 6 Semantics: Dimensionen `RHN_REP_D_GRID_AREA/_TARIFF/_CUSTOMER`, Facts `RHN_REP_F_CONSUMPTION/_INVOICES` mit Spaltenrollen und Associations; 1:1-Views `RHN_HA_V_GRID_AREAS/_TARIFFS/_INVOICES`
 - Kapitel 8 Data Access Controls: Berechtigungstabelle `RHN_REP_T_PERMISSIONS` (Data Editor), DAC `RHN_REP_DAC_GRID_AREA` (Single Values), zugewiesen an beide Facts; Prüfen „View as“ MBRANDT/ADEMIR/PLINDNER
 - Kapitel 7 Analytic Model: `RHN_REP_AM_INVOICES` (NET/TAX, GROSS_AMOUNT calculated, UNPAID_GROSS restricted, CUSTOMERS count distinct, Variable V_INVOICE_DATE) und `RHN_REP_AM_CONSUMPTION`, beide ohne Kundendimension
@@ -168,8 +168,7 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
    v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
 2. Design: Abschnitt 4 der Design-Richtlinie ist bis auf fehlende Vorlagen erledigt. Curlin: Screenshots von Connections und Security › Users/Roles/
    Activities aus dem echten Tenant liefern, dann abgleichen
-3. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
-4. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+3. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
    und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
    erneutes Deploy die persistierten Daten entfernt; Kapitel 10: ob Task Chains Objekte anderer Spaces nur über geteilte Ketten erreichen
-5. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+4. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)

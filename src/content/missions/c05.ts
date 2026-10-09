@@ -86,10 +86,13 @@ export const CHAPTER_5: Mission[] = [
         <li>Tariffs <code>STROM_BASIS</code> → <code>POWER_BASIC</code>, <code>STROM_OEKO</code> → <code>POWER_GREEN</code>,
           <code>STROM_WAERME</code> → <code>POWER_HEAT</code>, <code>GAS_KOMFORT</code> → <code>GAS_COMFORT</code>; <code>GAS_FLEX</code> stays</li>
       </ul>
-      <p>Customer IDs stay as they are for now; that is the next ticket.</p>`,
+      <p>Customer IDs stay as they are for now; that is the next ticket.</p>
+      <p><i>Calin adds:</i> Nine codes fit into a <code>CASE</code>. If you want to do it the way we do it with longer lists, put the
+      translations into a small <b>mapping table</b> in <code>RHN_HARM</code> instead (for example <code>RHN_HA_T_CODE_MAP</code>, filled in the
+      Data Editor) and join it. Either way counts; the view must deliver the same rows.</p>`,
     tasks: [
       'In the Data Builder of <code>RHN_HARM</code>, check under "Shared with RHN_HARM" that <code>BILLING_CONTRACTS</code> is there.',
-      'Create a <b>New SQL View</b> in <code>RHN_HARM</code>. Write the SELECT with the mapping and look at it in the Data Preview.',
+      'Create a <b>New SQL View</b> in <code>RHN_HARM</code>. Write the SELECT with the mapping and look at it in the Data Preview. (Mapping table instead: <b>New Table</b> first, fill it in the Data Editor and deploy it, then join it in the view.)',
       'Give it the technical name <code>RHN_HA_V_CONTRACTS</code> and a business name, then <b>Save</b> and <b>Deploy</b>.',
       'Answer the question below.',
     ],
@@ -97,6 +100,7 @@ export const CHAPTER_5: Mission[] = [
       { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder, space RHN_HARM, New SQL View. BILLING_CONTRACTS is in the Sources list under Shared Objects; a click inserts RHN_IN.BILLING_CONTRACTS.' },
       { label: 'Hint 2: the concept', cost: 15, text: "CASE column WHEN 'old' THEN 'new' … ELSE column END translates values; without ELSE every value you did not list becomes NULL. Name the result with AS so the column keeps its name." },
       { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT CONTRACT_ID, CUSTOMER_ID, CASE GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN ____ THEN ____ … ELSE GRID_AREA END AS GRID_AREA, CASE TARIFF WHEN ____ THEN ____ … ELSE ____ END AS ______, START_DATE, END_DATE, SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS" },
+      { label: 'Hint 4: the mapping-table way', cost: 15, text: "A table RHN_HA_T_CODE_MAP with CODE_TYPE, LEGACY_CODE (both key) and S4_CODE: one row per legacy code, e.g. GRID_AREA | Nord | NORTH. Deploy it, then join it twice with LEFT JOIN, once per code type: LEFT JOIN RHN_HARM.RHN_HA_T_CODE_MAP g ON g.CODE_TYPE = 'GRID_AREA' AND g.LEGACY_CODE = c.GRID_AREA, and take COALESCE(g.S4_CODE, c.GRID_AREA). An inner join would drop every S4U contract." },
     ],
     checks: [
       { type: 'structure', label: 'The view and its columns', space: 'RHN_HARM', object: 'RHN_HA_V_CONTRACTS', kind: 'View',
@@ -109,7 +113,8 @@ export const CHAPTER_5: Mission[] = [
         expected: project(M01_COLS, REF_CONTRACTS_CODES),
         counts: {
           1087: 'Only the S4U contracts are in your view. The 91 legacy contracts must stay; translate their codes instead of filtering them out.',
-          91: 'Only the legacy contracts are in your view. It must hold every contract, from both source systems.',
+          82: 'Only legacy contracts whose grid area and tariff are both in your mapping table are left. An inner JOIN drops every row without a partner; use LEFT JOIN and keep the original code with COALESCE.',
+          91: 'Only the legacy contracts are in your view. It must hold every contract, from both source systems. With a mapping table: an inner JOIN keeps only the codes the table lists; use LEFT JOIN.',
         },
         diagnose: [
           {
@@ -129,7 +134,7 @@ export const CHAPTER_5: Mission[] = [
             sql: project(M01_COLS, `SELECT c.CONTRACT_ID, CASE c.GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN 'Ost' THEN 'EAST' WHEN 'Süd' THEN 'SOUTH' WHEN 'West' THEN 'WEST' END AS GRID_AREA,
               CASE c.TARIFF WHEN 'STROM_BASIS' THEN 'POWER_BASIC' WHEN 'STROM_OEKO' THEN 'POWER_GREEN' WHEN 'STROM_WAERME' THEN 'POWER_HEAT' WHEN 'GAS_KOMFORT' THEN 'GAS_COMFORT' END AS TARIFF,
               c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
-            message: 'Your legacy codes are translated, but the S4U contracts lost their grid area and tariff: a CASE without ELSE returns NULL for every value you did not list.',
+            message: 'Your legacy codes are translated, but the S4U contracts lost their grid area and tariff: a CASE without ELSE (or a LEFT JOIN on a mapping table without COALESCE) returns NULL for every value you did not list.',
           },
           {
             sql: project(M01_COLS, `SELECT c.CONTRACT_ID, upper(c.GRID_AREA) AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
@@ -164,12 +169,13 @@ export const CHAPTER_5: Mission[] = [
     review: ['case_else', 'no_select_star', 'explicit_join'],
     xp: 35,
     realTenant: `In a real tenant: <b>Data Builder</b> → space of the harmonization layer → <b>New SQL View</b>. Shared inbound tables are in the
-      source browser under <b>Shared Objects</b>. Larger mappings usually live in a small <b>mapping table</b> (uploaded from CSV and joined),
-      so the business can maintain them without changing SQL.`,
+      source browser under <b>Shared Objects</b>. Larger mappings usually live in a small <b>mapping table</b> (Data Builder → New Table, rows
+      typed in the Data Editor or uploaded with Import CSV File), so the business can maintain them without changing SQL.`,
     debrief: `<p>That is the heart of harmonization: the raw data stays untouched, and one view speaks one language.
       Every report built on <code>RHN_HA_V_CONTRACTS</code> now counts all 1,178 contracts by region and tariff.</p>
-      <p>A tip for real projects: once there are more than a handful of codes, put them into a mapping table instead of a long CASE.
-      Same idea, but the business can maintain it.</p>`,
+      <p>CASE or mapping table? Both give the same rows. Once there are more than a handful of codes, the mapping table wins:
+      the business maintains it in the Data Editor, and a new code does not need a new deployment of the view. Its price is one more
+      object to deploy, share and transport with the view.</p>`,
   },
   {
     id: 'c05-m02',

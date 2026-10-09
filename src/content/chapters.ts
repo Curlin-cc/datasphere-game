@@ -312,6 +312,12 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Analytic model > Measures > Count Distinct.',
   },
   {
+    term: 'Mapping table',
+    chapter: 5,
+    text: 'A small local table that translates codes (legacy code → target code), joined in a view with LEFT JOIN and COALESCE. Replaces a long CASE; the business can maintain it in the Data Editor without changing SQL.',
+    realTenant: 'Data Builder > New Table in the harmonization space, rows in the Data Editor or uploaded from a CSV file.',
+  },
+  {
     term: 'Data access control',
     chapter: 8,
     text: 'Row-level security: decides which rows of a view a user sees. Reads a permissions entity (user → allowed values) and is assigned to a view by mapping its criteria to view columns. A user without an entry sees nothing.',

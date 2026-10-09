@@ -183,6 +183,7 @@ with sync_playwright() as p:
     g = Game(p, S); pg = g.pg
     g.start(save_before(5, 'c05-m01', TENANT5))
     expect(pg, 'Chapter 5: Harmonization'); nexts(pg, 2)
+    expect(pg, 'Or: a mapping table'); nexts(pg)
     expect(pg, 'Open Data Builder'); pg.click('.nav [data-view="builder"]')
     expect(pg, 'Space RHN_HARM')
     if pg.locator('#space-picker').count() == 0:
