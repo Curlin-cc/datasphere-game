@@ -2,6 +2,7 @@ import type { Mission, RuleContext } from '../../missions/types';
 import type { TenantState } from '../../tenant';
 import { findObject, objectKey, addVersion } from '../../repo';
 import { REF_CONTRACTS_KEYS, M02_COLS, project } from './c05';
+import { SAC_PLANNING } from '../../consumption';
 import { packageStatus, presetPackage, validatePackage, validationMessages } from '../../transport';
 import { findAsset } from '../../catalog';
 import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
@@ -548,5 +549,68 @@ export const CHAPTER_12: Mission[] = [
       again and how many versions are kept is not verified; the game asks for a deployment and keeps the last 15.`,
     debrief: `<p>1,178 contracts again, and region West is back where it was. Thank you, and please tell me before the next clean-up.</p>
       <p><i>Calin adds:</i> Tim's version is still in the history, so nothing is lost. Next time a change like that goes through the test tenant first.</p>`,
+  },
+  {
+    id: 'c12-m08',
+    chapter: 12,
+    title: 'A feed for the planners',
+    from: JONAS,
+    ticket: `<p>Jonas here. The planning team runs its own SAP Analytics Cloud tenant and wants our grid areas there, refreshed every week through an
+      <b>import connection</b> that reads the <b>OData API</b>. They gave me the redirect URI of their tenant:</p>
+      <p><code>${SAC_PLANNING.redirectUri}</code></p>
+      <p><i>Calin adds:</i> Two things on our side. The grid area dimension <code>RHN_REP_D_GRID_AREA</code> must be readable from outside, and the
+      planners need an <b>OAuth client</b> to sign in with (System › Administration › App Integration). Choose its purpose with care: OData reads
+      data in the name of a person. Then test the call before you send them client ID and secret.</p>`,
+    tasks: [
+      'Make <code>RHN_REP_D_GRID_AREA</code> readable for external tools and deploy it.',
+      'System › Administration › <b>App Integration</b>: add an OAuth client for the planners with the right purpose and their redirect URI.',
+      '<b>Test</b> the client: read <code>RHN_REP.RHN_REP_D_GRID_AREA</code> the way their import connection would, until it answers with HTTP 200.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Expose for Consumption is in the properties of the view, as in the first excursion. OAuth clients: System in the side navigation, Administration, tab App Integration.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'An import connection signs in as a planner (Authorization Code) and comes back to the redirect URI. A client without a user (Client Credentials) cannot read data through OData.' },
+    ],
+    checks: [
+      {
+        type: 'rule', label: 'The grid areas are exposed', ok: 'RHN_REP_D_GRID_AREA is deployed with Expose for Consumption on.',
+        test: ({ tenant }) => (findObject(tenant, D_GRID)?.deployed?.exposed ? null
+          : 'RHN_REP_D_GRID_AREA is not exposed in its deployed version. Switch on Expose for Consumption and deploy.'),
+      },
+      {
+        type: 'rule', label: 'An OAuth client for the planners', ok: 'Interactive Usage, Authorization Code, with the redirect URI of the planning tenant.',
+        test: ({ tenant }) => {
+          const c = tenant.oauthClients.find((x) => x.redirectUri.trim() === SAC_PLANNING.redirectUri);
+          if (c) return c.purpose === 'Interactive Usage' ? null : `${c.name} has purpose ${c.purpose}. OData reads data in a user's name: Interactive Usage.`;
+          const other = tenant.oauthClients.find((x) => x.purpose === 'Interactive Usage');
+          if (other) return `${other.name} has the redirect URI ${other.redirectUri || '(none)'}. It must be exactly the one in the ticket, or the sign-in never comes back.`;
+          return tenant.oauthClients.length ? 'None of the clients has purpose Interactive Usage.' : 'There is no OAuth client yet. System › Administration › App Integration › Add a New OAuth Client.';
+        },
+      },
+      {
+        type: 'rule', label: 'The call works', ok: 'The test call read the grid areas with HTTP 200.',
+        test: ({ events }) => ([...events].some((e) => e.startsWith('odata-test:') && e.endsWith(`:${D_GRID}:200`)) ? null
+          : 'Use Test on the client and read RHN_REP.RHN_REP_D_GRID_AREA until the answer is HTTP 200. The message of a failed call says what is missing.'),
+      },
+      {
+        type: 'question', id: 'purpose', label: 'Why this purpose',
+        prompt: 'Why does the planners\' client need the purpose Interactive Usage and not API Access?',
+        options: [
+          'API Access is only for SAP-internal tools',
+          'OData consumption needs a signed-in user (Authorization Code with a redirect URI); API Access signs in as a program without a user (Client Credentials)',
+          'Interactive Usage tokens never expire',
+          'Interactive Usage bypasses Expose for Consumption',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Who is signed in when the import connection reads the data?',
+      },
+    ],
+    xp: 45,
+    realTenant: `In a real tenant: expose the view and deploy (Handbuch 12.3); System › Administration › App Integration › Add a New OAuth Client
+      with purpose <b>Interactive Usage</b> and the redirect URI of the tool (Handbuch 12.7.3, SAP KBA 3563695); give client ID, secret, authorization and
+      token URL to the tool. Field names, the secret shown once and the service URL structure are simplified (not verified in the handbook).`,
+    debrief: `<p>Thanks, client ID and secret are on their way to the planners. They see what they would see in our tenant, nothing more.</p>
+      <p><i>Calin adds:</i> One client per tool, so you can switch one off without breaking the others. And the secret goes in a password manager,
+      not in an email.</p>`,
   },
 ];

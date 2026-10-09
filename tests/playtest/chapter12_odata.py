@@ -1,0 +1,91 @@
+"""Chapter 12, OData and OAuth (c12-m08): an API Access client (401), an Interactive Usage client with a wrong redirect URI (400),
+the right client while the dimension is not exposed (404), then exposed and deployed (200). Reload keeps the clients.
+Second run: the hands-on tutorial. Start state: chapter12_data.py with c12-m01..m07 solved."""
+import sys
+from playwright.sync_api import sync_playwright
+from common import Game, save_before
+from chapter12_data import TENANT12
+
+S = sys.argv[1] if len(sys.argv) > 1 else '.'
+D = 'RHN_REP.RHN_REP_D_GRID_AREA'
+REDIRECT = 'https://rheinau-planning.eu10.sapanalytics.cloud/oauth/client/redirect'
+
+
+def start_save():
+    save = save_before(12, 'c12-m08', TENANT12)
+    for m in ['c12-m01', 'c12-m02', 'c12-m03', 'c12-m04', 'c12-m05', 'c12-m06', 'c12-m07']:
+        save["missions"][m] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
+    return save
+
+
+def tour(pg, t):
+    pg.wait_for_function("t => document.querySelector('.tour-card h2')?.textContent === t", arg=t, timeout=8000)
+    print('   step:', t)
+
+
+with sync_playwright() as p:
+    g = Game(p, S)
+    pg = g.pg
+
+    def admin_apps():
+        g.nav('system'); pg.click('.nav [data-sys="administration"]'); pg.click('[data-admin="apps"]'); pg.wait_for_selector('#oauth-list')
+
+    def add_client(name, purpose, redirect):
+        pg.click('#oauth-add'); pg.fill('.dialog [name="name"]', name); pg.select_option('.dialog [name="purpose"]', purpose)
+        pg.fill('.dialog [name="redirect"]', redirect); pg.click('.dialog [type="submit"]'); pg.wait_for_timeout(200)
+        err = pg.locator('.form-error')
+        if err.count() and err.inner_text().strip():
+            print('   FORM ERROR:', err.inner_text()); pg.click('.dialog [data-act="cancel"]'); return
+        print('   added:', pg.inner_text('.dialog dl').split('\n')[1][:40]); pg.click('.dialog [data-act="cancel"]')
+
+    def test(name):
+        pg.click(f'[data-oauth-test="{name}"]'); pg.select_option('.dialog [name="object"]', D)
+        pg.click('.dialog [type="submit"]'); pg.wait_for_selector('.odata-status')
+        print('   test', name, '→', pg.inner_text('.odata-status')[:150].replace('\n', ' '))
+        pg.click('.dialog [data-act="cancel"]')
+
+    g.start(start_save())
+    g.skip_tutorial()
+    admin_apps()
+    add_client('Planning robot', 'API Access', '')
+    test('Planning robot')
+    add_client('SAC Planning', 'Interactive Usage', '')                 # refused: needs a redirect URI
+    add_client('SAC Planning', 'Interactive Usage', REDIRECT.replace('planning', 'planing'))
+    test('SAC Planning')
+    g.answer('purpose', 1)
+    g.check('m08 wrong redirect, not exposed')
+    pg.click('[data-oauth-delete="SAC Planning"]'); pg.wait_for_timeout(200)
+    add_client('SAC Planning', 'Interactive Usage', REDIRECT)
+    test('SAC Planning')                                                 # 404: not exposed
+    g.shot('c12-oauth')
+    g.space('RHN_REP')
+    pg.click(f'#object-list [data-open="{D}"]'); pg.wait_for_selector('#prop-expose')
+    pg.check('#prop-expose'); pg.click('#ed-deploy'); pg.wait_for_timeout(600)
+    admin_apps()
+    pg.click('[data-oauth-test="SAC Planning"]'); pg.select_option('.dialog [name="object"]', D)
+    pg.click('.dialog [type="submit"]'); pg.wait_for_selector('.odata-status')
+    print('   test → ', pg.inner_text('.odata-status')[:120].replace('\n', ' '))
+    g.shot('c12-odata')
+    pg.click('.dialog [data-act="cancel"]')
+    g.check('m08 solved')
+    g.reload()
+    admin_apps()
+    print('   clients after reload:', pg.locator('#oauth-list [data-oauth-test]').count())
+    g.done()
+
+with sync_playwright() as p:
+    g = Game(p, S)
+    pg = g.pg
+    g.start(start_save())
+    tour(pg, 'Data out through OData'); pg.click('.tour-card [data-act="next"]')
+    tour(pg, 'The grid area dimension'); pg.click(f'#object-list [data-open="{D}"]')
+    tour(pg, 'Expose and deploy'); pg.check('#prop-expose'); pg.click('#ed-deploy')
+    tour(pg, 'App Integration'); pg.click('#oauth-add')
+    tour(pg, 'Purpose and redirect URI')
+    pg.fill('.dialog [name="name"]', 'SAC Planning'); pg.fill('.dialog [name="redirect"]', REDIRECT); pg.click('.dialog [type="submit"]')
+    pg.wait_for_selector('.dialog dl'); pg.click('.dialog [data-act="cancel"]')
+    tour(pg, 'Test the call')
+    pg.click('[data-oauth-test="SAC Planning"]'); pg.select_option('.dialog [name="object"]', D); pg.click('.dialog [type="submit"]')
+    pg.wait_for_selector('.odata-status'); pg.click('.dialog [data-act="cancel"]')
+    tour(pg, 'Your answers')
+    g.done()

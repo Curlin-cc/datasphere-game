@@ -496,7 +496,7 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
 .question input { accent-color: var(--accent); }
 
 .check-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-.check-list li { border: 1px solid var(--line); border-left: 3px solid var(--critical); border-radius: var(--radius-s); padding: 7px 10px; background: var(--critical-soft); font-size: 13px; }
+.check-list li { border: 1px solid var(--line); border-left: 3px solid var(--critical); border-radius: var(--radius-s); padding: 7px 10px; background: var(--critical-soft); font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
 .check-list li.ok { border-left-color: var(--ok); background: var(--ok-soft); }
 .check-list b { display: block; font-weight: 600; }
 .check-list li.ok b { color: var(--ok); }
@@ -1506,3 +1506,20 @@ td.act { color: var(--link); }
 .ver-diff .dl.add, .diff-add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
 .ver-diff .dl.del, .diff-del { background: color-mix(in srgb, var(--critical) 14%, transparent); }
 .diff-add, .diff-del { padding: 0 4px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* ---------- App Integration: OAuth clients and the OData test (excursions) ---------- */
+td.wrap, dd.wrap, p.wrap { word-break: break-all; white-space: normal; overflow-wrap: anywhere; }
+#oauth-list { table-layout: fixed; width: 100%; }
+#oauth-list th:nth-child(1) { width: 16%; } #oauth-list th:nth-child(2) { width: 13%; } #oauth-list th:nth-child(3) { width: 15%; }
+#oauth-list th:nth-child(4) { width: 28%; } #oauth-list th:nth-child(5) { width: 16%; } #oauth-list th:nth-child(6) { width: 12%; }
+.sys-section.stacked { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.sys-section.stacked .table-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.sys-section.stacked .table-head h4 { margin: 0; }
+#oauth-list td { white-space: normal; vertical-align: top; }
+#oauth-list .row-actions { white-space: normal; }
+.dialog.odata-dlg { width: min(900px, 94vw); max-width: none; }
+.odata-status { margin: 10px 0; padding: 10px 12px; border-radius: 6px; border-left: 4px solid; }
+.odata-status.ok { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.odata-status.bad { border-color: var(--critical); background: color-mix(in srgb, var(--critical) 9%, transparent); }
+.wide-field { display: grid; gap: 4px; margin-top: 10px; }
+.wide-field input { font: inherit; padding: 6px 8px; }

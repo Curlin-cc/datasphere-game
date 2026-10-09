@@ -76,7 +76,7 @@ src/views/security.ts ← Security mit Unterseiten Users · Roles · Authorizati
 src/views/settings.ts ← Benutzermenü am Avatar (Settings · About · Sign Out) und Settings-Dialog (Bild 20): Theme, Business/Technical Name (`shownName` in ui.ts)
 src/views/connections.ts ← Connections: Space-Auswahl, Liste, Create (Typ-Auswahl mit Features), Edit, Validate, Delete
 src/views/monitor.ts ← Data Integration Monitor: Remote Tables (Snapshot, Remove, Schedule), Views ab Kapitel 9 (Persistenz, Schedule, Läufe, View Analyzer), Task Chains ab Kapitel 10 (Run, Schedule, Schritte mit Sprung in den Detailmonitor), Flows (Run, Schedule, Lauf-Log), Remote Queries, Consent
-src/views/system.ts  ← System mit Unterseiten Configuration · Administration (`SYSTEM_PAGES`, `systemArea`); Configuration (Monitoring = Expensive Statement Tracing ab Kapitel 9, Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
+src/views/system.ts  ← System mit Unterseiten Configuration · Administration (`SYSTEM_PAGES`, `systemArea`; App Integration mit OAuth-Clients ab den Exkursen, Tour-Ansicht `system:admin-apps`); Configuration (Monitoring = Expensive Statement Tracing ab Kapitel 9, Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
 src/views/flow.ts    ← Data Builder: „Import Remote Tables“-Dialog, Replication-Flow-Editor, `flowError` (Deploy-Prüfung)
 src/integration.ts   ← Kapitel 3: Verbindungstypen + Features, Quellsysteme, validateConnection, Remote Tables, runFlow, truncateRisk, Space-Sperre (`lockError`), Wiederherstellung nach Reload
 src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload, Impact/Lineage (`readsFrom`, `usedBy`), Semantik (`Semantics`, `semanticsOf`) im Design- und Deploy-Stand
@@ -106,7 +106,7 @@ src/views/tasklogs.ts ← Kapitel 10: Monitoring › Task Logs (alle Spaces, Fil
 src/views/welcome.ts ← Seitentyp A: „Welcome to the …“ mit Space-Karten (usedMB, fmtSize)
 src/views/toolbar.ts ← Objekt-Werkzeugleiste der Editoren, „Versions“ (SQL Views ab den Exkursen), „Details“, Kopf „Model Properties“
 src/views/versions.ts ← Exkurs: Version History einer SQL View (Liste, Zeilen-Diff `lineDiff`, Restore); Versionen entstehen in `deploy()` (`repo.ts`: `addVersion`, `restoreVersion`)
-src/consumption.ts   ← Kapitel 12: Datenbankbenutzer je Space (SPACE#SUFFIX, Read/Write), was sie lesen (freigegebene Views)
+src/consumption.ts   ← Kapitel 12: Datenbankbenutzer je Space (SPACE#SUFFIX, Read/Write), was sie lesen (freigegebene Views); OAuth-Clients und simulierter OData-Aufruf (`odataRequest`, `odataUrl`)
 src/transport.ts     ← Kapitel 12: Pakete, Abhängigkeiten (`dependencies`), Validierung, Export-Jobs, Zielmandanten, `presetPackage` (Setup)
 src/views/transport.ts ← Kapitel 12: Transport › Packages (Editor mit Objekten, Required Packages, Validation) · Export · Import · Monitor
 src/catalog.ts       ← Kapitel 12: Katalog-Metadaten (Assets, Glossarbegriffe, Tag-Hierarchien), Suche
@@ -129,7 +129,7 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (58 Missionen, Hauptspiel und Exkurse komplett):
+Spielbar (59 Missionen, Hauptspiel und Exkurse komplett):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
@@ -146,7 +146,8 @@ Spielbar (58 Missionen, Hauptspiel und Exkurse komplett):
   Katalog (Asset `RHN_REP_AM_CONSUMPTION` beschreiben, taggen, Glossarbegriff verknüpfen, beides veröffentlichen); Business Builder (Altobjekte lesen,
   Ablösung durch `RHN_REP_AM_INVOICES`); Hierarchien: `RHN_REP_H_GRID_AREA` (RHEINAU → R_NORTH/R_SOUTH → Netzgebiete) an `RHN_REP_D_GRID_AREA`,
   DAC `RHN_REP_DAC_REGION` (Typ Hierarchy, Tabelle `RHN_REP_T_PERMISSION_NODES` mit 3 Zeilen) ersetzt auf `RHN_REP_F_INVOICES` die Single-Values-DAC;
-  Versionshistorie (c12-m07): Tims Version von `RHN_HA_V_CONTRACTS` (nur S4U) per Versions › Restore zurückrollen und deployen
+  Versionshistorie (c12-m07): Tims Version von `RHN_HA_V_CONTRACTS` (nur S4U) per Versions › Restore zurückrollen und deployen;
+  OData (c12-m08): `RHN_REP_D_GRID_AREA` freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
@@ -158,7 +159,7 @@ Ab Kapitel 7 fragen `model`-Prüfungen das **deployte Analytic Model** ab (Zeile
 Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `security:<users|roles|authorization>`, `system:<configuration|administration>`, `theme:…`, `names:business|technical`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,
 Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-remote:…`, `snapshot:…`, `schedule:…`, `run:<Flow>:<Status>`,
-`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 12: `expose:<Objekt>:on|off`, `dbaccess:<Space>`, `dbuser:<Space>#<Suffix>:r|w|rw`, `transport:<Seite>`, `package-add:<Objekt>`, `package-require:<Paket>`, `package-validate:<Paket>:ok|fail`, `package-save:<Paket>`, `export:<Paket>:Success|Failed`, `import-dialog:<Paket>`, `catalog-open:<Objekt>`, `asset-tag:<Objekt>:<Tag>`, `asset-term:<Objekt>:<Begriff>`, `asset-publish:<Objekt>`, `term-create:<Begriff>`, `term-publish:<Begriff>`, `bb-space:<Space>`, `bb-open:<Space>.<Objekt>`, `bb-tab:<Objekt>:<Reiter>`, `versions:<Objekt>`, `version-view:<Objekt>:<Nr>`, `version-restore:<Objekt>:<Nr>`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`; Kapitel 10: `chain-add:<Objekt>`, `chain-refused:<Objekt>`, `chain-run:<Kette>:<Status>`, `chain-step-open:<Objekt>`, `tasklogs-status:…`, `tasklogs-space:…`, `tasklog-open:<Objekt>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
+`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 12: `expose:<Objekt>:on|off`, `dbaccess:<Space>`, `dbuser:<Space>#<Suffix>:r|w|rw`, `transport:<Seite>`, `package-add:<Objekt>`, `package-require:<Paket>`, `package-validate:<Paket>:ok|fail`, `package-save:<Paket>`, `export:<Paket>:Success|Failed`, `import-dialog:<Paket>`, `catalog-open:<Objekt>`, `asset-tag:<Objekt>:<Tag>`, `asset-term:<Objekt>:<Begriff>`, `asset-publish:<Objekt>`, `term-create:<Begriff>`, `term-publish:<Begriff>`, `bb-space:<Space>`, `bb-open:<Space>.<Objekt>`, `bb-tab:<Objekt>:<Reiter>`, `versions:<Objekt>`, `version-view:<Objekt>:<Nr>`, `version-restore:<Objekt>:<Nr>`, `admin:<Reiter>`, `oauth-create:<Name>:<Purpose>`, `oauth-delete:<Name>`, `odata-test:<Client>:<Objekt>:<Status>`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`; Kapitel 10: `chain-add:<Objekt>`, `chain-refused:<Objekt>`, `chain-run:<Kette>:<Status>`, `chain-step-open:<Objekt>`, `tasklogs-status:…`, `tasklogs-space:…`, `tasklog-open:<Objekt>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
@@ -169,4 +170,4 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
    Am Ende jeder Session danach fragen; Antworten einarbeiten
-2. Mögliche Erweiterungen der Exkurse: OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+2. Mögliche Erweiterungen der Exkurse: Semantic Onboarding mit Content Network (8.6)

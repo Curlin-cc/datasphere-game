@@ -68,6 +68,10 @@ CLI, SAP Cloud Transport Management, Versionshistorie.
 deployten Version und Restore im Editor über *Versions*. Nur SQL Views, letzte 15 Versionen; Restore stellt in den Editor und verlangt ein Deploy
 („nicht verifiziert“ im Handbuch, vereinfacht). Gilt nur im Mandanten; Produktion bekommt Änderungen per Transport.
 
+**OData und OAuth-Client (c12-m08, Handbuch 12.7, 12.4.2, 3.4.2, ergänzt am 10.10.2026):** OAuth-Client mit Zweck *Interactive Usage*
+(Authorization Code, Redirect URI) laut KBA 3563695; Menüpfad App Integration, Feldnamen, einmal angezeigtes Secret und URL-Aufbau sind im Handbuch
+„nicht verifiziert“ und vereinfacht. Der Test-Aufruf ist eine Spiel-Simulation; DACs werden dabei bewusst nicht gespielt (12.3 „nicht verifiziert“).
+
 ## Was Kapitel 3 aus dem Handbuch umsetzt
 
 - Connection gehört genau einem Space, entsteht aus einem Typ; Validate zeigt verfügbare Features (5.1, 5.4.3, 5.4.4)

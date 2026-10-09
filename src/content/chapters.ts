@@ -312,6 +312,18 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Analytic model > Measures > Count Distinct.',
   },
   {
+    term: 'OAuth client',
+    chapter: 12,
+    text: 'How a tool signs in to the tenant\'s APIs. Purpose Interactive Usage (grant Authorization Code, with the tool\'s redirect URI) acts in the name of a signed-in user, as OData consumption needs; API Access (Client Credentials) acts as a program without a user.',
+    realTenant: 'System > Administration > App Integration > Add a New OAuth Client (Handbuch 12.7.3).',
+  },
+  {
+    term: 'OData Consumption API',
+    chapter: 12,
+    text: 'HTTPS interface through which SAP Analytics Cloud import connections and other tools read exposed views (relational) and analytic models (analytical). Data is copied into the tool, unlike a live connection.',
+    realTenant: 'Handbuch 12.7; the service URL is built from space and object name.',
+  },
+  {
     term: 'Version history',
     chapter: 12,
     text: 'Every deployment of an object is a version: who, when and the definition. An earlier version can be compared and restored; the restored version is deployed again. Works inside one tenant only; other tenants get changes by transport.',

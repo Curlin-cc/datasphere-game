@@ -737,6 +737,15 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
   ],
+  'c12-m08': [
+    {
+      title: 'Data out through OData',
+      body: `<p>The <b>OData Consumption API</b> lets SAP Analytics Cloud import connections and other tools read exposed views and analytic models over HTTPS.
+        Before a tool may call it, it signs in through an <b>OAuth client</b> of the tenant.</p>
+        <p>OData reads in the name of a person: the user signs in (grant <b>Authorization Code</b>), and the tenant sends the result back to the
+        tool's <b>redirect URI</b>. That is the purpose <b>Interactive Usage</b>.</p>`,
+    },
+  ],
   'c12-m07': [
     {
       title: 'Every deployment is a version',
@@ -2834,6 +2843,48 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m08': [
+    [
+      {
+        title: 'The grid area dimension',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Tools only see what is exposed, and only in its deployed version.</p>`,
+        action: { do: 'Open <b>RHN_REP_D_GRID_AREA</b>.', event: '^open:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+      },
+      {
+        title: 'Expose and deploy',
+        target: '#prop-expose',
+        body: `<p>The same switch as for Power BI in the first excursion.</p>`,
+        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+      },
+    ],
+    [
+      {
+        title: 'App Integration',
+        view: 'system:admin-apps',
+        target: '#oauth-add',
+        body: `<p>System › Administration › App Integration lists the OAuth clients of the tenant.</p>`,
+        action: { do: 'Press <b>Add a New OAuth Client</b>.', appear: '.dialog [name="purpose"]' },
+      },
+      {
+        title: 'Purpose and redirect URI',
+        target: '.dialog',
+        body: `<p>Read what each purpose means; the grant follows from it. Copy the redirect URI from the ticket exactly.</p>`,
+        action: { do: 'Fill in the client and press <b>Add</b>.', event: '^oauth-create:' },
+      },
+    ],
+    [
+      {
+        title: 'Test the call',
+        view: 'system:admin-apps',
+        target: '#oauth-list',
+        body: `<p><b>Test</b> calls the API like the planners' import connection: sign in with the client, then read one object. The answer says what is missing.</p>`,
+        action: { do: 'Read <b>RHN_REP.RHN_REP_D_GRID_AREA</b> with HTTP 200.', event: '^odata-test:.*:RHN_REP\\.RHN_REP_D_GRID_AREA:200$' },
+      },
+    ],
+    questions('Who is signed in when the import connection reads the data?'),
   ],
   'c12-m07': [
     [

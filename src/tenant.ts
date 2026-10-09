@@ -11,7 +11,7 @@ import { DEFAULT_TRACING, sanitizeTracing, sanitizeStatements, type Tracing, typ
  */
 
 import { sanitizePackages, sanitizeJobs, type Package, type TransportJob } from './transport';
-import { sanitizeDbUsers, type DbUser } from './consumption';
+import { sanitizeDbUsers, sanitizeOAuthClients, type DbUser, type OAuthClient } from './consumption';
 import { defaultCatalog, sanitizeCatalog, type CatalogState } from './catalog';
 import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
 import { sanitizeObjects, type RepoObject } from './repo';
@@ -63,6 +63,8 @@ export interface TenantState {
   scenarios: string[];
   /** Excursions: database users (consumption), transport packages and export jobs, catalog metadata. */
   dbUsers: DbUser[];
+  /** Excursions: OAuth clients for the OData Consumption API (System › Administration › App Integration). */
+  oauthClients: OAuthClient[];
   packages: Package[];
   transportJobs: TransportJob[];
   catalog: CatalogState;
@@ -88,6 +90,7 @@ export function defaultTenant(): TenantState {
     statements: [],
     scenarios: [],
     dbUsers: [],
+    oauthClients: [],
     packages: [],
     transportJobs: [],
     catalog: defaultCatalog(),
@@ -202,6 +205,7 @@ export function sanitizeTenant(data: unknown): TenantState {
   t.statements = sanitizeStatements(d.statements);
   t.scenarios = (Array.isArray(d.scenarios) ? d.scenarios : []).map(String).slice(0, 50);
   t.dbUsers = sanitizeDbUsers(d.dbUsers, ids);
+  t.oauthClients = sanitizeOAuthClients(d.oauthClients);
   t.packages = sanitizePackages(d.packages, ids);
   t.transportJobs = sanitizeJobs(d.transportJobs);
   t.catalog = sanitizeCatalog(d.catalog);

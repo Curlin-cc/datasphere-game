@@ -3,6 +3,11 @@ import { CAPACITY, assigned } from '../tenant';
 import { CLOUD_CONNECTORS, CERTIFICATE_FILES } from '../integration';
 import { esc, openDialog, toast } from '../ui';
 import { THRESHOLDS, simulateStories } from '../perf';
+import { EXCURSIONS } from '../content/chapters';
+import { objectKey } from '../repo';
+import {
+  OAUTH_PURPOSES, OAUTH_ENDPOINTS, SAC_PLANNING, oauthClientError, newClientId, odataRequest, odataUrl, type OAuthPurpose,
+} from '../consumption';
 
 /**
  * System app with its pages in the side navigation (System ›, Bild 20): Configuration (tenant-wide settings) and Administration. About sits in the user menu (src/views/settings.ts). In the game, Configuration > Security
@@ -72,7 +77,8 @@ export function renderSystem(main: HTMLElement) {
       ${area === 'administration' ? `<nav class="sys-tabs sub-nav" aria-label="Administration areas">
           ${ADMIN_TABS.map((x) => `<button type="button" data-admin="${x.id}" ${x.id === adminTab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
         </nav>
-        ${ADMIN_TABS.find((x) => x.id === adminTab)!.sections.map(([h, text]) => `<section class="sys-section"><h2>${esc(h)}</h2>
+        ${adminTab === 'apps' && ctx.currentChapter() >= EXCURSIONS ? appIntegration()
+          : ADMIN_TABS.find((x) => x.id === adminTab)!.sections.map(([h, text]) => `<section class="sys-section"><h2>${esc(h)}</h2>
           <div class="sys-content panel"><p class="sys-lead">${esc(text)}</p><p class="muted">Set up by the tenant owner; not part of this game.</p></div></section>`).join('')}`
       : `<nav class="sys-tabs sub-nav" aria-label="Configuration areas">
           ${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
@@ -84,6 +90,19 @@ export function renderSystem(main: HTMLElement) {
   main.querySelectorAll<HTMLButtonElement>('[data-admin]').forEach((b) =>
     b.addEventListener('click', () => {
       adminTab = b.dataset.admin as AdminTab;
+      ctx.track(`admin:${adminTab}`);
+      renderSystem(main);
+    }),
+  );
+  main.querySelector('#oauth-add')?.addEventListener('click', () => oauthDialog(main));
+  main.querySelectorAll<HTMLButtonElement>('[data-oauth-test]').forEach((b) => b.addEventListener('click', () => odataDialog(b.dataset.oauthTest!)));
+  main.querySelectorAll<HTMLButtonElement>('[data-oauth-delete]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const name = b.dataset.oauthDelete!;
+      if (!confirm(`Delete the OAuth client ${name}? Every tool that uses it stops working.`)) return;
+      t.oauthClients = t.oauthClients.filter((c) => c.name !== name);
+      ctx.track(`oauth-delete:${name}`);
+      ctx.save();
       renderSystem(main);
     }),
   );
@@ -122,9 +141,123 @@ export function renderSystem(main: HTMLElement) {
 }
 
 /** For tutorials: open one configuration area. */
-export function systemTo(target: Tab) {
+export function systemTo(target: Tab | 'admin-apps') {
+  if (target === 'admin-apps') {
+    area = 'administration';
+    adminTab = 'apps';
+    return;
+  }
   area = 'configuration';
   tab = target;
+}
+
+// ---------------------------------------------------------------- Administration › App Integration (excursions, Handbuch 12.7)
+
+function appIntegration() {
+  const t = ctx.tenant();
+  return `<section class="sys-section stacked"><h2>OAuth Clients</h2>
+      <div class="sys-content">
+        <p class="sys-lead">Tools that call the tenant's APIs, for example an OData client or an SAP Analytics Cloud import connection, sign in through an OAuth client.</p>
+        <div class="table-head"><h4>OAuth Clients (${t.oauthClients.length})</h4><span class="spacer"></span><button class="btn small primary" type="button" id="oauth-add">Add a New OAuth Client</button></div>
+        <table class="grid" id="oauth-list"><thead><tr><th>Name</th><th>Purpose</th><th>Grant</th><th>Redirect URI</th><th>Client ID</th><th></th></tr></thead>
+          <tbody>${t.oauthClients.length ? t.oauthClients.map((c) => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.purpose)}</td>
+              <td>${esc(OAUTH_PURPOSES.find((p) => p.id === c.purpose)!.grant)}</td><td class="mono wrap">${esc(c.redirectUri || '–')}</td>
+              <td class="mono wrap">${esc(c.clientId)}</td>
+              <td class="row-actions"><button class="btn small" type="button" data-oauth-test="${esc(c.name)}" title="Simulated: call the OData API the way a tool would">Test</button>
+                <button class="btn small link" type="button" data-oauth-delete="${esc(c.name)}">Delete</button></td></tr>`).join('')
+            : '<tr><td colspan="6" class="muted">No OAuth clients yet.</td></tr>'}</tbody></table>
+      </div></section>
+    <section class="sys-section"><h2>OAuth Endpoints</h2><div class="sys-content panel">
+      <dl class="props-list wide-dl"><dt>Authorization URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.authorization)}</dd>
+        <dt>Token URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.token)}</dd></dl>
+      <p class="muted">The developer of the tool needs these two URLs plus client ID and secret.</p></div></section>
+    <section class="sys-section"><h2>Trusted Identity Providers</h2><div class="sys-content panel">
+      <p class="sys-lead">Identity providers whose tokens the tenant accepts for OAuth clients. Not part of this game.</p></div></section>`;
+}
+
+function oauthDialog(main: HTMLElement) {
+  const t = ctx.tenant();
+  const { form, close } = openDialog('Add a New OAuth Client', `
+    <div class="form-grid">
+      <label>Name <small>who uses it, e.g. the tool</small><input name="name" maxlength="60" autocomplete="off"></label>
+      <label>Purpose
+        <select name="purpose">${OAUTH_PURPOSES.map((p) => `<option value="${esc(p.id)}">${esc(p.id)}</option>`).join('')}</select></label>
+      <label>Authorization Grant <small>follows from the purpose</small><input name="grant" readonly></label>
+      <label>Token Lifetime <small>hours</small><input name="lifetime" type="number" min="1" max="720" value="12"></label>
+    </div>
+    <p class="muted" id="oauth-purpose-text"></p>
+    <label class="wide-field">Redirect URI <small>where the tool receives the sign-in result; copy it exactly from the tool</small>
+      <input name="redirect" class="mono" autocomplete="off" spellcheck="false" placeholder="https://…"></label>
+    <p class="form-error" role="alert"></p>
+    <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button>
+      <button class="btn primary" type="submit">Add</button></div>`);
+  const purpose = form.querySelector<HTMLSelectElement>('[name="purpose"]')!;
+  const sync = () => {
+    const p = OAUTH_PURPOSES.find((x) => x.id === purpose.value)!;
+    form.querySelector<HTMLInputElement>('[name="grant"]')!.value = p.grant;
+    form.querySelector('#oauth-purpose-text')!.textContent = p.text;
+  };
+  purpose.addEventListener('change', sync);
+  sync();
+  form.querySelector<HTMLInputElement>('[name="name"]')!.focus();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.querySelector<HTMLInputElement>('[name="name"]')!.value.trim();
+    const redirect = form.querySelector<HTMLInputElement>('[name="redirect"]')!.value.trim();
+    const p = purpose.value as OAuthPurpose;
+    const err = oauthClientError(name, redirect, p, t);
+    if (err) {
+      form.querySelector('.form-error')!.textContent = err;
+      return;
+    }
+    const c = { name, purpose: p, redirectUri: redirect, lifetimeH: Math.min(720, Math.max(1, Number(form.querySelector<HTMLInputElement>('[name="lifetime"]')!.value) || 12)),
+      clientId: newClientId(t), createdAt: new Date().toISOString() };
+    t.oauthClients.push(c);
+    ctx.track(`oauth-create:${name}:${p}`);
+    ctx.save();
+    close();
+    renderSystem(main);
+    const secret = `${c.clientId.slice(3, 9)}$${(c.name.length * 7919).toString(36)}Rh!${c.lifetimeH}`;
+    openDialog(`OAuth client ${name} added`, `
+      <p class="guide-lead">Hand these to the developer of the tool. <b>Copy the secret now:</b> it is shown only once.</p>
+      <dl class="props-list wide-dl"><dt>Client ID</dt><dd class="mono wrap">${esc(c.clientId)}</dd>
+        <dt>Secret</dt><dd class="mono wrap">${esc(secret)}</dd>
+        <dt>Authorization URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.authorization)}</dd>
+        <dt>Token URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.token)}</dd></dl>
+      <div class="guide-actions"><button class="btn primary" type="button" data-act="cancel">Done</button></div>`);
+  });
+}
+
+/** Simulated client: calls the OData API with one OAuth client, the way the planning team's SAC import connection would. */
+function odataDialog(clientName: string) {
+  const t = ctx.tenant();
+  const objects = t.objects.filter((o) => o.deployed && (o.kind === 'SQL View' || o.kind === 'Analytic Model'));
+  const { form } = openDialog(`Test ${clientName}`, `
+    <p class="guide-lead">A simulated call to the OData Consumption API, as a tool would make it: sign in with this client, then read one object.</p>
+    <div class="form-grid">
+      <label>Calling tool <select name="tool"><option value="sac">${esc(SAC_PLANNING.label)}</option></select></label>
+      <label>Object <select name="object">${objects.map((o) => `<option value="${esc(objectKey(o))}">${esc(objectKey(o))}</option>`).join('')}</select></label>
+    </div>
+    <p class="muted mono wrap" id="odata-url"></p>
+    <div id="odata-result"></div>
+    <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Close</button>
+      <button class="btn primary" type="submit">Send Request</button></div>`, 'odata-dlg');
+  const pick = form.querySelector<HTMLSelectElement>('[name="object"]')!;
+  const showUrl = () => {
+    const o = objects.find((x) => objectKey(x) === pick.value);
+    form.querySelector('#odata-url')!.textContent = o ? `GET ${odataUrl(o)}` : '';
+  };
+  pick.addEventListener('change', showUrl);
+  showUrl();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await odataRequest(t, clientName, pick.value, SAC_PLANNING.redirectUri);
+    ctx.track(`odata-test:${clientName}:${pick.value}:${res.status}`);
+    ctx.save();
+    form.querySelector('#odata-result')!.innerHTML = `<div class="odata-status ${res.status === 200 ? 'ok' : 'bad'}"><b>HTTP ${res.status}</b> ${esc(res.message)}</div>
+      ${res.columns ? `<div class="table-scroll"><table class="grid"><thead><tr>${res.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${res.rows!.map((r) => `<tr>${r.map((v) => `<td>${esc(v ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}`;
+  });
 }
 
 function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
@@ -205,3 +338,4 @@ function uploadDialog(main: HTMLElement) {
     renderSystem(main);
   });
 }
+
