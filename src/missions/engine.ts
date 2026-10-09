@@ -26,6 +26,7 @@ export interface CheckInput {
   /** Question ID → chosen option index. */
   answers: Record<string, number | undefined>;
   tenant: TenantState;
+  events: string[];
 }
 
 export async function checkMission(mission: Mission, input: CheckInput): Promise<CheckReport> {
@@ -65,7 +66,7 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
     } else if (check.type === 'structure') {
       outcomes.push(await checkStructure(check));
     } else if (check.type === 'rule') {
-      outcomes.push(checkRule(check, { tenant: input.tenant }));
+      outcomes.push(checkRule(check, { tenant: input.tenant, events: new Set(input.events) }));
     } else {
       outcomes.push(checkQuestion(check, input.answers[check.id]));
     }
@@ -225,6 +226,11 @@ function checkQuestion(check: QuestionCheck, chosen: number | undefined): CheckO
 
 /** Last non-empty statement; ignores semicolons inside quotes and comments. */
 export function lastStatement(sql: string): string {
+  return statements(sql).pop() ?? '';
+}
+
+/** Non-empty statements without comments; semicolons inside quotes and comments do not split. */
+export function statements(sql: string): string[] {
   const parts: string[] = [];
   let cur = '';
   let i = 0;
@@ -251,5 +257,5 @@ export function lastStatement(sql: string): string {
     }
   }
   parts.push(cur);
-  return parts.map((p) => p.trim()).filter(Boolean).pop() ?? '';
+  return parts.map((p) => p.trim()).filter(Boolean);
 }

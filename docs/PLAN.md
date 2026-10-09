@@ -39,11 +39,11 @@ Stakeholder (schicken Tickets):
 
 | Nr. | Kapitel | Konzepte | Spieler macht | Best Practice |
 | --- | --- | --- | --- | --- |
-| 0 | Onboarding | UI, Tickets, SQL-Editor | erste Abfrage auf Rohdaten | erst ansehen, dann modellieren |
+| 0 | Find your way | Apps der Seitennavigation, Spaces, Repository Explorer, Business/Technical Name, Save vs. Deploy | sich im Tenant zurechtfinden, Objekt umbenennen und deployen | erst orientieren, dann bauen |
 | 1 | Space Concept | Spaces, Storage, Priorities, Naming | Spaces je Layer anlegen | Layer trennen, Präfixe |
 | 2 | Users & Roles | DW Administrator, Space Administrator, Integrator, Modeler, Viewer, Consumer, Scoped Roles | Rollenmatrix für 8 Personas | Least Privilege, Space Admin delegieren |
 | 3 | Data Integration | Connections, Remote vs. Local Table, Replication Flow, CSV Upload | Quellen anbinden, Initial/Delta wählen | `SRC_SYS_ID` beim Laden setzen |
-| 4 | Inbound Layer | Local Tables, Datenqualität | 1:1 laden, per SQL profilen | keine Logik im Inbound |
+| 4 | Inbound Layer | Local Tables, Datenqualität, SQL-Grundlagen | per SQL profilen (Scratch-SQL-View, Data Preview) | keine Logik im Inbound |
 | 5 | Harmonization | SQL Views, Joins, Bereinigung, Sharing | Dubletten, Einheiten, Altschlüssel | Logik einmal zentral, wiederverwendbar |
 | 6 | Semantics | Fact, Dimension, Text, Hierarchy, Associations | Objekte typisieren und verknüpfen | Fact + Associations statt Riesen-View |
 | 7 | Analytic Model | Measures, Calculated/Restricted Measures, Variables | Modell für CFO | schlankes Modell je Use Case |

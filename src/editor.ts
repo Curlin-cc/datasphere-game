@@ -9,6 +9,8 @@ export interface SqlEditor {
   getValue(): string;
   setValue(text: string): void;
   setSchema(schema: Record<string, string[]>): void;
+  /** Inserts text at the cursor. */
+  insert(text: string): void;
   focus(): void;
 }
 
@@ -69,6 +71,11 @@ export function createSqlEditor(parent: HTMLElement, initial: string, onRun: () 
     getValue: () => view.state.doc.toString(),
     setValue: (text) => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }),
     setSchema: (schema) => view.dispatch({ effects: language.reconfigure(lang(schema)) }),
+    insert: (text) => {
+      const { from, to } = view.state.selection.main;
+      view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+      view.focus();
+    },
     focus: () => view.focus(),
   };
 }

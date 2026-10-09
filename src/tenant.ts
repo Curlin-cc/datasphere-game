@@ -10,6 +10,7 @@
  */
 
 import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
+import { sanitizeObjects, type RepoObject } from './repo';
 
 export interface Space {
   id: string;
@@ -36,6 +37,8 @@ export interface TenantState {
   /** Scoped roles and who has which role where (chapter 2). */
   roles: ScopedRole[];
   assignments: Assignment[];
+  /** Repository: tables IT loaded and objects the player built. */
+  objects: RepoObject[];
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
@@ -48,6 +51,7 @@ export function defaultTenant(): TenantState {
     activeSpace: 'RHN_IN',
     roles: [],
     assignments: [],
+    objects: [],
   };
 }
 
@@ -149,6 +153,7 @@ export function sanitizeTenant(data: unknown): TenantState {
   );
   if (typeof d.activeSpace === 'string' && ids.has(d.activeSpace)) t.activeSpace = d.activeSpace;
   Object.assign(t, sanitizeSecurity(d, ids));
+  t.objects = sanitizeObjects(d.objects, ids);
   return t;
 }
 

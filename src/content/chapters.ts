@@ -24,11 +24,11 @@ export interface Chapter {
 
 /** Learning path, see docs/PLAN.md section 3. */
 export const CHAPTERS: Chapter[] = [
-  { nr: 0, title: 'Onboarding', summary: 'Find your way around and query the raw data', guidance: 'full' },
+  { nr: 0, title: 'Find your way', summary: 'The apps of the tenant, spaces, objects, save and deploy', guidance: 'full' },
   { nr: 1, title: 'Space concept', summary: 'Design spaces per layer with storage and naming rules', guidance: 'full' },
   { nr: 2, title: 'Users and roles', summary: 'Give eight people exactly the access they need', guidance: 'light' },
   { nr: 3, title: 'Data integration', summary: 'Connect sources, choose remote or replicated', guidance: 'light' },
-  { nr: 4, title: 'Inbound layer', summary: 'Land data 1:1 and profile its quality', guidance: 'light' },
+  { nr: 4, title: 'Inbound layer', summary: 'Profile the raw data with SQL and find its defects', guidance: 'light' },
   { nr: 5, title: 'Harmonization', summary: 'Clean duplicates, units and legacy keys in views', guidance: 'paid' },
   { nr: 6, title: 'Semantics', summary: 'Facts, dimensions, texts, hierarchies, associations', guidance: 'paid' },
   { nr: 7, title: 'Analytic model', summary: 'Measures and variables for the CFO', guidance: 'paid' },
@@ -111,5 +111,30 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Space administrator',
     text: 'Runs a space: members, settings and objects. Lets the tenant owner delegate day-to-day access requests.',
     realTenant: 'Space Management > your space > Users.',
+  },
+  {
+    term: 'Side navigation',
+    text: 'The column of apps on the left of every Datasphere screen. Each app does one job: build, integrate, monitor, administer. You only see the apps your roles allow.',
+    realTenant: 'The ☰ button at the top left expands it to show labels.',
+  },
+  {
+    term: 'Data Builder',
+    text: 'The app where modelers build tables, views, analytic models, flows and task chains. You always work inside one space.',
+    realTenant: 'Side navigation > Data Builder, then select a space.',
+  },
+  {
+    term: 'Repository Explorer',
+    text: 'Searches all objects of all spaces you are a member of, and opens them in their editor.',
+    realTenant: 'Side navigation > Repository Explorer.',
+  },
+  {
+    term: 'Technical name and business name',
+    text: 'The technical name identifies an object in SQL and for other objects; it cannot change. The business name is for people and can change any time.',
+    realTenant: 'Properties panel of any object in the Data Builder.',
+  },
+  {
+    term: 'Save and deploy',
+    text: 'Save stores the design. Deploy makes it active in the database. Statuses: Not Deployed, Changes to Deploy, Deployed.',
+    realTenant: 'Toolbar of every Data Builder editor; the status column of the object list.',
   },
 ];

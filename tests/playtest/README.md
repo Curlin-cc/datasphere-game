@@ -7,8 +7,10 @@ richtiger Lösung und geben die Rückmeldungen der Prüfung aus. Erwartung: jede
 ```
 npx vite --port 5199 --strictPort &      # Dev-Server
 pip install playwright && playwright install chromium
-python3 tests/playtest/chapter0.py /tmp   # Argument: Ordner für Screenshots
+cd tests/playtest && python3 chapter0.py /tmp   # Argument: Ordner für Screenshots
 ```
 
-Kapitel 1 und 2 setzen den Spielstand vorher per localStorage, laufen also unabhängig voneinander.
+Gemeinsame Helfer in `common.py` (`Game`, `save_before`). Kapitel 1, 2 und 4 setzen den Spielstand vorher per localStorage,
+laufen also unabhängig voneinander; `chapter4.py` prüft zusätzlich die Migration v3 → v4.
+Aus dem Ordner `tests/playtest/` starten, damit `common.py` gefunden wird.
 Neue Missionen: Skript für das Kapitel ergänzen, bevor committet wird.

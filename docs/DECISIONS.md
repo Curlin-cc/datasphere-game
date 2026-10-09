@@ -4,6 +4,15 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Aufbau/Navigation von Datasphere ist die Grundlage, nicht SQL; neues Kapitel 0 ohne SQL | Wunsch von Curlin: erst lernen, wie Datasphere aufgebaut ist und was welche App macht |
+| 2026-10-09 | Echte Struktur (Apps, Namen, Abläufe), eigener Look ohne SAP-Logos | Wunsch von Curlin |
+| 2026-10-09 | Nur SQL Views, keine Graphical Views; die Kachel erklärt nur | Wunsch von Curlin |
+| 2026-10-09 | Alte Kapitel-0-SQL-Missionen werden Kapitel 4 (Inbound-Profiling), Spielstand v3→v4 benennt c00→c04 um | Wunsch von Curlin; Fortschritt bleibt erhalten |
+| 2026-10-09 | Nicht gebaute Apps öffnen eine Infoseite (Zweck, wer arbeitet dort, ab welchem Kapitel) statt gesperrt zu sein | Navigation lernt man nur, wenn man überall hinklicken kann |
+| 2026-10-09 | Data Access Controls als „New“-Kachel im Data Builder, keine eigene App | Neuere Releases legen DACs im Data Builder an; ältere Tenants hatten eine eigene App – gegen echten Tenant prüfen |
+| 2026-10-09 | Klick-Prüfungen über Ereignisse je Mission (`ctx.track`) | Navigation ist sonst nicht prüfbar; Ereignisse zählen nur, während die Mission offen ist |
+| 2026-10-09 | Save/Deploy mit drei Status wie im echten System; Technischer Name fix nach dem ersten Speichern | Zentrales Lernziel; einfache, eindeutige Regel |
+| 2026-10-09 | Freischaltungen richten sich auch nach dem höchsten komplett gelösten Kapitel (`unlockedChapter`) | Nach der Migration bleiben Security & Co. nutzbar |
 | 2026-10-08 | Rollenmodell vereinfacht: DW Administrator global, 5 Vorlagen für Scoped Roles, Zuweisung = Rolle + Spaces aus dem Scope; Rollentexte vereinfacht, gegen SAP Help nachprüfen (help.sap.com im Chat nicht abrufbar) | Konzept lernen statt Privilegien-Matrix |
 | 2026-10-08 | Eine Scoped Role pro Funktion (dezentraler Ansatz), Spaces je Nutzer | SAP-Community-Empfehlung gegen Rollenwildwuchs |
 | 2026-10-08 | Prüfung je Person über effektive Rechte (Vorlage@Space) mit „need“ und „allow“ | Namen der Rollen egal; zulässige Varianten (Calin auch Modeler, Lena auch Modeler in IN) |

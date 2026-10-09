@@ -58,6 +58,8 @@ export interface QuestionCheck {
 /** What a rule check can look at. */
 export interface RuleContext {
   tenant: TenantState;
+  /** What the player did while the mission was open, e.g. app:builder, open:RHN_IN.TARIFFS. */
+  events: Set<string>;
 }
 
 /**

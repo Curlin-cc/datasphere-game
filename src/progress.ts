@@ -4,7 +4,9 @@ import { defaultTenant, sanitizeTenant, type TenantState } from './tenant';
 
 /**
  * Save game: localStorage plus JSON export/import.
- * v3 stores progress per mission. Older saves (v2: xp, hintsOpen, tutorialsSeen) are migrated.
+ * v4 stores progress per mission. Older saves are migrated:
+ *  - v2 (xp, hintsOpen, tutorialsSeen)
+ *  - v3: the old chapter 0 (SQL on raw data) became chapter 4, so c00-mN is renamed to c04-mN
  */
 
 export const SAVE_KEY = 'dsg-progress-v3';
@@ -21,10 +23,12 @@ export interface MissionProgress {
   done: boolean;
   /** XP earned for this mission including the clean-review bonus. */
   xpEarned: number;
+  /** What the player did in the tenant while this mission was open, e.g. app:builder, open:RHN_IN.TARIFFS. */
+  events: string[];
 }
 
 export interface Progress {
-  version: 3;
+  version: 4;
   xp: number;
   currentMission: string;
   missions: Record<string, MissionProgress>;
@@ -40,11 +44,11 @@ export const CLEAN_BONUS = 5;
 export const RANK_XP = [0, 100, 350, 750];
 
 export function freshProgress(): Progress {
-  return { version: 3, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tenant: defaultTenant() };
+  return { version: 4, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tenant: defaultTenant() };
 }
 
 export function missionProgress(p: Progress, id: string): MissionProgress {
-  return (p.missions[id] ??= { hintsOpen: 0, answers: {}, attempts: 0, done: false, xpEarned: 0 });
+  return (p.missions[id] ??= { hintsOpen: 0, answers: {}, attempts: 0, done: false, xpEarned: 0, events: [] });
 }
 
 export function loadProgress(): Progress {
@@ -77,8 +81,14 @@ export function saveProgress(p: Progress) {
 /** Accepts only a well-formed save; returns null otherwise. */
 export function sanitize(data: unknown): Progress | null {
   if (!data || typeof data !== 'object') return null;
-  const d = data as Partial<Progress>;
-  if (d.version !== 3 || typeof d.xp !== 'number' || typeof d.missions !== 'object' || !d.missions) return null;
+  const d = data as Partial<Omit<Progress, 'version'>> & { version?: number };
+  if ((d.version !== 3 && d.version !== 4) || typeof d.xp !== 'number' || typeof d.missions !== 'object' || !d.missions) return null;
+  if (d.version === 3) {
+    const rename = (id: string) => id.replace(/^c00-/, 'c04-');
+    d.missions = Object.fromEntries(Object.entries(d.missions).map(([id, mp]) => [rename(id), mp]));
+    d.tutorialsSeen = (Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen : []).map((x) => rename(String(x)));
+    if (typeof d.currentMission === 'string') d.currentMission = rename(d.currentMission);
+  }
   const p = freshProgress();
   p.xp = Math.max(0, Math.round(d.xp));
   p.tutorialsSeen = Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
@@ -93,8 +103,11 @@ export function sanitize(data: unknown): Progress | null {
       attempts: Math.max(0, Number(mp.attempts) || 0),
       done: !!mp.done,
       xpEarned: Math.max(0, Number(mp.xpEarned) || 0),
+      events: Array.isArray(mp.events) ? mp.events.map(String).slice(-300) : [],
     };
   }
+  // Continue where the first open mission is, if the saved one is not open (e.g. after the v3 migration).
+  if (!isUnlocked(p, p.currentMission)) p.currentMission = MISSIONS.find((m) => !p.missions[m.id]?.done)?.id ?? MISSIONS[0].id;
   return p;
 }
 
@@ -102,6 +115,13 @@ export function sanitize(data: unknown): Progress | null {
 export function isUnlocked(p: Progress, id: string): boolean {
   const i = MISSIONS.findIndex((m) => m.id === id);
   return i >= 0 && MISSIONS.slice(0, i).every((m) => p.missions[m.id]?.done);
+}
+
+/** Chapter whose apps and features are unlocked: the reached chapter, or a later one already solved (e.g. after a migration). */
+export function unlockedChapter(p: Progress): number {
+  const chapters = [...new Set(MISSIONS.map((m) => m.chapter))];
+  const fullySolved = chapters.filter((c) => MISSIONS.filter((m) => m.chapter === c).every((m) => p.missions[m.id]?.done));
+  return Math.max(reachedChapter(p), ...fullySolved.map((c) => c + 1));
 }
 
 /** The chapter the player has reached: that of the first unsolved mission, or one past the last built mission. */

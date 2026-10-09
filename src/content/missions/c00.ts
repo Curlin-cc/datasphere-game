@@ -1,245 +1,184 @@
-import type { Mission } from '../../missions/types';
+import type { Mission, RuleContext } from '../../missions/types';
+import { findObject, STATUS_LABEL } from '../../repo';
+import { appById } from '../apps';
 
 /**
- * Chapter 0, Onboarding. Plain SQL on the raw inbound data: grouping, sums, filters, a first join.
- * Numbers come from generator v1 (docs/DATA.md). Reference solutions are never shown to the player.
+ * Chapter 0, Find your way. No SQL: how the tenant is built, which app does what,
+ * spaces in the Data Builder, the Repository Explorer, business vs. technical names, save vs. deploy.
  */
 
 const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor', initials: 'CM' };
-const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
+const IT = { name: 'Jonas Becker', role: 'Head of IT, tenant owner', initials: 'JB' };
+
+const APP_CHOICES = ['Data Builder', 'Space Management', 'Data Integration Monitor', 'Security', 'Connections', 'Repository Explorer'];
+const choice = (label: string) => APP_CHOICES.indexOf(label);
+
+function visited(apps: string[]) {
+  return ({ events }: RuleContext) => {
+    const missing = apps.filter((a) => !events.has(`app:${a}`));
+    return missing.length ? `You have not opened ${missing.map((a) => appById(a)!.label).join(', ')} yet. Use the side navigation.` : null;
+  };
+}
+
+function did(event: string, message: string) {
+  return ({ events }: RuleContext) => (events.has(event) ? null : message);
+}
 
 export const CHAPTER_0: Mission[] = [
   {
     id: 'c00-m01',
     chapter: 0,
-    title: 'Meet the raw data',
+    title: 'Find your way',
     from: CALIN,
-    ticket: `<p>Welcome aboard! IT already loaded the first extracts from billing, metering and the CRM into our inbound space.</p>
-      <p>Before we model anything: how many contracts do we have per grid area? Something about the grid areas looks off to me. Tell me what you find.</p>`,
+    ticket: `<p>Welcome to Stadtwerke Rheinau! Before you build anything, get to know the tenant. In SAP Datasphere, every job has its own app,
+      and they all sit in the side navigation on the left.</p>
+      <p>Open each of these apps once and read what it is for: <b>Repository Explorer</b>, <b>Data Builder</b>, <b>Data Integration Monitor</b>,
+      <b>Connections</b>, <b>Space Management</b> and <b>Security</b>. Then tell me where you would go for the jobs below.</p>`,
     tasks: [
-      'Open the <b>Data Builder</b> and look at <code>RHN_IN.BILLING_CONTRACTS</code>.',
-      'Write a query that counts the contracts per grid area. Leave it in the editor.',
-      'Look at the grid areas you get back. Answer the two questions below.',
+      'Open the six apps from the ticket in the side navigation. The <b>Home</b> page also has an overview of all apps.',
+      'Answer the five questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Open the Data Builder. The billing data sits in the space RHN_IN, click a table on the left to preview it.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'COUNT(*) counts rows. GROUP BY makes one group per distinct value. To see the source of a value, group by SRC_SYS_ID as well.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'SELECT GRID_AREA, COUNT(*) AS ______ FROM RHN_IN.______ GROUP BY ____;' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'The side navigation has two groups: modeling and integration apps on top, administration at the bottom. Hover an entry to see what it does.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'Building happens in the Data Builder. Getting data in: Connections (the link to a source) and the Data Integration Monitor (runs and logs). Administration: Space Management and Security.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Space → Space Management · view → Data Builder · last night\'s load → Data Integration Monitor · role → Security · link to S/4HANA → ______' },
     ],
     checks: [
-      {
-        type: 'result',
-        label: 'Contracts per grid area',
-        expected: 'SELECT GRID_AREA, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS GROUP BY GRID_AREA',
-        diagnose: [
-          {
-            sql: 'SELECT GRID_AREA, SRC_SYS_ID, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS GROUP BY ALL',
-            message: 'Grouping by source system as well was the right way to investigate. For the answer, group by the grid area only, so each value appears once.',
-          },
-          {
-            sql: 'SELECT DISTINCT GRID_AREA FROM RHN_IN.BILLING_CONTRACTS',
-            message: 'You have every grid area once, but no count yet. Add COUNT(*) and a GROUP BY.',
-          },
-        ],
-      },
-      {
-        type: 'question',
-        id: 'source',
-        label: 'Where the odd values come from',
-        prompt: 'Which source system delivers the grid areas that do not fit?',
-        options: ['S4U, the current billing system', 'LEGACY, the old billing system', 'MDM, the meter data system', 'The CRM export'],
-        answer: 1,
-        nudge: 'Not quite. Group by SRC_SYS_ID as well and look which system the odd spellings come from.',
-      },
-      {
-        type: 'question',
-        id: 'count',
-        label: 'How many contracts are affected',
-        prompt: 'How many contracts carry a grid area that does not match the codes NORTH, EAST, SOUTH, WEST exactly?',
-        options: ['5', '86', '91', '1,178'],
-        answer: 2,
-        nudge: 'Not quite. Add up the counts of every value that is not exactly NORTH, EAST, SOUTH or WEST. Upper and lower case count.',
-      },
+      { type: 'rule', label: 'Apps opened', ok: 'You have seen all six apps.', test: visited(['repository', 'builder', 'monitor', 'connections', 'spaces', 'security']) },
+      { type: 'question', id: 'space', label: 'Create a space', prompt: 'Where do you create a new space for a project?', options: APP_CHOICES, answer: choice('Space Management'), nudge: 'Not quite. Which app lists the spaces with their storage and priority?' },
+      { type: 'question', id: 'view', label: 'Build a view', prompt: 'Where do you build a view that joins contracts and grid areas?', options: APP_CHOICES, answer: choice('Data Builder'), nudge: 'Not quite. Which app creates tables, views and models?' },
+      { type: 'question', id: 'load', label: 'Last night\'s load', prompt: 'The CFO says the numbers look old. Where do you check whether last night\'s replication ran?', options: APP_CHOICES, answer: choice('Data Integration Monitor'), nudge: 'Not quite. Which app shows runs, schedules and logs of everything that moves data?' },
+      { type: 'question', id: 'role', label: 'A new colleague', prompt: 'A new colleague needs access. Where do you give her a role?', options: APP_CHOICES, answer: choice('Security'), nudge: 'Not quite. Which app manages users and roles?' },
+      { type: 'question', id: 'source', label: 'A new source', prompt: 'Where do you set up the link to the S/4HANA billing system?', options: APP_CHOICES, answer: choice('Connections'), nudge: 'Not quite. Before any data can be replicated, the tenant needs a link to the source. Which app creates it?' },
     ],
-    review: ['alias_aggregates'],
     xp: 20,
-    realTenant: `In a real tenant you preview data in the <b>Data Builder</b>: open a local table and use <b>Data Preview</b>.
-      For ad-hoc SQL there is the <b>SQL console</b> in the Data Builder, or you create a <b>SQL View</b> and preview it.`,
-    debrief: `<p>Good catch. The old billing system writes grid areas in German (Nord, Ost, Süd) and even "West" differs from "WEST" in case.
-      That is 91 contracts that would fall out of every report by grid area.</p>
-      <p>We will not fix this in the inbound space. Raw data stays as it arrived. The clean-up comes later, in the harmonization layer.</p>`,
+    realTenant: `The real side navigation looks much like this one. You only see the apps your roles allow, and the
+      <b>☰</b> button at the top left expands the icons to labels. SAP moves and renames apps now and then, so check your own tenant.`,
+    debrief: `<p>Good. You now know where things live. Most of your work will happen in the Data Builder, but a data architect
+      also needs Space Management, Security and the monitor.</p>
+      <p>Next: everything in the Data Builder happens inside a space. Let us look at the one IT prepared.</p>`,
   },
   {
     id: 'c00-m02',
     chapter: 0,
-    title: 'Receivables at a glance',
-    from: CFO,
-    ticket: `<p>Hello, I am Petra Lindner, CFO. Calin tells me you can read our billing data now.</p>
-      <p>For the board meeting I need a first overview: for each invoice status, how many invoices are there and what is their <b>gross amount</b> in total?
-      Gross means net plus tax.</p>`,
+    title: 'Pick a space',
+    from: CALIN,
+    ticket: `<p>IT has loaded the first extracts from billing, metering and the CRM into the space <code>RHN_IN</code>.</p>
+      <p>Open the <b>Data Builder</b>, pick that space, and open the table with the supply contracts. Look at its columns and use
+      <b>Data Preview</b> to see real rows. Then answer my two questions.</p>`,
     tasks: [
-      'Look at <code>RHN_IN.BILLING_INVOICES</code>. Find the status column and the two amount columns.',
-      'Write a query with one row per status: the number of invoices and the total gross amount.',
-      'Answer the question below.',
+      'Open the <b>Data Builder</b> and select the space <code>RHN_IN</code>.',
+      'Open the contracts table from the object list.',
+      'Look at its columns, run <b>Data Preview</b>, and answer the questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Preview BILLING_INVOICES. STATUS has three values. NET_AMOUNT and TAX_AMOUNT hold the money.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'SUM() adds up values per group, like COUNT(*) counts them. You can calculate inside it: SUM(a + b).' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'SELECT STATUS, COUNT(*) AS ______, SUM(______ + ______) AS ______ FROM RHN_IN.BILLING_INVOICES GROUP BY ______;' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'Data Builder in the side navigation. The first screen asks for a space. The start page lists the objects of the space.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'An object opens in its editor: properties on the right, columns in the middle, Data Preview at the bottom.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Data Builder → RHN_IN → BILLING_CONTRACTS → Data Preview. Count the rows of the column list.' },
     ],
     checks: [
+      { type: 'rule', label: 'Space selected', ok: 'You picked RHN_IN.', test: did('space:builder:RHN_IN', 'Open the Data Builder from the side navigation and select the space RHN_IN.') },
+      { type: 'rule', label: 'Table opened', ok: 'You opened BILLING_CONTRACTS.', test: did('open:RHN_IN.BILLING_CONTRACTS', 'Open BILLING_CONTRACTS from the object list of RHN_IN.') },
+      { type: 'rule', label: 'Data previewed', ok: 'You looked at real rows.', test: did('preview:RHN_IN.BILLING_CONTRACTS', 'In the editor of BILLING_CONTRACTS, press Data Preview.') },
+      { type: 'question', id: 'cols', label: 'Columns', prompt: 'How many columns does BILLING_CONTRACTS have?', options: ['5', '7', '9', '12'], answer: 1, nudge: 'Not quite. Count the rows in the column list of the editor.' },
       {
-        type: 'result',
-        label: 'Invoices and gross amount per status',
-        expected: 'SELECT STATUS, COUNT(*), SUM(NET_AMOUNT + TAX_AMOUNT) FROM RHN_IN.BILLING_INVOICES GROUP BY STATUS',
-        diagnose: [
-          {
-            sql: 'SELECT STATUS, COUNT(*), SUM(NET_AMOUNT) FROM RHN_IN.BILLING_INVOICES GROUP BY STATUS',
-            message: 'Your totals are the net amounts. The CFO asked for gross: net plus tax.',
-          },
-          {
-            sql: 'SELECT STATUS, COUNT(*), SUM(TAX_AMOUNT) FROM RHN_IN.BILLING_INVOICES GROUP BY STATUS',
-            message: 'Your totals are only the tax. The CFO asked for gross: net plus tax.',
-          },
-          {
-            sql: 'SELECT STATUS, SUM(NET_AMOUNT + TAX_AMOUNT) FROM RHN_IN.BILLING_INVOICES GROUP BY STATUS',
-            message: 'The amounts are right. The number of invoices per status is still missing.',
-          },
-        ],
-      },
-      {
-        type: 'question',
-        id: 'unpaid',
-        label: 'Unpaid gross amount',
-        prompt: 'Roughly how much gross is not paid yet (open and overdue together)?',
-        options: ['About 82 thousand EUR', 'About 968 thousand EUR', 'About 1.15 million EUR', 'About 4.8 million EUR'],
-        answer: 2,
-        nudge: 'Not quite. Add the gross totals of OPEN and OVERDUE from your result. Make sure you summed net plus tax.',
+        type: 'question', id: 'src', label: 'Source system', prompt: 'Which column tells you which source system a row came from?',
+        options: ['CONTRACT_ID', 'TARIFF', 'SRC_SYS_ID', 'START_DATE'], answer: 2,
+        nudge: 'Not quite. Look for the column whose values are system names like S4U.',
       },
     ],
-    review: ['alias_aggregates', 'no_select_star'],
-    xp: 25,
-    realTenant: `In a real tenant this becomes a <b>Fact</b> view with measures such as <i>Gross Amount</i>, and the CFO reads it in an
-      <b>Analytic Model</b> through SAP Analytics Cloud. You build that in chapters 6 and 7.`,
-    debrief: `<p>Thank you, that is exactly what I needed. About 1.15 million EUR still unpaid, of which about 82 thousand EUR is overdue.</p>
-      <p><i>Calin adds:</i> Notice you calculated gross in the query. Later we define it once as a measure, so every report uses the same formula.</p>`,
+    xp: 20,
+    realTenant: `In a real tenant the <b>Data Builder</b> also starts with the space: you choose it at the top of the start page.
+      The start page offers tiles to create new objects and lists the objects of the space. Data Preview shows the first rows of a table or view.`,
+    debrief: `<p>Right: seven columns, and <code>SRC_SYS_ID</code> names the source system. That column will save us later, when we
+      find odd values and need to know where they came from.</p>
+      <p>Did you notice the tiles on the start page? Each one creates a different kind of object. Most are greyed out for now;
+      you meet them chapter by chapter.</p>`,
   },
   {
     id: 'c00-m03',
     chapter: 0,
-    title: 'The overdue list',
-    from: CFO,
-    ticket: `<p>Receivables management wants to call the customers with the biggest overdue invoices first.</p>
-      <p>Please give me the <b>10 overdue invoices with the highest gross amount</b>, biggest first. I need the invoice ID, the contract ID,
-      the due date and the gross amount.</p>`,
+    title: 'Search the repository',
+    from: IT,
+    ticket: `<p>Hi, Jonas from IT. The metering team asks where the meter readings are and what kind of object holds them.</p>
+      <p>When you do not know in which space something lives, do not click through every space. Use the <b>Repository Explorer</b>:
+      it searches all spaces you are a member of at once. Find the meter readings, open them from there, and answer the team's questions.</p>`,
     tasks: [
-      'Keep only invoices with the status <code>OVERDUE</code>.',
-      'Show invoice ID, contract ID, due date and gross amount (net plus tax).',
-      'Sort by gross amount, biggest first, and keep only the first 10 rows.',
+      'Open the <b>Repository Explorer</b> and search for the meter readings.',
+      'Open the object from the search result.',
+      'Answer the questions below. The filters of the Repository Explorer help with the last one.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Everything is in BILLING_INVOICES. You need a filter, a calculated column, a sort and a limit.' },
-      { label: 'Hint 2: the concept', cost: 10, text: "WHERE keeps matching rows (text in single quotes: 'OVERDUE'). ORDER BY ... DESC sorts biggest first. LIMIT 10 keeps the first 10 rows." },
-      { label: 'Hint 3: a skeleton', cost: 20, text: "SELECT INVOICE_ID, ______, ______, ______ + ______ AS GROSS_AMOUNT FROM RHN_IN.BILLING_INVOICES WHERE ______ = '______' ORDER BY ______ DESC LIMIT __;" },
+      { label: 'Hint 1: where to look', cost: 5, text: 'Repository Explorer is near the top of the side navigation. Type part of a name into the search field.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'The search looks at business names and technical names. Clicking a result opens it in its editor in the Data Builder.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Search "meter" → open METER_READINGS. For the count, filter Space = RHN_IN.' },
     ],
     checks: [
-      {
-        type: 'result',
-        label: 'Top 10 overdue invoices',
-        ordered: true,
-        expected: `SELECT INVOICE_ID, CONTRACT_ID, DUE_DATE, NET_AMOUNT + TAX_AMOUNT
-          FROM RHN_IN.BILLING_INVOICES WHERE STATUS = 'OVERDUE'
-          ORDER BY NET_AMOUNT + TAX_AMOUNT DESC LIMIT 10`,
-        diagnose: [
-          {
-            sql: `SELECT INVOICE_ID, CONTRACT_ID, DUE_DATE, NET_AMOUNT + TAX_AMOUNT FROM RHN_IN.BILLING_INVOICES
-              ORDER BY NET_AMOUNT + TAX_AMOUNT DESC LIMIT 10`,
-            message: 'These are the biggest invoices overall, not only the overdue ones. Add a filter on STATUS.',
-          },
-          {
-            sql: `SELECT INVOICE_ID, CONTRACT_ID, DUE_DATE, NET_AMOUNT FROM RHN_IN.BILLING_INVOICES WHERE STATUS = 'OVERDUE'
-              ORDER BY NET_AMOUNT DESC LIMIT 10`,
-            message: 'You sorted and showed the net amount. The ticket asks for gross: net plus tax.',
-          },
-          {
-            sql: `SELECT INVOICE_ID, CONTRACT_ID, DUE_DATE, NET_AMOUNT + TAX_AMOUNT FROM RHN_IN.BILLING_INVOICES WHERE STATUS = 'OVERDUE'
-              ORDER BY NET_AMOUNT + TAX_AMOUNT ASC LIMIT 10`,
-            message: 'These are the 10 smallest overdue invoices. ORDER BY sorts ascending unless you add DESC.',
-          },
-        ],
-      },
+      { type: 'rule', label: 'Searched', ok: 'You used the search.', test: ({ events }) => ([...events].some((e) => e.startsWith('search:repository:')) ? null : 'Type a search term into the Repository Explorer.') },
+      { type: 'rule', label: 'Opened from the search', ok: 'You opened METER_READINGS from the Repository Explorer.', test: did('repository-open:RHN_IN.METER_READINGS', 'Open the meter readings by clicking the result in the Repository Explorer.') },
+      { type: 'question', id: 'space', label: 'Which space', prompt: 'In which space are the meter readings?', options: ['RHN_IN', 'RHN_HARM', 'RHN_REP', 'MDM'], answer: 0, nudge: 'Not quite. Look at the Space column of the search result.' },
+      { type: 'question', id: 'kind', label: 'Which kind of object', prompt: 'What kind of object holds the meter readings?', options: ['SQL View', 'Local Table', 'Remote Table', 'Analytic Model'], answer: 1, nudge: 'Not quite. Look at the Type column.' },
+      { type: 'question', id: 'count', label: 'Objects in RHN_IN', prompt: 'How many objects does the space RHN_IN contain?', options: ['4', '7', '12', '15'], answer: 1, nudge: 'Not quite. Filter the Repository Explorer by space and read the counter.' },
     ],
-    review: ['no_select_star', 'alias_aggregates'],
-    xp: 25,
-    realTenant: `Lists like this are often consumed directly from a <b>SQL View</b> with an input parameter for the status.
-      In the Data Builder, a SQL View can use <code>ORDER BY</code> and <code>LIMIT</code>, but in a shared model you leave sorting to the report.`,
-    debrief: `<p>Perfect, receivables management starts calling tomorrow.</p>
-      <p><i>Calin adds:</i> The biggest overdue invoice is from July 2024 and still unpaid. That is a question for the business, not for us,
-      but a good data architect notices such things and passes them on.</p>`,
+    xp: 20,
+    realTenant: `The real <b>Repository Explorer</b> searches across all your spaces and also shows folders, dependencies and the impact
+      of a change. For data assets beyond Datasphere, there is the <b>Catalog</b>.`,
+    debrief: `<p>Thanks, I sent the metering team the answer. A Local Table in RHN_IN: stored in the tenant, loaded from the meter data system.</p>`,
   },
   {
     id: 'c00-m04',
     chapter: 0,
-    title: 'Contracts per region',
+    title: 'Save is not deploy',
     from: CALIN,
-    ticket: `<p>Next week the two regional managers start. North looks after the grid areas NORTH and EAST, South after SOUTH and WEST.
-      The mapping is in <code>RHN_IN.GRID_AREAS</code>.</p>
-      <p>Count the contracts per <b>region</b>. You need a join for that. Then compare your total with the number of contracts in the table. Do they match?</p>`,
+    ticket: `<p>Every object has two names. The <b>technical name</b> is what SQL and other objects refer to; it is fixed. The
+      <b>business name</b> is what people see, for example in SAP Analytics Cloud; you can change it any time.</p>
+      <p>IT left the business name of <code>BILLING_CONTRACTS</code> as the technical name. Please change it to <b>Billing Contracts</b>.
+      Watch the status in the editor when you save, and when you deploy.</p>`,
     tasks: [
-      'Preview <code>RHN_IN.GRID_AREAS</code> and find the column that links it to the contracts.',
-      'Join the contracts with the grid areas and count the contracts per region.',
-      'Add up your counts, compare with the contracts table and answer the question below.',
+      'Open <code>BILLING_CONTRACTS</code> in the Data Builder.',
+      'Change the business name in the properties panel and press <b>Save</b>. Look at the status.',
+      'Press <b>Deploy</b>. Look at the status again, then answer the questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Both tables have a column GRID_AREA. GRID_AREAS adds the REGION for each grid area.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'JOIN ... ON a.col = b.col puts matching rows side by side. Give each table a short alias (c, g). Then group by the region.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'SELECT g.REGION, COUNT(*) AS ______ FROM RHN_IN.BILLING_CONTRACTS c JOIN RHN_IN.______ g ON c.______ = g.______ GROUP BY ______;' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'The properties panel on the right of the editor has the business name. Save and Deploy are in the toolbar.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'Save stores the design. Deploy makes it active in the runtime. Until you deploy, everyone still sees the old version.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Business Name: Billing Contracts → Save (status: Changes to Deploy) → Deploy (status: Deployed).' },
     ],
     checks: [
       {
-        type: 'result',
-        label: 'Contracts per region',
-        expected: [
-          `SELECT g.REGION, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c
-            JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA GROUP BY g.REGION`,
-          // A LEFT JOIN that shows the lost contracts as a NULL region is just as good.
-          `SELECT g.REGION, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c
-            LEFT JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA GROUP BY g.REGION`,
-        ],
-        diagnose: [
-          {
-            sql: `SELECT c.GRID_AREA, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c
-              JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA GROUP BY c.GRID_AREA`,
-            message: 'The join works, but you count per grid area. The regional managers need one row per region.',
-          },
-          {
-            sql: 'SELECT g.REGION, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c, RHN_IN.GRID_AREAS g GROUP BY g.REGION',
-            message: 'Each region has far too many contracts: every contract was paired with every grid area. The join needs a condition: ON c.GRID_AREA = g.GRID_AREA.',
-          },
-        ],
+        type: 'rule',
+        label: 'Business name',
+        ok: 'BILLING_CONTRACTS is called Billing Contracts, and that is deployed.',
+        test: ({ tenant }) => {
+          const o = findObject(tenant, 'RHN_IN.BILLING_CONTRACTS');
+          if (!o) return 'BILLING_CONTRACTS is missing.';
+          if (o.businessName.trim().toLowerCase() !== 'billing contracts') return `The business name is "${o.businessName}". Set it to Billing Contracts and save.`;
+          if (o.status !== 'deployed') return `You saved it, but the status is ${STATUS_LABEL[o.status]}. Everyone still sees the old name until you deploy.`;
+          return null;
+        },
       },
       {
-        type: 'question',
-        id: 'lost',
-        label: 'Why the total is lower',
-        prompt: 'Your inner join counts 1,087 contracts, but the table has 1,178. What happened to the other 91?',
+        type: 'question', id: 'changes', label: 'Changes to Deploy', prompt: 'What does the status "Changes to Deploy" mean?',
         options: [
-          'They are ended contracts and drop out automatically',
-          'Their grid area is written differently, so the join finds no partner and drops them',
-          'The join counted some contracts twice, the table is wrong',
-          'GRID_AREAS has no row for them because they are gas contracts',
+          'The object was never deployed',
+          'There are saved changes that are not active yet; the runtime still uses the last deployed version',
+          'The deployment failed and must be repeated',
+          'Someone else is editing the object right now',
         ],
         answer: 1,
-        nudge: 'Not quite. Remember what you found in your first mission about the grid area values of the legacy system.',
+        nudge: 'Not quite. Save the change without deploying and read the status explanation in the properties panel.',
+      },
+      {
+        type: 'question', id: 'names', label: 'Which name can change', prompt: 'Which name can you change later without breaking views that use the object?',
+        options: ['The technical name', 'The business name', 'Both', 'Neither'], answer: 1,
+        nudge: 'Not quite. Which name do SQL statements and other objects use to refer to the table?',
       },
     ],
-    review: ['explicit_join', 'alias_aggregates', 'no_select_star'],
-    xp: 30,
-    realTenant: `In the Data Builder you join in a <b>SQL View</b> or graphically in a <b>Graphical View</b>. For reporting you would rather
-      connect the fact to the grid area dimension with an <b>Association</b> (chapter 6).`,
-    debrief: `<p>Exactly. An inner join silently drops rows without a partner. If we had built the regional report like this,
-      91 legacy contracts would be missing and nobody would notice.</p>
-      <p>That is the reason for a harmonization layer: map the legacy codes once, centrally, and every report downstream is right.
-      Before that we need a proper space concept. That is your next chapter.</p>`,
+    xp: 25,
+    realTenant: `Same in a real tenant: <b>Save</b> stores the design-time object, <b>Deploy</b> creates or updates it in the
+      database. The object list shows the status, and the technical name cannot be changed once the object exists.`,
+    debrief: `<p>That is the rhythm of the Data Builder: change, save, deploy. In a real project you deploy on purpose,
+      because other views and reports use the deployed version.</p>
+      <p>You know your way around now. Next chapter: you design the spaces for our three layers yourself.</p>`,
   },
 ];

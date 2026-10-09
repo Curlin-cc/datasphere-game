@@ -88,6 +88,15 @@ export async function listObjects(): Promise<{ schema: string; name: string; typ
   }));
 }
 
+/** Column names and types of a table or view. */
+export async function describeColumns(schema: string, name: string): Promise<{ name: string; type: string }[]> {
+  const res = await runSql(`
+    SELECT column_name, data_type FROM information_schema.columns
+    WHERE table_schema = '${schema.replace(/'/g, "''")}' AND table_name = '${name.replace(/'/g, "''")}'
+    ORDER BY ordinal_position`);
+  return res.rows.map(([n, t]) => ({ name: String(n), type: String(t) }));
+}
+
 /** Arrow hands dates and timestamps over as epoch milliseconds; show them as ISO text. */
 function formatTemporal(v: unknown, kind: string): unknown {
   if (typeof v !== 'number') return v;

@@ -19,28 +19,30 @@ hat aber noch nicht selbst modelliert).
 - Nur Desktop-Browser (PC), kein Mobile-Layout nötig
 - Spieltexte und UI **komplett Englisch** (wie die echte Datasphere-Oberfläche)
 - Projektdokumentation (diese Dateien) auf Deutsch
-- Modellierung per **SQL**, kein Drag & Drop
+- **Grundlage ist der Aufbau von Datasphere, nicht SQL:** gleiche Apps, Namen und Abläufe (Seitennavigation, Space wählen,
+  Objektliste, Save/Deploy, Properties-Panel). Eigener Look, keine SAP-Logos
+- Modellierung per **SQL View**, keine Graphical Views (Kachel zeigt nur Erklärung)
 - Standard-SQL via DuckDB-WASM; HANA-Unterschiede nur als Info-Karten
 - Ruhige Business-Simulation mit Karriere-Rängen und Badges, keine laute Spieloptik
 - Tipps frei nutzbar, kosten aber XP; nie eine fertige Lösung anzeigen
 - Start mit 0 XP; jede Mission hat ein kostenloses Tutorial-Popup, das Schritt für Schritt alles erklärt
 - Mentor im Spiel: Calin Mucea
 - Tipp-Stufen je Kapitel (`guidance`): 0–1 alle offen, 2–4 nur Richtung frei, 5–10 nur gegen XP, 11 keine
-- Keine SAP-Logos, keine 1:1-Kopie der SAP-Oberfläche (nur Fiori/Horizon-inspiriert)
+- Keine SAP-Logos, keine pixelgenaue Kopie der SAP-Oberfläche (Struktur echt, Optik eigenständig)
 
-## Stack (geplant)
+## Stack
 
 | Baustein | Wahl |
 | --- | --- |
 | Gerüst | Vite + TypeScript, kein großes UI-Framework |
 | SQL | DuckDB-WASM |
 | Editor | CodeMirror 6 |
-| Inhalte | `content/missions/*.json`, datengetrieben |
+| Inhalte | `src/content/missions/cXX.ts`, datengetrieben |
 | Spielstand | localStorage + JSON-Export/Import |
 | Testdaten | Generator-Skript mit festem Seed |
 | Hosting | privates claude.ai-Artifact (`npm run build:artifact`), Repo bleibt privat |
 
-## Ordnerstruktur (Ziel)
+## Ordnerstruktur
 
 ```
 AI_CONTEXT.md        ← du bist hier
@@ -48,17 +50,25 @@ docs/PLAN.md         ← vollständiger Plan (Kapitel, Mechaniken, Architektur)
 docs/STATUS.md       ← Checkliste + Session-Log
 docs/DECISIONS.md    ← Architektur-Entscheidungen
 docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen
-src/main.ts          ← App-Rahmen, Views (Home, Space Mgmt, Data Builder, Glossary, gesperrte Views), Missions-Panel
+src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
+src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
+src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebnistabelle
+src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
+src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
+src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces, öffnet Objekte im Data Builder
+src/views/spaces.ts  ← Space Management (Kacheln, Anlegen/Bearbeiten/Löschen)
+src/views/security.ts ← Security (Roles, Users)
+src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload
 src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces = DuckDB-Schemas)
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
-src/content/missions/ ← Missionen je Kapitel (`c00.ts`, `c01.ts`, `c02.ts`), Reihenfolge in `index.ts`
+src/content/missions/ ← Missionen je Kapitel (`c00.ts`, `c01.ts`, `c02.ts`, `c04.ts`), Reihenfolge in `index.ts`
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result/structure/question/rule), Review-Regeln, XP
-src/missions/engine.ts ← Prüf-Engine: führt letzte Anweisung im Editor aus, vergleicht mit Musterlösung(en), `diagnose` für typische Fehler
+src/missions/engine.ts ← Prüf-Engine: Ergebnis (SQL im SQL-View-Editor vs. Musterlösung, `diagnose`), Struktur, Fragen, Regeln auf Tenant + Ereignissen
 src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound)
-src/progress.ts      ← Spielstand v3 (je Mission + Tenant), Ränge (RANK_XP), Export/Import
+src/progress.ts      ← Spielstand v4 (je Mission inkl. Ereignisse + Tenant), Migration v2/v3, Ränge, Export/Import, `unlockedChapter`
 src/tenant.ts        ← Tenant: Spaces (Storage, Priorität), Shares, aktiver Space, Sharing-Sperre `accessError`, Rollen/Zuweisungen
 src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scoped Roles, `effectiveAccess`
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
@@ -77,20 +87,27 @@ scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerpr
 
 ## Aktueller Stand
 
-Phase 1 und 2 fertig. Kapitel 0 (Onboarding), 1 (Space Concept) und 2 (Users & Roles) sind spielbar, 11 Missionen mit
-automatischer Prüfung, Fragen, Review, XP und Rängen, Spielstand mit Export/Import. Kapitel 1 bringt das Tenant-Modell:
-Spaces anlegen, Storage und Priorität, Objekte zwischen Spaces teilen; der Data Builder arbeitet immer in einem aktiven Space.
-Kapitel 2 bringt die Security-Ansicht: Scoped Roles anlegen und Personas zuweisen.
-Achtung: Views, die der Spieler per SQL anlegt, leben nur in DuckDB und sind nach dem Neuladen weg – vor Kapitel 4/5 lösen. Datengenerator: 7 Tabellen in
-`RHN_IN` mit eingebauten Fehlern, Details in `docs/DATA.md`. Lokal starten: `npm install`, `npm run dev`.
+Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavigation mit den echten Apps (nicht gebaute Apps
+zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
+Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
+
+Spielbar (15 Missionen):
+- Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
+- Kapitel 1 Space Concept, Kapitel 2 Users & Roles
+- Kapitel 4 Inbound Layer: die früheren Kapitel-0-SQL-Missionen (Profiling im Scratch-SQL-View); Kapitel 3 fehlt noch
+
+Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `space:builder:RHN_IN`,
+`open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`).
+Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
-`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts`, Playtest-Skript in `tests/playtest/` ergänzen und laufen lassen.
+`TUTORIALS` + `TASK_TOURS` in `src/content/tutorials.ts` (Ansichten für Touren: App-ID oder `builder:landing|new-view|spaces[:SPACE]`),
+Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Vom Spieler angelegte Objekte (CREATE VIEW/TABLE, Shares darauf) im Spielstand speichern und beim Start wieder anlegen –
-   Voraussetzung für Kapitel 3–5
-2. Kapitel 3 (Data Integration): Connections, Remote vs. Local Table, Replication Flow (Initial/Delta), CSV-Upload;
-   Best Practice `SRC_SYS_ID` beim Laden setzen (CRM-Export hat keine). Data Integration Monitor freischalten
-3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
+1. Kapitel 3 (Data Integration): **Connections**-App (Verbindung je Space anlegen), Remote vs. Local Table,
+   Replication Flow (Initial/Delta) als „New“-Kachel, **Data Integration Monitor** interaktiv (Läufe, Logs, Fehler);
+   Best Practice `SRC_SYS_ID` beim Laden setzen (CRM-Export hat keine). Danach passt Kapitel 4 wieder in die Reihenfolge
+2. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
+3. App-Reihenfolge und -Namen gegen einen echten Tenant prüfen (Curlin), ggf. `src/content/apps.ts` anpassen

@@ -20,8 +20,6 @@ function missingSpace(ctx: RuleContext, id: string, part: string): string | null
     : `There is no space ${id} yet. Create it in Space Management.`;
 }
 
-const REGION_SQL = `SELECT g.REGION, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c
-  JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA GROUP BY g.REGION`;
 
 export const CHAPTER_1: Mission[] = [
   {
@@ -202,17 +200,17 @@ export const CHAPTER_1: Mission[] = [
       and <code>RHN_HARM</code> may read them.</p>
       <p>For our first views we need <code>BILLING_CONTRACTS</code> and <code>GRID_AREAS</code> in <code>RHN_HARM</code>.
       The reporting layer must <b>never</b> read inbound data directly; it only gets what harmonization prepares.</p>
-      <p>To prove it works, switch the Data Builder to <code>RHN_HARM</code> and count the contracts per region again, from there.</p>`,
+      <p>To prove it works, open the contracts from inside <code>RHN_HARM</code> and look at the data there.</p>`,
     tasks: [
-      'In the Data Builder, switch to space <code>RHN_HARM</code> and try to read <code>RHN_IN.BILLING_CONTRACTS</code>. Read the message.',
-      'Switch back to <code>RHN_IN</code> and share the two tables with <code>RHN_HARM</code>.',
-      'In <code>RHN_HARM</code>, count the contracts per region. Leave the query in the editor.',
+      'In the Data Builder, select the space <code>RHN_HARM</code>. Look at its start page: what can you see from there?',
+      'Switch to <code>RHN_IN</code> and share the two tables with <code>RHN_HARM</code>, using the share icon in the object list.',
+      'Switch back to <code>RHN_HARM</code>, open <code>BILLING_CONTRACTS</code> under "Shared with RHN_HARM" and run <b>Data Preview</b>.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'The space selector is in the Data Builder toolbar. Each table in the repository has a share icon on the right.' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'The space switch is next to "Data Builder" at the top of the start page. Each object in the list has a share icon on the right.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Sharing is set on the object, in the space it belongs to. Afterwards it appears in the target space under "Shared with …" and can be used there as a source.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Share in RHN_IN: BILLING_CONTRACTS → RHN_HARM, GRID_AREAS → RHN_HARM. Then in RHN_HARM: your join from chapter 0.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Share in RHN_IN: BILLING_CONTRACTS → RHN_HARM, GRID_AREAS → RHN_HARM. Then RHN_HARM → Shared with RHN_HARM → BILLING_CONTRACTS → Data Preview.' },
     ],
     checks: [
       {
@@ -237,17 +235,13 @@ export const CHAPTER_1: Mission[] = [
         },
       },
       {
-        type: 'result',
-        label: 'Contracts per region, from RHN_HARM',
-        space: 'RHN_HARM',
-        expected: [REGION_SQL, REGION_SQL.replace('JOIN', 'LEFT JOIN')],
-        diagnose: [
-          {
-            sql: `SELECT c.GRID_AREA, COUNT(*) FROM RHN_IN.BILLING_CONTRACTS c
-              JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA GROUP BY c.GRID_AREA`,
-            message: 'The sharing works, but you count per grid area. The ticket wants one row per region.',
-          },
-        ],
+        type: 'rule',
+        label: 'Read from harmonization',
+        ok: 'You read the contracts from inside RHN_HARM.',
+        test: ({ events }) =>
+          events.has('preview-in:RHN_HARM:RHN_IN.BILLING_CONTRACTS')
+            ? null
+            : 'In the Data Builder of RHN_HARM, open BILLING_CONTRACTS under "Shared with RHN_HARM" and run Data Preview.',
       },
       {
         type: 'question',
@@ -264,13 +258,12 @@ export const CHAPTER_1: Mission[] = [
         nudge: 'Not quite. Think about what happens with a copy when the inbound table gets new data tomorrow.',
       },
     ],
-    review: ['explicit_join', 'alias_aggregates', 'no_select_star'],
     xp: 30,
     realTenant: `In a real tenant: open the table in the <b>Data Builder</b> of its space and choose <b>Share</b>, then pick the target spaces.
       In the target space the object shows up in the source browser under <b>Shared Objects</b> and can be used in views.
       Sharing gives read access only; the object can still only be changed in its own space.`,
     debrief: `<p>That is the pattern for the whole landscape: each layer reads from the layer below through sharing, never across two layers.</p>
-      <p>Did you notice the repository in RHN_HARM? Only its own objects and what was shared with it. A modeler in harmonization never sees the rest of inbound.</p>`,
+      <p>Did you notice the start page of RHN_HARM? Only its own objects and what was shared with it. A modeler in harmonization never sees the rest of inbound.</p>`,
   },
   {
     id: 'c01-m04',

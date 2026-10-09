@@ -8,37 +8,136 @@ import type { TourStep } from '../tutorial';
 export const TUTORIALS: Record<string, TourStep[]> = {
   'c00-m01': [
     {
-      title: 'Your first mission: Meet the raw data',
-      body: `<p>This tutorial walks you through the mission step by step. Everything you need is explained here, and the tutorial is free.</p>
-        <p>You start with <b>0 XP</b>. You earn XP by solving missions and can spend it later on hints.</p>`,
+      title: 'Welcome to the training tenant',
+      body: `<p>This game works like <b>SAP Datasphere</b>: the same apps, the same names, the same way of working. You learn where things are
+        and what they are for, then you build a small data warehouse for Stadtwerke Rheinau.</p>
+        <p>Every mission has a free tutorial like this one. You start with <b>0 XP</b>.</p>`,
+    },
+    {
+      title: 'The side navigation',
+      target: '.nav',
+      body: `<p>On the left are the <b>apps</b>. Each one does one job. The upper group is about data: finding, modeling, integrating.
+        The lower group is about running the tenant: spaces, monitoring, security, transport, system.</p>
+        <p>Hover an entry to see what it does. An <b>ⓘ</b> means the app only shows an info page in this game, for now.</p>`,
+    },
+    {
+      title: 'Collapse and expand',
+      target: '#nav-toggle',
+      body: `<p>The <b>☰</b> button folds the navigation to icons and back, like in a real tenant. Handy when you need room.</p>`,
+    },
+    {
+      title: 'Your tenant at a glance',
+      view: 'home',
+      target: '#app-guide',
+      body: `<p>The Home page groups all apps by what you do with them. Use it as your map.</p>`,
     },
     {
       title: 'The ticket',
       target: '.ticket',
-      body: `<p>Work arrives as tickets. This one is from your mentor Calin Mucea.</p>
-        <p>He wants to know <b>how many contracts exist per grid area</b>, and he suspects something about the grid areas is off.
-        A ticket says what the business needs. How you build it is up to you.</p>`,
+      body: `<p>Work arrives as tickets. This one is from your mentor Calin Mucea. A ticket says what is needed; how you do it is up to you.</p>`,
     },
     {
       title: 'Your task',
       target: '#task',
-      body: `<p>The task breaks the ticket into steps. Work through them from top to bottom.</p>
-        <p>Every step has a <b>Show me</b> button. It opens a quick tutorial with a few pop-ups for just that step.
-        We go through all steps once now.</p>`,
+      body: `<p>The task breaks the ticket into steps. Every step has a <b>Show me</b> button with a short tour for just that step.</p>`,
     },
     {
-      title: 'Step 1: Find the data',
-      view: 'builder',
-      target: '.objects',
-      body: `<p>This is the <b>Repository</b> of the Data Builder. It lists every table and view, grouped by space.</p>
-        <p><b>RHN_IN</b> is the <b>inbound space</b>. Raw data from the source systems lands here 1:1, without any business logic.
-        The contracts are in <b>BILLING_CONTRACTS</b>. Clicking a table shows its first 100 rows.</p>`,
+      title: 'Answers and hints',
+      target: '#questions',
+      body: `<p>Some missions ask questions. Your answers are saved right away.</p>
+        <p>Below are hints in three levels. In the first chapters they are free; later you buy them with XP.</p>`,
     },
     {
-      title: 'Step 2: Write SQL',
+      title: 'Check your solution',
+      target: '.feedback',
+      body: `<p><b>Check my solution</b> looks at what you did in the tenant and at your answers, and gives feedback for each part.
+        Check as often as you like; it costs nothing.</p>`,
+    },
+  ],
+  'c00-m02': [
+    {
+      title: 'Spaces first',
+      body: `<p>In SAP Datasphere everything you build lives in a <b>space</b>: an isolated area with its own members, storage and objects.
+        That is why the Data Builder asks for a space before anything else.</p>`,
+    },
+    {
+      title: 'Select a space',
+      view: 'builder:spaces',
+      target: '#space-picker',
+      body: `<p>You only see the spaces you are a member of. Right now there is one: <b>RHN_IN</b>, where IT loaded the source data.</p>`,
+    },
+    {
+      title: 'The start page',
+      view: 'builder:landing:RHN_IN',
+      target: '#new-tiles',
+      body: `<p>On top: tiles to <b>create</b> new objects, grouped into modeling, integration and security. A click on a grey tile explains what it is.</p>`,
+    },
+    {
+      title: 'The object list',
+      target: '#object-list',
+      body: `<p>Below: every object of the space with its <b>business name</b>, <b>technical name</b>, type and <b>status</b>.
+        Click a business name to open the object.</p>`,
+    },
+  ],
+  'c00-m03': [
+    {
+      title: 'Find things without knowing the space',
+      body: `<p>Clicking through spaces gets slow once there are many. The <b>Repository Explorer</b> searches all spaces you are a member of at once.</p>`,
+    },
+    {
+      title: 'Search and filter',
+      view: 'repository',
+      target: '.repo-filters',
+      body: `<p>Type part of a business or technical name. The filters narrow the list by type and space; the counter on the right says how many objects match.</p>`,
+    },
+    {
+      title: 'Open from the result',
+      target: '#repo-list',
+      body: `<p>Clicking a result opens the object in its editor in the Data Builder, in the right space.</p>`,
+    },
+  ],
+  'c00-m04': [
+    {
+      title: 'Two names',
+      target: '.ticket',
+      body: `<p>The <b>technical name</b> is how SQL and other objects refer to an object. It never changes.
+        The <b>business name</b> is what people read, in Datasphere and in SAP Analytics Cloud. You can change it any time.</p>`,
+    },
+    {
+      title: 'Design time and runtime',
+      body: `<p>Every Data Builder editor has <b>Save</b> and <b>Deploy</b>.</p>
+        <ul>
+          <li><b>Save</b> stores your design. Nothing changes for anyone else yet.</li>
+          <li><b>Deploy</b> makes it active in the database. Views and reports now use this version.</li>
+        </ul>
+        <p>The status shows where an object stands: <b>Not Deployed</b>, <b>Changes to Deploy</b> or <b>Deployed</b>.</p>`,
+    },
+  ],
+  'c04-m01': [
+    {
+      title: 'Chapter 4: Profile the inbound data',
+      body: `<p>Before anyone models, a data architect looks at the raw data. In this chapter you <b>profile</b> the inbound tables with SQL:
+        count, group, sum and join, and find what is wrong.</p>
+        <p>From now on only the first hint is free. The tutorials stay free, so read them carefully.</p>`,
+    },
+    {
+      title: 'A scratch SQL view',
+      view: 'builder:landing:RHN_IN',
+      target: '#new-tiles',
+      body: `<p>For profiling you open a <b>New SQL View</b> in the Data Builder of <b>RHN_IN</b> and only use <b>Data Preview</b>.
+        You do not save or deploy it: the inbound layer holds source data 1:1, without logic.</p>`,
+    },
+    {
+      title: 'Sources',
+      view: 'builder:new-view:RHN_IN',
+      target: '#sources',
+      body: `<p>The <b>Sources</b> list shows what this view may read: the deployed objects of the space and what is shared with it.
+        A click inserts the full name, for example <code>RHN_IN.BILLING_CONTRACTS</code>.</p>`,
+    },
+    {
+      title: 'Write SQL',
       target: '#editor',
-      body: `<p>This is the <b>SQL editor</b>. You address a table as <code>SPACE.TABLE</code>, for example <code>RHN_IN.BILLING_CONTRACTS</code>.
-        Type <code>RHN_IN.</code> and the editor suggests tables and columns.</p>
+      body: `<p>You address a table as <code>SPACE.TABLE</code>. Type <code>RHN_IN.</code> and the editor suggests tables and columns.</p>
         <p>To count rows per value, combine two things:</p>
         <ul>
           <li><code>COUNT(*)</code> counts rows.</li>
@@ -48,50 +147,28 @@ export const TUTORIALS: Record<string, TourStep[]> = {
       example: `SELECT CITY, COUNT(*) AS CUSTOMERS
 FROM RHN_IN.CRM_CUSTOMERS
 GROUP BY CITY
-ORDER BY CUSTOMERS DESC;`,
+ORDER BY CUSTOMERS DESC`,
     },
     {
-      title: 'Run the query',
+      title: 'Data Preview',
       target: '#run',
-      body: `<p><b>Run</b> executes everything in the editor. <b>Ctrl+Enter</b> does the same.</p>
-        <p>Use the pattern from the previous step for the contracts and the column <code>GRID_AREA</code>.</p>`,
+      body: `<p><b>Data Preview</b> runs your SELECT and shows the result below. <b>Ctrl+Enter</b> does the same.</p>
+        <p>Use the pattern for the contracts and the column <code>GRID_AREA</code>.</p>`,
     },
     {
-      title: 'Step 3: Read the result',
+      title: 'Read the result',
       target: '#results',
-      body: `<p>The result appears here, with the number of rows on top.</p>
-        <p>Look closely at the grid area values. Are they all spelled the same way? Then look at the column
-        <code>SRC_SYS_ID</code>: it names the source system each row comes from. <b>S4U</b> is the current billing system.</p>
-        <p>Where do the odd rows come from?</p>`,
+      body: `<p>Look closely at the grid area values. Are they all spelled the same way? Then look at
+        <code>SRC_SYS_ID</code>: it names the source system of each row. <b>S4U</b> is the current billing system.</p>`,
     },
     {
-      title: 'Hints',
-      view: 'builder',
-      target: '#hints',
-      body: `<p>Hints come in three levels: a direction, the concept, then a skeleton of the query.</p>
-        <p>In the first chapters all hints are <b>open for free</b>, so read them whenever you like.
-        From chapter 2 only the first, vague hint is free. From chapter 5 there are no free hints:
-        you buy them with XP you earned, and only if you have enough.</p>`,
-    },
-    {
-      title: 'Answer the questions',
-      target: '#questions',
-      body: `<p>Some tickets ask what you found. Pick your answers here. They are saved right away.</p>`,
-    },
-    {
-      title: 'Check your solution',
+      title: 'Check',
       target: '.feedback',
-      body: `<p>When you are done, press <b>Check my solution</b>. The game runs the <b>last query in your editor</b> and compares its result
-        with what the ticket needs. Column names and column order are up to you, only the result counts.</p>
-        <p>You get feedback for each part, a review from Calin and XP when everything is right. Check as often as you like, it costs nothing.</p>`,
-    },
-    {
-      title: 'Your turn',
-      body: `<p>Count the contracts per grid area, find out what is wrong with the grid areas and answer the two questions.</p>
-        <p>You can reopen this tutorial any time with <b>Show tutorial</b> in the mission panel.</p>`,
+      body: `<p><b>Check my solution</b> runs the SQL in your editor and compares the result with what the ticket needs.
+        Column names and order are up to you; only the result counts.</p>`,
     },
   ],
-  'c00-m02': [
+  'c04-m02': [
     {
       title: 'A ticket from the CFO',
       target: '.ticket',
@@ -100,9 +177,9 @@ ORDER BY CUSTOMERS DESC;`,
     },
     {
       title: 'The invoices',
-      view: 'builder',
-      target: '.objects',
-      body: `<p>Invoices are in <b>RHN_IN.BILLING_INVOICES</b>. Preview it and find <code>STATUS</code>, <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>
+      view: 'builder:landing:RHN_IN',
+      target: '#object-list',
+      body: `<p>Invoices are in <b>RHN_IN.BILLING_INVOICES</b>. Open it, use Data Preview and find <code>STATUS</code>, <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>
         <p>The tenant's business "today" is 15 July 2026. That decides which invoices are open and which are overdue.</p>`,
     },
     {
@@ -128,7 +205,7 @@ GROUP BY UNIT;`,
         <p>Name your calculated columns with <code>AS</code>. Calin's review notices when you forget it.</p>`,
     },
   ],
-  'c00-m03': [
+  'c04-m03': [
     {
       title: 'A list instead of a summary',
       target: '.ticket',
@@ -137,7 +214,7 @@ GROUP BY UNIT;`,
     },
     {
       title: 'Filter with WHERE',
-      view: 'builder',
+      view: 'builder:new-view:RHN_IN',
       target: '#editor',
       body: `<p><code>WHERE</code> keeps only the rows that match a condition. Text goes in single quotes, and the value must be spelled exactly as in the data.</p>
         <p><code>ORDER BY column DESC</code> sorts biggest first; without <code>DESC</code> it sorts smallest first.
@@ -157,7 +234,7 @@ LIMIT 5;`,
         <p>The ticket needs four columns: invoice ID, contract ID, due date and gross amount. Order matters this time, so the check also looks at the row order.</p>`,
     },
   ],
-  'c00-m04': [
+  'c04-m04': [
     {
       title: 'Data from two tables',
       target: '.ticket',
@@ -166,7 +243,7 @@ LIMIT 5;`,
     },
     {
       title: 'How a join works',
-      view: 'builder',
+      view: 'builder:new-view:RHN_IN',
       target: '#editor',
       body: `<p><code>JOIN … ON …</code> puts a row of one table next to the matching row of another. The <code>ON</code> condition says what "matching" means.</p>
         <ul>
@@ -200,8 +277,8 @@ GROUP BY c.TARIFF;`,
       title: 'Space Management',
       view: 'spaces',
       target: '#space-list',
-      body: `<p>This list shows every space with its storage and priority. Right now there is only <b>RHN_IN</b>, the inbound space.</p>
-        <p>The layer column comes from the space ID: our convention ends inbound spaces in <code>_IN</code>, harmonization in <code>_HARM</code>, reporting in <code>_REP</code>.</p>`,
+      body: `<p>Each tile is one space with its storage and priority. Right now there is only <b>RHN_IN</b>, the inbound space.</p>
+        <p>The layer on the tile comes from the space ID: our convention ends inbound spaces in <code>_IN</code>, harmonization in <code>_HARM</code>, reporting in <code>_REP</code>.</p>`,
     },
     {
       title: 'Tenant capacity',
@@ -244,7 +321,7 @@ GROUP BY c.TARIFF;`,
       title: 'Priority',
       target: '#space-list',
       body: `<p>Priority goes from <b>1</b> (lowest) to <b>5</b> (highest). When the database is busy, statements from spaces with a higher priority are favored.</p>
-        <p>Use <b>Edit</b> in a row to change storage and priority. The space ID stays fixed.</p>`,
+        <p>Use <b>Edit</b> on a tile to change storage and priority. The space ID stays fixed.</p>`,
     },
     {
       title: 'A planning trick',
@@ -260,24 +337,25 @@ GROUP BY c.TARIFF;`,
         <p>To let a layer build on the layer below, you <b>share</b> objects. The data stays where it is, nothing is copied.</p>`,
     },
     {
-      title: 'The active space',
-      view: 'builder',
-      target: '#space-select',
-      body: `<p>The Data Builder always works <b>in one space</b>. Choose it here; the top bar shows it too.</p>
-        <p>The repository on the left lists the objects of that space, and below them the objects <b>shared with</b> it.
-        Queries may only read those.</p>`,
+      title: 'The space you work in',
+      view: 'builder:landing',
+      target: '#space-switch',
+      body: `<p>The Data Builder always works <b>in one space</b>. This switch shows which one, and changes it.</p>
+        <p>The start page lists the objects of that space, and below them the objects <b>shared with</b> it. Views in this space may only read those.</p>`,
     },
     {
       title: 'Sharing an object',
-      target: '.objects',
-      body: `<p>In the space an object belongs to, the share icon next to it opens the sharing dialog. Tick the spaces that may read it.</p>
+      view: 'builder:landing:RHN_IN',
+      target: '#object-list',
+      body: `<p>In the space an object belongs to, the share icon in its row opens the sharing dialog. Tick the spaces that may read it.
+        The editor of an object has a Share button too.</p>
         <p>A dot on the icon means the object is already shared somewhere.</p>`,
     },
     {
       title: 'Layers in order',
       body: `<p>The rule of the landscape: each layer reads from the layer directly below.</p>
         <p><b>RHN_IN</b> → shared with → <b>RHN_HARM</b> → shared with → <b>RHN_REP</b></p>
-        <p>If reporting read inbound directly, the legacy grid areas from chapter 0 would land in the board's reports, uncleaned.</p>`,
+        <p>If reporting read inbound directly, uncleaned source data would land in the board's reports.</p>`,
     },
   ],
   'c01-m04': [
@@ -370,23 +448,48 @@ GROUP BY c.TARIFF;`,
 export const TASK_TOURS: Record<string, TourStep[][]> = {
   'c00-m01': [
     [
+      { title: 'Data apps', target: '.nav', body: `<p>Repository Explorer, Data Builder, Data Integration Monitor and Connections sit in the upper group. Click each once.</p>` },
+      { title: 'Admin apps', target: '.nav', body: `<p>Space Management and Security sit in the lower group. Click both too.</p>` },
+    ],
+    [ { title: 'One job, one app', target: '#questions', body: `<p>For each question, think: is it about building, about getting data in, or about running the tenant?</p>` } ],
+  ],
+  'c00-m02': [
+    [ { title: 'Select the space', view: 'builder:spaces', target: '#space-picker', body: `<p>Click the RHN_IN card.</p>` } ],
+    [ { title: 'Open the contracts', view: 'builder:landing:RHN_IN', target: '#object-list', body: `<p>Click <b>BILLING_CONTRACTS</b> in the Business Name column.</p>` } ],
+    [
+      { title: 'Columns', target: '#main', body: `<p>The middle shows the columns of the table, the right side its properties.</p>` },
+      { title: 'Data Preview', target: '#run', body: `<p>This button shows the first 100 rows at the bottom.</p>` },
+    ],
+  ],
+  'c00-m03': [
+    [ { title: 'Search', view: 'repository', target: '.repo-filters', body: `<p>Type <b>meter</b> into the search field.</p>` } ],
+    [ { title: 'Open it', target: '#repo-list', body: `<p>Click the business name of the result.</p>` } ],
+    [ { title: 'Count', view: 'repository', target: '.repo-filters', body: `<p>Clear the search, set Space to RHN_IN and read the counter on the right.</p>` } ],
+  ],
+  'c00-m04': [
+    [ { title: 'Open it', view: 'builder:landing:RHN_IN', target: '#object-list', body: `<p>Open BILLING_CONTRACTS. Its business name is still the technical name.</p>` } ],
+    [ { title: 'Change and save', target: '#main', body: `<p>Change <b>Business Name</b> in the properties panel on the right, then press <b>Save</b> in the toolbar. Read the status.</p>` } ],
+    [ { title: 'Deploy', target: '#main', body: `<p>Press <b>Deploy</b>. The status turns to Deployed, and the object list shows the new name.</p>` } ],
+  ],
+  'c04-m01': [
+    [
       {
         title: 'Find the contracts',
-        view: 'builder',
-        target: '.objects',
-        body: `<p>The Repository lists everything in the tenant, grouped by space. Open <b>RHN_IN</b> and click <b>BILLING_CONTRACTS</b>.</p>`,
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>The start page of RHN_IN lists its objects. Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>.</p>`,
       },
       {
         title: 'What you see',
         target: '#results',
-        body: `<p>The preview shows the first 100 rows. Each row is one supply contract: who, which <code>GRID_AREA</code>, which <code>TARIFF</code>,
+        body: `<p>Data Preview shows the first 100 rows. Each row is one supply contract: who, which <code>GRID_AREA</code>, which <code>TARIFF</code>,
           and in <code>SRC_SYS_ID</code> the system it came from.</p>`,
       },
     ],
     [
       {
         title: 'Count per value',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p><code>COUNT(*)</code> counts rows. <code>GROUP BY</code> splits the rows into one group per value, so the count runs per group.</p>
           <p>Same pattern, other table:</p>`,
@@ -397,13 +500,13 @@ GROUP BY CITY;`,
       {
         title: 'Run it',
         target: '#run',
-        body: `<p>Swap in the contracts table and the column <code>GRID_AREA</code>, then press <b>Run</b> or <b>Ctrl+Enter</b>.</p>`,
+        body: `<p>Swap in the contracts table and the column <code>GRID_AREA</code>, then press <b>Data Preview</b> or <b>Ctrl+Enter</b>.</p>`,
       },
     ],
     [
       {
         title: 'Compare the values',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#results',
         body: `<p>How many different grid areas do you get? Are some of them the same area, just spelled differently?</p>`,
       },
@@ -414,13 +517,13 @@ GROUP BY CITY;`,
       },
     ],
   ],
-  'c00-m02': [
+  'c04-m02': [
     [
       {
         title: 'Find the invoices',
-        view: 'builder',
-        target: '.objects',
-        body: `<p>Click <b>BILLING_INVOICES</b> in RHN_IN. Look for <code>STATUS</code> and the two amounts <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>`,
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>Open <b>BILLING_INVOICES</b> in RHN_IN. Look for <code>STATUS</code> and the two amounts <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>`,
       },
       {
         title: 'Which statuses exist?',
@@ -431,7 +534,7 @@ GROUP BY CITY;`,
     [
       {
         title: 'Two aggregates at once',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p>Put <code>COUNT(*)</code> and <code>SUM(…)</code> next to each other in the <code>SELECT</code>, separated by a comma. Both are calculated per group.</p>`,
       },
@@ -444,17 +547,17 @@ GROUP BY CITY;`,
     [
       {
         title: 'Read your result',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#results',
         body: `<p>Not paid yet means OPEN and OVERDUE. Add their gross totals and pick the closest answer.</p>`,
       },
     ],
   ],
-  'c00-m03': [
+  'c04-m03': [
     [
       {
         title: 'Filter the rows',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p><code>WHERE STATUS = '…'</code> keeps one status. Write the value exactly as in the data, in single quotes.</p>`,
       },
@@ -462,7 +565,7 @@ GROUP BY CITY;`,
     [
       {
         title: 'Pick the columns',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p>List four columns after <code>SELECT</code>. The fourth is a calculation: net plus tax. Name it with <code>AS</code>.</p>`,
       },
@@ -470,7 +573,7 @@ GROUP BY CITY;`,
     [
       {
         title: 'Sort and cut',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p><code>ORDER BY … DESC</code> puts the biggest first. <code>LIMIT 10</code> at the very end keeps 10 rows.</p>`,
       },
@@ -481,19 +584,19 @@ GROUP BY CITY;`,
       },
     ],
   ],
-  'c00-m04': [
+  'c04-m04': [
     [
       {
         title: 'The mapping table',
-        view: 'builder',
-        target: '.objects',
-        body: `<p>Click <b>GRID_AREAS</b>. Four rows: each grid area with its name and <code>REGION</code>. Which column also exists in the contracts?</p>`,
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>Open <b>GRID_AREAS</b> and use Data Preview. Four rows: each grid area with its name and <code>REGION</code>. Which column also exists in the contracts?</p>`,
       },
     ],
     [
       {
         title: 'Join and group',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#editor',
         body: `<p><code>FROM contracts c JOIN grid_areas g ON c.… = g.…</code>, then <code>GROUP BY g.REGION</code> and count.</p>`,
       },
@@ -501,9 +604,9 @@ GROUP BY CITY;`,
     [
       {
         title: 'Compare totals',
-        view: 'builder',
+        view: 'builder:new-view:RHN_IN',
         target: '#results',
-        body: `<p>Add up the two regions. Then count all contracts with <code>SELECT COUNT(*) FROM RHN_IN.BILLING_CONTRACTS</code>. Run it, look, then put your region query back as the last statement before you check.</p>`,
+        body: `<p>Add up the two regions. Then count all contracts with <code>SELECT COUNT(*) FROM RHN_IN.BILLING_CONTRACTS</code> in Data Preview, and put your region query back before you check.</p>`,
       },
       {
         title: 'Remember mission 1',
@@ -522,7 +625,7 @@ GROUP BY CITY;`,
     ],
     [
       { title: 'Same again', view: 'spaces', target: '#create-space', body: `<p>One more space, this time for the reporting layer.</p>` },
-      { title: 'Check the list', target: '#space-list', body: `<p>The layer column should now show Inbound, Harmonization and Reporting.</p>` },
+      { title: 'Check the list', target: '#space-list', body: `<p>The tiles should now show the Inbound, Harmonization and Reporting layers.</p>` },
     ],
     [
       { title: 'Think about people', target: '#questions', body: `<p>Who works in harmonization, who in reporting? What can you set per space?</p>` },
@@ -533,7 +636,7 @@ GROUP BY CITY;`,
       { title: 'Do the maths', target: '.ticket', body: `<p>Disk: capacity − reserve − RHN_IN. In-memory: the same. Then compare with the minimums of HARM and REP.</p>` },
     ],
     [
-      { title: 'Edit a space', view: 'spaces', target: '#space-list', body: `<p>Press <b>Edit</b> in the RHN_HARM row. The form shows how much is still free in the tenant.</p>` },
+      { title: 'Edit a space', view: 'spaces', target: '#space-list', body: `<p>Press <b>Edit</b> on the RHN_HARM tile. The form shows how much is still free in the tenant.</p>` },
     ],
     [
       { title: 'Reporting first', view: 'spaces', target: '#space-list', body: `<p>RHN_REP needs the most in-memory of the two and a priority higher than every other space.</p>` },
@@ -544,16 +647,15 @@ GROUP BY CITY;`,
   ],
   'c01-m03': [
     [
-      { title: 'Switch space', view: 'builder', target: '#space-select', body: `<p>Choose <b>RHN_HARM</b>. The repository is empty: nothing lives there yet.</p>` },
-      { title: 'Try it', target: '#editor', body: `<p>Run <code>SELECT * FROM RHN_IN.BILLING_CONTRACTS</code> and read the message in the result area.</p>` },
+      { title: 'Select RHN_HARM', view: 'builder:spaces', target: '#space-picker', body: `<p>Pick <b>RHN_HARM</b>. Its start page is empty: nothing lives there, and nothing is shared with it yet.</p>` },
     ],
     [
-      { title: 'Back to inbound', view: 'builder', target: '#space-select', body: `<p>Switch to <b>RHN_IN</b>. Objects are shared from the space they belong to.</p>` },
-      { title: 'Share', target: '.objects', body: `<p>Click the share icon next to BILLING_CONTRACTS and tick RHN_HARM. Then the same for GRID_AREAS.</p>` },
+      { title: 'Back to inbound', view: 'builder:landing:RHN_IN', target: '#space-switch', body: `<p>You are in <b>RHN_IN</b> now. Objects are shared from the space they belong to.</p>` },
+      { title: 'Share', target: '#object-list', body: `<p>Click the share icon in the BILLING_CONTRACTS row and tick RHN_HARM. Then the same for GRID_AREAS.</p>` },
     ],
     [
-      { title: 'Count from harmonization', view: 'builder', target: '#space-select', body: `<p>Switch to RHN_HARM again. The two tables now appear under "Shared with RHN_HARM".</p>` },
-      { title: 'Your join', target: '#editor', body: `<p>Write the region count from chapter 0 and run it here. Leave it in the editor for the check.</p>` },
+      { title: 'Look from harmonization', view: 'builder:landing:RHN_HARM', target: '#space-switch', body: `<p>Back in RHN_HARM. Below the object list there is now a section "Shared with RHN_HARM".</p>` },
+      { title: 'Preview', target: '#main', body: `<p>Open BILLING_CONTRACTS there and press <b>Data Preview</b>. The data still lives in RHN_IN; you only read it.</p>` },
     ],
     [
       { title: 'Copies', target: '#questions', body: `<p>What happens to a copy when the inbound table changes tomorrow?</p>` },
