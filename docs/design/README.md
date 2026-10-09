@@ -22,8 +22,8 @@ im echten Tenant sofort zurecht.
 
 **Nicht übernehmen (bleibt anders):**
 - Kein SAP-Logo, keine SAP-Wortmarke, keine SAP-Bilder (Hero-Bild, Illustrationen, Blog-Inhalte). An die Stelle des Logos kommt
-  **MSC**, Curlins eigene Marke (`msc-logo.svg`, im Code `src/brand.ts`): fette Wortmarke im Big-4-Stil plus Symbol für Erfindergeist:
-  Glühbirne in Lila `#5B2A86` mit Glühfaden, Sockel in Weinrot `#7A1F3D`, Funke in Orange `#F07C1A`. Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
+  **MSC**, Curlins eigene Marke (`msc-logo.svg`, im Code `src/brand.ts`): fette Wortmarke im Big-4-Stil plus Emblem: moderne Triquetra
+  (Vorlage von Curlin) aus drei Bögen in Lila `#5B2A86`, Weinrot `#7A1F3D` und Orange `#F07C1A` in einem dünnen Ring. Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
 - Keine Schriftdateien von SAP („72“). Schrift: `"72", "Segoe UI", "Helvetica Neue", Arial, sans-serif` – nutzt 72 nur, wenn es lokal installiert ist.
 - Das **Missions-Panel rechts** gibt es nur im Spiel. Es wird wie ein Horizon-Seitenpanel gestaltet (weiß, Rahmen links, Kopf wie „Model Properties“), damit es nicht stört.
 - Layer-Farben (IN/HARM/REP) nur als kleine Chips, nie als Flächenfarben.
