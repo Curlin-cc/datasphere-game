@@ -36,7 +36,7 @@ export const CHAPTERS: Chapter[] = [
   { nr: 9, title: 'Persistence and performance', summary: 'Decide what to persist and why', guidance: 'paid' },
   { nr: 10, title: 'Operations', summary: 'Task chains, monitoring and failed loads', guidance: 'paid' },
   { nr: 11, title: 'Board request', summary: 'An end-to-end change, no hints', guidance: 'none' },
-  { nr: 12, title: 'Excursions', summary: 'Power BI and database users, transport, catalog, the old Business Builder, hierarchies', guidance: 'light' },
+  { nr: 12, title: 'Excursions', summary: 'Power BI and database users, transport, catalog, the old Business Builder, hierarchies, version history, OData, Content Network', guidance: 'light' },
 ];
 
 /** Chapter of the excursions after the main game (Handbuch 7, 8, 11, 12). */
@@ -310,6 +310,12 @@ export const GLOSSARY: GlossaryTerm[] = [
     chapter: 7,
     text: 'Counts the different values of an attribute, e.g. customers. Not additive: the rows of a breakdown can add up to more than the total.',
     realTenant: 'Analytic model > Measures > Count Distinct.',
+  },
+  {
+    term: 'Content Network',
+    chapter: 12,
+    text: 'Where SAP and partners publish business content and samples: packages with their own space, remote tables, views and models for an industry. Imported through Semantic Onboarding; connections and data are not part of a package.',
+    realTenant: 'Semantic Onboarding > Content Network (Handbuch 8.6).',
   },
   {
     term: 'OAuth client',

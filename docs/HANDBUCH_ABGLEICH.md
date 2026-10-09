@@ -72,6 +72,10 @@ deployten Version und Restore im Editor über *Versions*. Nur SQL Views, letzte 
 (Authorization Code, Redirect URI) laut KBA 3563695; Menüpfad App Integration, Feldnamen, einmal angezeigtes Secret und URL-Aufbau sind im Handbuch
 „nicht verifiziert“ und vereinfacht. Der Test-Aufruf ist eine Spiel-Simulation; DACs werden dabei bewusst nicht gespielt (12.3 „nicht verifiziert“).
 
+**Content Network (c12-m09, Handbuch 8.6, 5.7, ergänzt am 10.10.2026):** Import über Semantic Onboarding in einen eigenen Space, Voraussetzungen
+lesen, danach Verbindungen ergänzen (8.6.2 Schritt 167). Paketnamen, CDS-Namen und die Optionen Overwrite/Deploy sind erfunden bzw. vereinfacht
+(8.6.2: Importoptionen „nicht verifiziert“). Import Entities aus SAP-Systemen (5.7) ist nur erklärt.
+
 ## Was Kapitel 3 aus dem Handbuch umsetzt
 
 - Connection gehört genau einem Space, entsteht aus einem Typ; Validate zeigt verfügbare Features (5.1, 5.4.3, 5.4.4)

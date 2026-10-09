@@ -3,6 +3,7 @@ import type { TenantState } from '../../tenant';
 import { findObject, objectKey, addVersion } from '../../repo';
 import { REF_CONTRACTS_KEYS, M02_COLS, project } from './c05';
 import { SAC_PLANNING } from '../../consumption';
+import { packageById } from '../../onboarding';
 import { packageStatus, presetPackage, validatePackage, validationMessages } from '../../transport';
 import { findAsset } from '../../catalog';
 import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
@@ -612,5 +613,64 @@ export const CHAPTER_12: Mission[] = [
     debrief: `<p>Thanks, client ID and secret are on their way to the planners. They see what they would see in our tenant, nothing more.</p>
       <p><i>Calin adds:</i> One client per tool, so you can switch one off without breaking the others. And the secret goes in a password manager,
       not in an email.</p>`,
+  },
+  {
+    id: 'c12-m09',
+    chapter: 12,
+    title: 'What SAP already built',
+    from: CALIN,
+    ticket: `<p>Before we model billing for the second supplier we take over next year, I want to see what SAP already ships for utilities.</p>
+      <p>Import the business content package <b>Utilities – Billing Analysis</b> from the <b>Content Network</b> (app Semantic Onboarding).
+      It brings its own space, so our spaces stay as they are. Deploy what can be deployed.</p>
+      <p>Then read the <b>import log</b> and look at the billing fact <code>SAP_UTIL_V_BILLING</code> in the Repository Explorer: what does it read, and why
+      does it not run yet?</p>`,
+    tasks: [
+      'Semantic Onboarding › Content Network › Business Content: open <b>Utilities – Billing Analysis</b>, read its prerequisites and import it.',
+      'Open Import Logs and read the messages of your import.',
+      'Find <code>SAP_UTIL_V_BILLING</code> in the Repository Explorer and open it: what does it read?',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Semantic Onboarding is in the Apps group of the side navigation. Open Import Logs is on the right of the SAP Systems section.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'A content package brings definitions, not data. Remote tables read through a connection of their own space, and the package cannot bring yours.' },
+    ],
+    checks: [
+      {
+        type: 'rule', label: 'The package is imported', ok: 'Space SAP_UTIL with the remote tables and views of the package.',
+        test: ({ tenant }) => {
+          if (!tenant.importLogs.some((l) => l.pkg === 'SAP_UTIL_BILLING' && l.lines.some((x) => x.text.startsWith('Import of'))))
+            return 'Utilities – Billing Analysis is not imported yet. Semantic Onboarding › Content Network › Business Content.';
+          const missing = packageById('SAP_UTIL_BILLING')!.objects.filter((o) => !findObject(tenant, `SAP_UTIL.${o.name}`));
+          return missing.length ? `Missing after the import: ${missing.map((o) => o.name).join(', ')}. Import the package again with Overwrite on.` : null;
+        },
+      },
+      {
+        type: 'rule', label: 'You read the import log', ok: 'The log says what worked and what did not.',
+        test: ({ events }) => (events.has('import-log-open:SAP_UTIL_BILLING') ? null : 'Open Import Logs on the Semantic Onboarding page and click your import to read its messages.'),
+      },
+      {
+        type: 'rule', label: 'You looked at the fact', ok: 'SAP_UTIL_V_BILLING reads the remote tables of the package.',
+        test: ({ events }) => (events.has('repository-open:SAP_UTIL.SAP_UTIL_V_BILLING') ? null : 'Search for SAP_UTIL_V_BILLING in the Repository Explorer and open it from there.'),
+      },
+      {
+        type: 'question', id: 'not-running', label: 'Why it does not run',
+        prompt: 'The remote tables are there, but the two views were not deployed. What is missing, and what is the next step?',
+        options: [
+          'The package is broken; ask SAP for a new version',
+          'The connection SAP_S4H in space SAP_UTIL: the package brings definitions, not data or connections. Create and validate the connection, then deploy the views',
+          'Our RHN_IN space has to be shared with SAP_UTIL',
+          'Nothing: content packages are only meant to be read, never deployed',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Read the warnings of the remote tables in the import log.',
+      },
+    ],
+    xp: 40,
+    realTenant: `In a real tenant: Semantic Onboarding › Content Network, choose the package, read its description and prerequisites, import it
+      (Handbuch 8.6.2). Then check the created spaces and objects and add the connections (Handbuch chapter 5). Package names and import options in the
+      game are invented or simplified; the handbook marks the options as not verified.`,
+    debrief: `<p>Good: five objects we did not have to build, in a space of their own, and we know exactly what is missing to run them.</p>
+      <p><i>Calin adds:</i> I will compare their billing fact with ours. Where SAP models something better, we copy the idea into our own spaces;
+      we do not build our reports on top of content that a re-import could overwrite.</p>`,
   },
 ];

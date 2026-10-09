@@ -63,7 +63,7 @@ export const APPS: AppInfo[] = [
     who: 'Data stewards, analysts, catalog administrators',
   },
   {
-    id: 'semantic', label: 'Semantic Onboarding', section: 'apps', chapter: 3,
+    id: 'semantic', label: 'Semantic Onboarding', section: 'apps', chapter: 3, interactive: 12,
     icon: '<path d="M8 2.5v7M5 6.5l3 3 3-3M3 12.5h10"/>',
     summary: 'Import objects with their semantics from SAP systems.',
     does: ['Imports entities from S/4HANA, BW/4HANA or SAP BW bridge with labels, associations and hierarchies', 'Installs SAP business content packages', 'Saves rebuilding semantics by hand'],

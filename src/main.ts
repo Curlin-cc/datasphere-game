@@ -32,6 +32,7 @@ import { restoreIntegration } from './integration';
 import { renderTransport, transportTo, transportPage, TRANSPORT_PAGES, type TransportPage } from './views/transport';
 import { renderCatalog, catalogReset } from './views/catalog';
 import { renderBusiness, businessReset } from './views/business';
+import { renderOnboarding, onboardingReset } from './views/onboarding';
 import { EXCURSIONS } from './content/chapters';
 import { BADGES, BADGE_ICON, earnedBadges, type Badge } from './badges';
 
@@ -213,6 +214,7 @@ function bindNav() {
       if (b.dataset.tsub) transportTo(b.dataset.tsub as TransportPage);
       if (b.dataset.view === 'catalog') catalogReset();
       if (b.dataset.view === 'business') businessReset();
+      if (b.dataset.view === 'semantic') onboardingReset();
       if (b.dataset.view === 'system' && ctx.view !== 'system') systemArea('configuration');
       setView(b.dataset.view as ViewId, true);
     }),
@@ -305,6 +307,8 @@ function renderView() {
       return currentChapter() >= EXCURSIONS ? renderCatalog(main) : renderAppInfo(main, a!);
     case 'business':
       return currentChapter() >= EXCURSIONS ? renderBusiness(main) : renderAppInfo(main, a!);
+    case 'semantic':
+      return currentChapter() >= EXCURSIONS ? renderOnboarding(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }
@@ -345,9 +349,10 @@ function tourHooks(onFinish: () => void) {
       } else if (view === 'transport' && target) {
         transportTo(target as TransportPage);
         setView('transport', true);
-      } else if (view === 'catalog' || view === 'business') {
+      } else if (view === 'catalog' || view === 'business' || view === 'semantic') {
         if (view === 'catalog') catalogReset();
-        else businessReset();
+        else if (view === 'business') businessReset();
+        else onboardingReset();
         setView(view, true);
       } else if (view === 'system' && target) {
         systemTo(target as Parameters<typeof systemTo>[0]);

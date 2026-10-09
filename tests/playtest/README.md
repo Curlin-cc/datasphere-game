@@ -26,4 +26,7 @@ Kapitel 12: `chapter12.py` (Startzustand `chapter12_data.py` = Stand nach Kapite
 Kapitel 12 Hierarchien: `chapter12_hier.py` (Start wie Kapitel 12, m01–m04 gelöst): Baum ohne Präfix (doppelte Knoten), Assoziation, Knotentabelle mit Netzgebieten, DAC erst Single Values, alte DAC noch zugewiesen, dann richtig.
 Kapitel 12 Versionshistorie: `chapter12_ver.py` (Start wie Kapitel 12, m01–m06 gelöst): Prüfen ohne Änderung, Fix von Hand (Regel „Versionshistorie benutzt“ fehlt), Tims Version wiederherstellen, dann das Hands-on-Tutorial (Versions, Vergleich, Restore, Deploy) und Reload.
 Kapitel 12 OData: `chapter12_odata.py` (Start wie Kapitel 12, m01–m07 gelöst): API-Access-Client (401), falsche Redirect URI (400), nicht freigegeben (404), dann 200; Reload; zweiter Lauf mit Hands-on-Tutorial.
+Alle auf einmal: `bash run_all.sh <ordner> [skript …]` (eine Zeile je Skript, Exit-Code 1 bei Traceback oder Seitenfehler).
+Kapitel 12 Content Network: `chapter12_onb.py` (m01–m08 gelöst): Partnerpaket (Lizenz), Sample (läuft), Utilities-Paket per Hands-on-Tutorial, Import-Log, Repository Explorer, Re-Import ohne Overwrite, Reload.
+Design Exkurse: `look_exc.py <ordner> [dark] [1366x768]` fotografiert Semantic Onboarding, App Integration, Security-Seiten, Versionen, Settings und misst seitlichen Überlauf.
 Kapitel 5 Mapping-Tabelle: `chapter5_map.py` löst c05-m01 über `RHN_HA_T_CODE_MAP` (New Table, Data Editor) statt CASE: inner Join, ohne COALESCE, dann richtig, mit Reload.

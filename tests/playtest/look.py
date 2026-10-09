@@ -28,7 +28,7 @@ with sync_playwright() as p:
     pg.click('#import-menu-btn'); pg.wait_for_timeout(200); g.shot('look-builder-import' + sfx); pg.click('#import-menu-btn')
     pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker'); pg.click('[data-fact="RHN_REP.RHN_REP_F_INVOICES"]')
     pg.wait_for_selector('#am-canvas'); g.shot('look-analytic' + sfx)
-    for app in ['repository', 'spaces', 'monitor', 'connections', 'security', 'system', 'tasklogs']:
+    for app in ['repository', 'spaces', 'monitor', 'connections', 'security', 'system', 'tasklogs', 'semantic']:
         g.nav(app); pg.wait_for_timeout(300); g.shot(f'look-{app}' + sfx)
     for sub, attr, app in [('users', 'sec', 'security'), ('authorization', 'sec', 'security'), ('activities', 'sec', 'security'), ('administration', 'sys', 'system')]:
         g.nav(app); pg.click(f'.nav [data-{attr}="{sub}"]'); pg.wait_for_timeout(300); g.shot(f'look-{app}-{sub}' + sfx)

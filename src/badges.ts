@@ -35,7 +35,7 @@ export const BADGES: Badge[] = [
   { id: 'gatekeeper', name: 'Gatekeeper', text: 'Finish chapter 8: every manager sees only his grid areas.', earned: chapterDone(8) },
   { id: 'night-shift', name: 'Night Shift', text: 'Finish chapter 10: the nightly chain runs, and someone hears when it fails.', earned: chapterDone(10) },
   { id: 'board-ready', name: 'Board Ready', text: 'Finish chapter 11 without a single hint.', earned: chapterDone(11) },
-  { id: 'explorer', name: 'Explorer', text: 'Finish the excursions: consumption, transport, catalog, Business Builder.', earned: chapterDone(12) },
+  { id: 'explorer', name: 'Explorer', text: 'Finish the excursions: consumption, transport, catalog, Business Builder, hierarchies, versions, OData, Content Network.', earned: chapterDone(12) },
   { id: 'first-try', name: 'First Try', text: 'Solve 5 missions with the first press of Check my solution.', earned: (p) => firstTry(p) >= 5 },
   { id: 'reviewer', name: 'Calin Approves', text: 'Solve 10 missions with a clean review (the +5 XP bonus).', earned: (p) => cleanSolved(p) >= 10 },
   { id: 'self-reliant', name: 'Self-Reliant', text: 'Finish one of chapters 5 to 10 without buying a hint.', earned: selfReliant },

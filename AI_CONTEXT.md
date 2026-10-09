@@ -93,7 +93,7 @@ src/progress.ts      ← Spielstand v4 (je Mission inkl. Ereignisse + Tenant), M
 src/tenant.ts        ← Tenant: Spaces (Storage, Priorität), Shares, aktiver Space, Sharing-Sperre `accessError`, Rollen/Zuweisungen
 src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scoped Roles, `effectiveAccess`
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
-tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
+tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen: `bash tests/playtest/run_all.sh <ordner>`
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
 src/content/guided.ts ← Geführte Tutorials aller Kapitel 0–12 (Kapitel 11 nur Intro, keine Hilfe): GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Horizon-Design-Tokens (hell/dunkel) nach docs/design, Layer-Farben IN/HARM/REP; Seitentypen A–G am Dateiende
@@ -112,6 +112,8 @@ src/views/transport.ts ← Kapitel 12: Transport › Packages (Editor mit Objekt
 src/catalog.ts       ← Kapitel 12: Katalog-Metadaten (Assets, Glossarbegriffe, Tag-Hierarchien), Suche
 src/views/catalog.ts ← Kapitel 12: Catalog & Marketplace › Search (Suche, Filter, Asset-Detailseite, Glossarbegriffe, Veröffentlichen)
 src/views/business.ts ← Kapitel 12: Business Builder (Deprecated), lesend, mit Altobjekten von 2023 in RHN_REP
+src/onboarding.ts    ← Kapitel 12: Content-Network-Pakete (`PACKAGES`), `importPackage` (Space anlegen, Objekte, Deploy, Log), Import-Logs im Tenant
+src/views/onboarding.ts ← Kapitel 12: App Semantic Onboarding (Bild 10): SAP Systems, Content Network, Paketseite, Import-Dialog, Import Logs
 src/badges.ts        ← Badges (aus dem Spielstand abgeleitet, nichts extra gespeichert): Kapitel-Meilensteine, First Try, Calin Approves, Self-Reliant
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
@@ -129,7 +131,7 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (59 Missionen, Hauptspiel und Exkurse komplett):
+Spielbar (60 Missionen, Hauptspiel und Exkurse komplett):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
@@ -147,7 +149,8 @@ Spielbar (59 Missionen, Hauptspiel und Exkurse komplett):
   Ablösung durch `RHN_REP_AM_INVOICES`); Hierarchien: `RHN_REP_H_GRID_AREA` (RHEINAU → R_NORTH/R_SOUTH → Netzgebiete) an `RHN_REP_D_GRID_AREA`,
   DAC `RHN_REP_DAC_REGION` (Typ Hierarchy, Tabelle `RHN_REP_T_PERMISSION_NODES` mit 3 Zeilen) ersetzt auf `RHN_REP_F_INVOICES` die Single-Values-DAC;
   Versionshistorie (c12-m07): Tims Version von `RHN_HA_V_CONTRACTS` (nur S4U) per Versions › Restore zurückrollen und deployen;
-  OData (c12-m08): `RHN_REP_D_GRID_AREA` freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200
+  OData (c12-m08): `RHN_REP_D_GRID_AREA` freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200;
+  Content Network (c12-m09): Paket *Utilities – Billing Analysis* über Semantic Onboarding in eigenen Space `SAP_UTIL` importieren, Import-Log lesen (Verbindung `SAP_S4H` fehlt), Fact im Repository Explorer
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
@@ -159,7 +162,7 @@ Ab Kapitel 7 fragen `model`-Prüfungen das **deployte Analytic Model** ab (Zeile
 Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `security:<users|roles|authorization>`, `system:<configuration|administration>`, `theme:…`, `names:business|technical`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,
 Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-remote:…`, `snapshot:…`, `schedule:…`, `run:<Flow>:<Status>`,
-`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 12: `expose:<Objekt>:on|off`, `dbaccess:<Space>`, `dbuser:<Space>#<Suffix>:r|w|rw`, `transport:<Seite>`, `package-add:<Objekt>`, `package-require:<Paket>`, `package-validate:<Paket>:ok|fail`, `package-save:<Paket>`, `export:<Paket>:Success|Failed`, `import-dialog:<Paket>`, `catalog-open:<Objekt>`, `asset-tag:<Objekt>:<Tag>`, `asset-term:<Objekt>:<Begriff>`, `asset-publish:<Objekt>`, `term-create:<Begriff>`, `term-publish:<Begriff>`, `bb-space:<Space>`, `bb-open:<Space>.<Objekt>`, `bb-tab:<Objekt>:<Reiter>`, `versions:<Objekt>`, `version-view:<Objekt>:<Nr>`, `version-restore:<Objekt>:<Nr>`, `admin:<Reiter>`, `oauth-create:<Name>:<Purpose>`, `oauth-delete:<Name>`, `odata-test:<Client>:<Objekt>:<Status>`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`; Kapitel 10: `chain-add:<Objekt>`, `chain-refused:<Objekt>`, `chain-run:<Kette>:<Status>`, `chain-step-open:<Objekt>`, `tasklogs-status:…`, `tasklogs-space:…`, `tasklog-open:<Objekt>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
+`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 12: `expose:<Objekt>:on|off`, `dbaccess:<Space>`, `dbuser:<Space>#<Suffix>:r|w|rw`, `transport:<Seite>`, `package-add:<Objekt>`, `package-require:<Paket>`, `package-validate:<Paket>:ok|fail`, `package-save:<Paket>`, `export:<Paket>:Success|Failed`, `import-dialog:<Paket>`, `catalog-open:<Objekt>`, `asset-tag:<Objekt>:<Tag>`, `asset-term:<Objekt>:<Begriff>`, `asset-publish:<Objekt>`, `term-create:<Begriff>`, `term-publish:<Begriff>`, `bb-space:<Space>`, `bb-open:<Space>.<Objekt>`, `bb-tab:<Objekt>:<Reiter>`, `versions:<Objekt>`, `version-view:<Objekt>:<Nr>`, `version-restore:<Objekt>:<Nr>`, `admin:<Reiter>`, `oauth-create:<Name>:<Purpose>`, `oauth-delete:<Name>`, `odata-test:<Client>:<Objekt>:<Status>`, `onboarding:<Bereich>`, `content-open:<Paket>`, `content-import:<Paket>:overwrite|keep:deploy|nodeploy`, `import-logs`, `import-log-open:<Paket>`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`; Kapitel 10: `chain-add:<Objekt>`, `chain-refused:<Objekt>`, `chain-run:<Kette>:<Status>`, `chain-step-open:<Objekt>`, `tasklogs-status:…`, `tasklogs-space:…`, `tasklog-open:<Objekt>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
@@ -170,4 +173,4 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
    Am Ende jeder Session danach fragen; Antworten einarbeiten
-2. Mögliche Erweiterungen der Exkurse: Semantic Onboarding mit Content Network (8.6)
+2. Alle geplanten Exkurse sind gebaut. Mögliche weitere: Data Flows (Handbuch 6.6), E/R-Modell (6.8), Data Marketplace mit Lizenzschlüssel (8.3); Import Entities im Semantic Onboarding

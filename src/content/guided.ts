@@ -737,6 +737,14 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
   ],
+  'c12-m09': [
+    {
+      title: 'Content from the Content Network',
+      body: `<p>SAP and partners publish <b>business content</b> in the <b>Content Network</b>: ready-made spaces with remote tables, views and models
+        for an industry. <b>Semantic Onboarding</b> imports a package into its own space.</p>
+        <p>A package brings <b>definitions</b>, not data and not your connections. The import log says what is ready and what is still missing.</p>`,
+    },
+  ],
   'c12-m08': [
     {
       title: 'Data out through OData',
@@ -2843,6 +2851,59 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m09': [
+    [
+      nav('semantic', 'Semantic Onboarding', `<p>In the Apps group: SAP systems on top, the Content Network below.</p>`),
+      {
+        title: 'Business Content',
+        target: '#content-areas',
+        body: `<p>Samples, SAP business content and partner content. The utilities package is SAP business content.</p>`,
+        action: { do: 'Open <b>Business Content</b>.', event: '^onboarding:business$' },
+      },
+      {
+        title: 'The package',
+        target: '#package-list',
+        body: `<p>Each card is one package with provider and version.</p>`,
+        action: { do: 'Open <b>Utilities – Billing Analysis</b>.', event: '^content-open:SAP_UTIL_BILLING$' },
+      },
+      {
+        title: 'Prerequisites',
+        target: '#pkg-prereq',
+        body: `<p>Read them before you import: the target space, the connection the remote tables expect, the storage.</p>`,
+      },
+      {
+        title: 'Import',
+        target: '#pkg-import',
+        body: `<p>Overwrite stays off; Deploy after import stays on.</p>`,
+        action: { do: 'Press <b>Import</b>, keep the options and confirm.', event: '^content-import:SAP_UTIL_BILLING:' },
+      },
+    ],
+    [
+      {
+        title: 'Open Import Logs',
+        view: 'semantic',
+        target: '#onb-logs',
+        body: `<p>Every import is logged with its messages.</p>`,
+        action: { do: 'Click <b>Open Import Logs</b>.', event: '^import-logs$' },
+      },
+      {
+        title: 'Your import',
+        target: '#import-log-list',
+        body: `<p>The status says it finished with errors. The start time opens the messages: green worked, orange is a warning, red failed.</p>`,
+        action: { do: 'Open the messages of your import.', event: '^import-log-open:SAP_UTIL_BILLING$' },
+      },
+    ],
+    [
+      nav('repository', 'Repository Explorer', `<p>The imported objects are in the list like your own.</p>`),
+      {
+        title: 'Find the fact',
+        target: '#repo-search',
+        body: `<p>Search for the billing fact and open it. Its properties show what it reads.</p>`,
+        action: { do: 'Open <b>SAP_UTIL_V_BILLING</b> from the list.', event: '^repository-open:SAP_UTIL\\.SAP_UTIL_V_BILLING$' },
+      },
+    ],
+    questions('Read the warnings of the remote tables in the import log.'),
   ],
   'c12-m08': [
     [
