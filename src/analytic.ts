@@ -62,6 +62,8 @@ export interface ModelQuery {
   measures: string[];
   /** Variable name → value. Variables without a value are not applied. */
   variables?: Record<string, VariableValue>;
+  /** How to read a source (chapter 8: filtered by data access controls for a user). Default: the object itself. */
+  from?: (key: string) => string;
 }
 
 // ---------------------------------------------------------------- sources
@@ -333,13 +335,13 @@ export function modelSql(def: AnalyticModelDef, src: ModelSources, q: ModelQuery
     .map((d) => {
       const [ds, dn] = d.key.split('.');
       const on = d.association.mapping.map((m) => `f.${qi(m.from)} = ${qi(`d_${d.name}`)}.${qi(m.to)}`).join(' AND ');
-      return `LEFT JOIN ${qi(ds)}.${qi(dn)} ${qi(`d_${d.name}`)} ON ${on}`;
+      return `LEFT JOIN ${q.from ? q.from(d.key) : `${qi(ds)}.${qi(dn)}`} ${qi(`d_${d.name}`)} ON ${on}`;
     });
   const select = [...rows, ...measures];
   if (!select.length) throw new Error('Choose at least one measure or attribute.');
   const groups = q.rows.map((_, i) => String(i + 1));
   return `SELECT ${select.join(', ')}
-FROM ${qi(fs)}.${qi(fn)} f ${joins.join(' ')}${where.length ? `\nWHERE ${where.join(' AND ')}` : ''}${
+FROM ${q.from ? q.from(def.fact) : `${qi(fs)}.${qi(fn)}`} f ${joins.join(' ')}${where.length ? `\nWHERE ${where.join(' AND ')}` : ''}${
     groups.length ? `\nGROUP BY ${groups.join(', ')} ORDER BY ${groups.join(', ')}` : ''}`;
 }
 

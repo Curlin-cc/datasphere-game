@@ -75,7 +75,7 @@ export function renderSecurity(main: HTMLElement) {
         <div class="table-scroll"><table class="grid" id="user-list">
           <thead><tr><th>User</th><th>What they do</th><th>Roles</th><th></th></tr></thead>
           <tbody>${visiblePeople().map((p) => `<tr>
-              <td><div class="person"><span class="avatar" aria-hidden="true">${esc(p.initials)}</span><div><b>${esc(p.name)}</b><span>${esc(p.title)}</span></div></div></td>
+              <td><div class="person"><span class="avatar" aria-hidden="true">${esc(p.initials)}</span><div><b>${esc(p.name)}</b><span>${esc(p.title)} · User ID <span class="mono">${esc(p.id.toUpperCase())}</span></span></div></div></td>
               <td class="job">${esc(p.job)}</td>
               <td class="chips">${userRolesHtml(p.id)}</td>
               <td class="row-actions"><button class="btn small" type="button" data-user="${esc(p.id)}">Edit roles</button></td>

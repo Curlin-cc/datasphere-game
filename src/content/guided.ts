@@ -1,7 +1,7 @@
 import type { TourStep } from '../tutorial';
 
 /**
- * Strongly guided, hands-on tutorials for chapters 0 to 3 and 5 to 7.
+ * Strongly guided, hands-on tutorials for chapters 0 to 3 and 5 to 8.
  *
  * GUIDED_INTROS: the concepts of a mission (read, then Next).
  * GUIDED_TOURS: one list of steps per task of the mission (index = task). Steps with `action` wait until the player
@@ -212,6 +212,41 @@ const amPreview = (key: string, row: string, body: string): TourStep => ({
   body,
   action: { do: `Tick <b>${row}</b> in the rows, choose the measures and press <b>Data Preview</b>.`, event: `^am-rows:${key.replace('.', '\\.')}:.*${row.split(' ').pop()}` },
 });
+
+// ---------------------------------------------------------------- chapter 8 helpers
+
+const DAC_KEY = 'RHN_REP.RHN_REP_DAC_GRID_AREA';
+const $$ = (sel: string) => [...document.querySelectorAll<HTMLInputElement>(sel)];
+
+/** Chapter 8: open a fact, run its preview, assign the grid area control and deploy. */
+const assignDac = (view: string, intro: string): TourStep[] => [
+  {
+    title: `Open ${view.split('.')[1]}`,
+    view: 'builder:landing:RHN_REP',
+    target: '#object-list',
+    body: `<p>${intro}</p>`,
+    action: { do: `Open <b>${view.split('.')[1]}</b>.`, check: () => editorOf(view) },
+  },
+  {
+    title: 'Columns first',
+    target: '#run',
+    body: `<p>The properties need the view's columns to map the criterion. A Data Preview reads them.</p>`,
+    action: { do: 'Press <b>Data Preview</b>.', event: `preview:${view}` },
+  },
+  {
+    title: 'Data Access Controls',
+    target: '#dac-assign',
+    body: `<p>The last section of the properties, after the associations. A view can have several controls.</p>`,
+    action: { do: 'Press <b>Assign</b>.', appear: '#dac-pick' },
+  },
+  {
+    title: 'Control and mapping',
+    target: '.dialog',
+    body: `<p>Pick the control. For each criterion, choose the column of this view that holds the same values.</p>`,
+    action: { do: 'Choose <code>RHN_REP_DAC_GRID_AREA</code>, check the mapping and press <b>Assign</b>.', event: `dac-assign:${view}->${DAC_KEY}` },
+  },
+  deployStep(view, `<p>Until you deploy, everyone still sees every row: the control is only in the saved design.</p>`),
+];
 
 // ---------------------------------------------------------------- intros
 
@@ -558,6 +593,40 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'One model per use case',
       body: `<p>Each fact gets its own model, and a model is built for one group of consumers: only the measures, dimensions and variables they need.
         Lean models are easier to understand and expose less data.</p>`,
+    },
+  ],
+  'c08-m01': [
+    {
+      title: 'Chapter 8: Data access controls',
+      body: `<p><b>Roles</b> (chapter 2) decide what someone may open. A <b>data access control</b> decides which <b>rows</b> he sees there.</p>
+        <ul><li>A <b>permissions entity</b> lists, per user, the values he may see.</li>
+        <li>A <b>data access control</b> reads it: identifier column = user ID, criteria = the values.</li>
+        <li>Assigned to a view, it filters the rows for each user. No entry, no rows.</li></ul>`,
+    },
+    {
+      title: 'A local table',
+      body: `<p>The permissions entity here is a small <b>local table</b>. You define its columns and type the rows in its <b>Data Editor</b>,
+        then deploy it like any other object.</p>`,
+    },
+  ],
+  'c08-m02': [
+    {
+      title: 'Identifier and criteria',
+      body: `<p>The <b>identifier column</b> says who a row is for (the user ID). The <b>criteria</b> say what he may see (here: a grid area).
+        Type <b>Single Values</b>: a row of the protected view is visible when its value matches one of the user's entries.</p>`,
+    },
+  ],
+  'c08-m03': [
+    {
+      title: 'Where the control sits',
+      body: `<p>Assign the control to the view that holds the numbers: the fact. Everything built on it, such as the analytic model,
+        takes the control over. To check it, preview the data <b>as a user</b>.</p>`,
+    },
+  ],
+  'c08-m04': [
+    {
+      title: 'Protect the numbers',
+      body: `<p>A control filters the rows of the view it is assigned to, nothing else. Each fact with sensitive numbers needs it.</p>`,
     },
   ],
 };
@@ -1898,5 +1967,125 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       amPreview('RHN_REP.RHN_REP_AM_CONSUMPTION', 'Tariff › COMMODITY', `<p>Set the variable to 2025, REGION and COMMODITY in the rows.</p>`),
       ...questions('How many fact sources does an analytic model have?'),
     ],
+  ],
+  // ================================================================ chapter 8
+  'c08-m01': [
+    [
+      toSpace('RHN_REP', `<p>The permissions table lives in the reporting space, next to the facts it protects.</p>`),
+      {
+        title: 'New Table',
+        target: '[data-new="table"]',
+        body: `<p>The first tile of the strip.</p>`,
+        action: { do: 'Click <b>New Table</b>.', appear: '#tbl-columns' },
+      },
+      {
+        title: 'Columns',
+        target: '#tbl-columns',
+        body: `<p>Rename the first column, add a second one. Both are keys: one user can have several grid areas, but each pair only once.</p>`,
+        action: {
+          do: 'Create the columns <code>USER_ID</code> and <code>GRID_AREA</code>, both String and key.',
+          check: () => $$('[data-col-name]').map((x) => x.value).join() === 'USER_ID,GRID_AREA',
+        },
+      },
+    ],
+    [
+      {
+        title: 'Data Editor',
+        target: '#tbl-data',
+        body: `<p>One row per user and grid area. The user IDs are the ones in Security › Users.</p>`,
+        action: { do: 'Add the rows from the ticket with <b>Add Row</b>.', check: () => $$('[data-del-row]').length >= 8 },
+      },
+      {
+        title: 'Names',
+        target: '#properties',
+        body: `<p>A business name for people and the technical name from the ticket.</p>`,
+        action: { do: 'Enter a business name and the technical name <code>RHN_REP_T_PERMISSIONS</code>.', check: () => val('#prop-technical') === 'RHN_REP_T_PERMISSIONS' && val('#prop-business').length > 2 },
+      },
+      deployStep('RHN_REP.RHN_REP_T_PERMISSIONS', `<p>Deploy creates the table and writes the rows.</p>`),
+    ],
+    questions('Which column of the fact could the control compare the values with?'),
+  ],
+  'c08-m02': [
+    [
+      toSpace('RHN_REP', `<p>Controls live where the views they protect live.</p>`),
+      {
+        title: 'New Data Access Control',
+        target: '[data-new="dac"]',
+        body: `<p>In the tile strip, after the task chain.</p>`,
+        action: { do: 'Click <b>New Data Access Control</b>.', appear: '#dac-entity' },
+      },
+      {
+        title: 'Permissions entity',
+        target: '#dac-entity',
+        body: `<p>The table that says who may see what.</p>`,
+        action: { do: 'Choose <code>RHN_REP_T_PERMISSIONS</code>.', event: 'dac-entity:RHN_REP.RHN_REP_T_PERMISSIONS' },
+      },
+      {
+        title: 'Who and what',
+        target: '.dac-center',
+        body: `<p>Identifier column: who a row is for. Criteria: the values he may see.</p>`,
+        action: { do: 'Choose the identifier column and the criterion.', check: () => !!val('#dac-identifier') && $$('[data-criterion]:checked').length > 0 },
+      },
+    ],
+    [
+      {
+        title: 'Check it',
+        target: '#run',
+        body: `<p>The preview lists each user with his values. Everyone not listed sees nothing.</p>`,
+        action: { do: 'Press <b>Data Preview</b>.', event: '^preview:' },
+      },
+      {
+        title: 'Names',
+        target: '#properties',
+        body: `<p>Technical name from the ticket.</p>`,
+        action: { do: 'Enter a business name and the technical name <code>RHN_REP_DAC_GRID_AREA</code>.', check: () => val('#prop-technical') === 'RHN_REP_DAC_GRID_AREA' && val('#prop-business').length > 2 },
+      },
+      deployStep(DAC_KEY, `<p>Only a deployed control can be assigned.</p>`),
+    ],
+    questions('How many entries does Nina have?'),
+  ],
+  'c08-m03': [
+    assignDac('RHN_REP.RHN_REP_F_INVOICES', 'The invoice fact holds the amounts. That is where the control belongs.'),
+    [
+      {
+        title: 'View as a user',
+        target: '#preview-as-bar',
+        body: `<p>Since the deployed fact has a control, the Data Preview can show it as one of the users.</p>`,
+        action: { do: 'Choose <b>MBRANDT</b> in <b>View as</b>.', event: '^preview-as:RHN_REP\\.RHN_REP_F_INVOICES:MBRANDT' },
+      },
+      {
+        title: 'The model as Markus',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>The analytic model reads the fact, so it is filtered too. Open it.</p>`,
+        action: { do: 'Open <b>RHN_REP_AM_INVOICES</b> (tab Analytic Models).', check: () => editorOf('RHN_REP.RHN_REP_AM_INVOICES') },
+      },
+      {
+        title: 'View as in the model',
+        target: '#am-pivot',
+        body: `<p>REGION in the rows, set the date variable, choose a user under <b>View as</b>, then Data Preview.</p>`,
+        action: { do: 'Preview the model as <b>MBRANDT</b>.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_INVOICES:MBRANDT' },
+      },
+    ],
+    questions('Markus has two grid areas. Set the variable to 2025.'),
+  ],
+  'c08-m04': [
+    assignDac('RHN_REP.RHN_REP_F_CONSUMPTION', 'The consumption fact holds the kWh.'),
+    [
+      {
+        title: 'The model as Aylin',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Check what Aylin sees now.</p>`,
+        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_AM_CONSUMPTION') },
+      },
+      {
+        title: 'View as in the model',
+        target: '#am-pivot',
+        body: `<p>REGION in the rows, View as ADEMIR.</p>`,
+        action: { do: 'Preview the model as <b>ADEMIR</b>.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_CONSUMPTION:ADEMIR' },
+      },
+    ],
+    questions('Which object holds the numbers?'),
   ],
 };

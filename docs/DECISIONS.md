@@ -4,6 +4,12 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Berechtigungstabelle als **lokale Tabelle mit Data Editor** statt SQL-View mit Literalen | Handbuch 9.3.1: Fachbereich pflegt die Berechtigungsentität; Tabelle ist realistisch und ohne SQL-Tricks |
+| 2026-10-09 | Lokale Tabellen vereinfacht: Typen String/Integer/Decimal/Date, Key-Kennzeichen, Zeilen im Spielstand; kein Delta Capture, kein CSV-Upload | Reicht für Mapping- und Berechtigungstabellen |
+| 2026-10-09 | DAC nur Typ **Single Values** gebaut; Operator and Values (Handbuch: nicht verifiziert) und Hierarchy (keine Hierarchien modelliert) nur erklärt | Keine erfundenen Details |
+| 2026-10-09 | Mehrere DACs an einer View werden mit UND verknüpft; mehrere Kriterien einer DAC müssen gemeinsam in einer Zeile der Berechtigungstabelle passen | Vereinfachung, Handbuch schweigt dazu |
+| 2026-10-09 | DAC wirkt im Spiel bei „View as“ (Data Preview), in Analytic Models (Fact und Dimensionen) und in Prüfungen; Views auf geschützten Views werden nicht gefiltert, Modellierer sehen ohne „View as“ alles | Echter Tenant filtert auch nachgelagerte Views und die eigene Vorschau; im Spiel gekennzeichnet |
+| 2026-10-09 | Berechtigungen auf Netzgebiet (GRID_AREA), nicht Region | Facts halten GRID_AREA; Kriterium muss auf eine Spalte der geschützten View passen. Lehrt zugleich: DAC auf der Dimension schützt keine Zahlen |
 | 2026-10-09 | **MSC statt SAP-Logo**: Curlins eigene Marke, Wortmarke im Big-4-Stil + drei steigende Balken in Lila, Weinrot, Orange (`src/brand.ts`, `docs/design/msc-logo.svg`) | Wunsch von Curlin; keine SAP-Marken im Spiel |
 | 2026-10-09 | Oberfläche auf Horizon umgebaut, IDs und `data-*`-Attribute der alten Oberfläche bleiben (Tests und Tutorials) | Umbau ohne Bruch der 36 Missionen und Tutorials |
 | 2026-10-09 | Monitoring und Catalog & Marketplace starten zugeklappt; Tutorials zeigen erst auf die Gruppe (Ziel „A || B“ in `tutorial.ts`) | Wie Bild 3/17 im echten Tenant |

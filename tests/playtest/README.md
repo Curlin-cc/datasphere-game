@@ -18,3 +18,4 @@ Kapitel 5: `chapter5.py` baut alle Views mit typischen Fehlern; SQL und Startzus
 Kapitel 6: `chapter6.py` (Startzustand mit den Kapitel-5-Views in `chapter6_data.py`), Helfer `Game.semantics(usage, roles, assoc)`.
 Design: `look.py <ordner> [dark]` macht Screenshots aller Hauptseiten zum Vergleich mit `docs/design/screenshots/` (keine Prüfung).
 Kapitel 7: `chapter7.py` (Startzustand mit Dimensionen und Facts in `chapter7_data.py`), baut beide Analytic Models mit typischen Fehlern; `guided.py` spielt c07-m01.
+Kapitel 8: `chapter8.py` (Startzustand mit beiden Analytic Models in `chapter8_data.py`): Berechtigungstabelle, DAC, Zuweisung, Prüfung als Benutzer; `guided.py` spielt c08-m01.

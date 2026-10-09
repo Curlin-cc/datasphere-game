@@ -11,6 +11,9 @@ import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } fro
 import { openImportRemote, renderFlowEditor } from './flow';
 import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
 import { renderModelEditor, newModelDraft } from './analytic';
+import { renderTableEditor, newTableDraft } from './table';
+import { renderDacEditor, newDacDraft } from './dac';
+import { DAC_USERS, securedFrom, assignmentError } from '../dac';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb } from '../ui';
@@ -23,7 +26,8 @@ import { objectToolbar, bindDetails, propsHead } from './toolbar';
  * Editors have Save (design time), Deploy (runtime), Share and Data Preview, and a properties panel.
  */
 
-type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' } | { kind: 'new-model' };
+type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' } | { kind: 'new-model' }
+  | { kind: 'new-table' } | { kind: 'new-dac' };
 type ListTab = 'all' | 'tables' | 'views' | 'er' | 'models' | 'flows' | 'lookups' | 'chains' | 'dac';
 /** Tabs of the start page, as in the real Data Builder (docs/design/README.md B.2). */
 const LIST_TABS: [ListTab, string][] = [
@@ -32,17 +36,19 @@ const LIST_TABS: [ListTab, string][] = [
 ];
 
 /** "New" tiles that work in this build of the game, from their chapter on. */
-const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic']);
+const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic', 'table', 'dac']);
 /** Favorites (star column), for this visit. */
 const favorites = new Set<string>();
 let listFilter = '';
+/** "View as" user of the Data Preview (chapter 8), kept while switching objects. */
+let previewAs = '';
 
 let page: Page = { kind: 'spaces' };
 /** The space picker shows once per visit, like choosing a space when you open the Data Builder. */
 let spaceChosen = false;
 let listTab: ListTab = 'all';
 const inTab = (o: RepoObject, tab: ListTab) =>
-  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'flows' && o.kind === 'Replication Flow');
+  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'dac' && o.kind === 'Data Access Control') || (tab === 'flows' && o.kind === 'Replication Flow');
 
 export const NEW_VIEW_SQL = `-- Write a SELECT statement. Ctrl+Enter shows the Data Preview.\nSELECT\n  \nFROM `;
 
@@ -61,7 +67,7 @@ export function openObjectInBuilder(key: string) {
 }
 
 /** For tutorials: open the start page or a new SQL view, choosing a space if none is chosen yet. */
-export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow' | 'new-model', space?: string) {
+export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow' | 'new-model' | 'new-table' | 'new-dac', space?: string) {
   const t = ctx.tenant();
   if (space && t.spaces.some((s) => s.id === space)) {
     t.activeSpace = space;
@@ -84,7 +90,8 @@ export function rememberEditor() {
 export async function renderBuilder(main: HTMLElement) {
   rememberEditor();
   ctx.editor = null;
-  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow' || page.kind === 'new-model');
+  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow' || page.kind === 'new-model'
+    || page.kind === 'new-table' || page.kind === 'new-dac');
   main.classList.toggle('bleed', page.kind === 'spaces' || page.kind === 'landing');
   if (page.kind === 'spaces') return renderSpacePicker(main);
   if (page.kind === 'landing') return renderLanding(main);
@@ -92,6 +99,8 @@ export async function renderBuilder(main: HTMLElement) {
   const flowNav = { back: () => go({ kind: 'landing' }), opened: (key: string) => (page = { kind: 'object', key }) };
   if (page.kind === 'new-flow') return renderFlowEditor(main, null, flowNav);
   if (page.kind === 'new-model') return renderModelEditor(main, null, flowNav);
+  if (page.kind === 'new-table') return renderTableEditor(main, null, flowNav);
+  if (page.kind === 'new-dac') return renderDacEditor(main, null, flowNav);
   const o = findObject(ctx.tenant(), page.key);
   if (!o) {
     page = { kind: 'landing' };
@@ -99,6 +108,8 @@ export async function renderBuilder(main: HTMLElement) {
   }
   if (o.kind === 'Replication Flow') return renderFlowEditor(main, o, flowNav);
   if (o.kind === 'Analytic Model') return renderModelEditor(main, o, flowNav);
+  if (o.kind === 'Data Access Control') return renderDacEditor(main, o, flowNav);
+  if (o.kind === 'Local Table' && o.table && o.space === ctx.tenant().activeSpace) return renderTableEditor(main, o, flowNav);
   return renderEditor(main, o);
 }
 
@@ -224,6 +235,14 @@ function renderLanding(main: HTMLElement) {
       newModelDraft();
       return go({ kind: 'new-model' });
     }
+    if (n.id === 'table') {
+      newTableDraft();
+      return go({ kind: 'new-table' });
+    }
+    if (n.id === 'dac') {
+      newDacDraft();
+      return go({ kind: 'new-dac' });
+    }
     ctx.sqlOwner = 'draft';
     go({ kind: 'new-view' });
   };
@@ -271,7 +290,7 @@ function renderLanding(main: HTMLElement) {
 
 export const typeIcon = (o: Pick<RepoObject, 'kind'>) =>
   icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow
-    : o.kind === 'Analytic Model' ? ICONS.cube : ICONS.table, 'type-ic');
+    : o.kind === 'Analytic Model' ? ICONS.cube : o.kind === 'Data Access Control' ? ICONS.lock : ICONS.table, 'type-ic');
 
 /** "SQL View (Dimension)": type with the semantic usage in brackets, like the real list. */
 const typeText = (o: RepoObject) =>
@@ -359,6 +378,12 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   const key = o ? objectKey(o) : 'draft';
   const chapter = ctx.currentChapter();
   const status = o?.status ?? 'not_deployed';
+  // Chapter 8: a deployed view with data access controls can be previewed as one of the users.
+  const protectedView = !!o && chapter >= 8 && isView && !!o.deployed?.dacs?.length;
+  const asBar = protectedView ? `<div class="preview-as" id="preview-as-bar">${icon(ICONS.lock)}<label>View as
+      <select id="preview-as"><option value="">You, modeling: the SQL in the editor, no data access control</option>
+        ${DAC_USERS.map((u) => `<option value="${esc(u.id)}" ${previewAs === u.id ? 'selected' : ''}>${esc(u.id)} · ${esc(u.name)}, ${esc(u.title)}</option>`).join('')}
+      </select></label><span class="muted">A user sees the deployed view, filtered by its data access controls.</span></div>` : '';
 
   main.innerHTML = `
     <div class="editor-page ${isView ? 'is-view' : 'is-table'}">
@@ -404,9 +429,9 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
           ${o ? lineageHtml(o) : ''}
         </aside>
       </div>
-      <div class="results" id="results"><div class="placeholder">
+      <div class="results" id="results">${asBar}<div id="results-body"><div class="placeholder">
         <b>Data Preview</b> shows the first rows of ${isView ? 'what your SQL returns' : 'this table'}. Press the button above${isView ? ' or Ctrl+Enter' : ''}.
-      </div></div>
+      </div></div></div>
     </div>`;
 
   const business = main.querySelector<HTMLInputElement>('#prop-business')!;
@@ -455,6 +480,11 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
     if (saved.kind === 'SQL View') {
       const denied = accessError(saved.sql ?? '', saved.space, t);
       if (denied) return toast(denied, 'error');
+      if (saved.dacs?.length) {
+        const cols = await viewColumns(saved.sql ?? '', saved.space);
+        const bad = cols ? assignmentError(saved.dacs, t, cols) : null;
+        if (bad) return toast(`Deployment failed. ${bad}`, 'error');
+      }
       if (saved.space.endsWith('_IN') &&
         !confirm('Calin: "The inbound layer holds source data 1:1. A view with logic belongs in harmonization." Deploy it in the inbound space anyway?')) {
         ctx.renderView();
@@ -520,6 +550,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
     if (sem) {
       o.columnRoles = sem.roles();
       o.associations = sem.associations();
+      o.dacs = sem.dacs();
     }
     touch(o);
     ctx.sql = sql;
@@ -529,10 +560,19 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
     return o;
   }
 
+  main.querySelector<HTMLSelectElement>('#preview-as')?.addEventListener('change', (e) => {
+    previewAs = (e.target as HTMLSelectElement).value;
+    preview();
+  });
+
   async function preview() {
-    const out = main.querySelector<HTMLElement>('#results')!;
+    const out = main.querySelector<HTMLElement>('#results-body')!;
     let sql: string;
-    if (isView) {
+    const asUser = protectedView ? previewAs : '';
+    if (asUser) {
+      sql = `SELECT * FROM ${securedFrom(t, key, asUser)} q`;
+      ctx.track(`preview-as:${key}:${asUser}`);
+    } else if (isView) {
       sql = ctx.editor!.getValue();
       ctx.sql = sql;
       rememberEditor();
@@ -563,10 +603,10 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         });
         if (!conn?.validation?.ok) toast('The connection of this remote table is not valid; the source may not answer in a real tenant.', 'info');
       }
-      if (isView) sem?.setColumns(res.columns);
+      if (isView && !asUser) sem?.setColumns(res.columns);
       const rows = res.rows.length;
       out.innerHTML = `
-        <div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'}${isView ? '' : ' (first 100)'} in ${res.ms.toFixed(0)} ms</div>
+        <div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'}${isView ? '' : ' (first 100)'} in ${res.ms.toFixed(0)} ms${asUser ? ` · as ${esc(asUser)}, deployed version` : ''}</div>
         ${res.columns.length ? resultTable(res.columns, res.rows) : ''}`;
     } catch (err) {
       out.innerHTML = `<div class="result-status error">${esc(err instanceof Error ? err.message : String(err))}</div>`;

@@ -63,6 +63,10 @@ src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebn
 src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
 src/analytic.ts      ← Kapitel 7: Analytic Model – Definition (Measures, Variablen), Quellen aus dem deployten Fact, `modelError`, `modelSql` (Abfrage wie SAC), Persistenz
 src/views/analytic.ts ← Kapitel 7: Editor des Analytic Model (Fact-Auswahl, Canvas, Properties, Measure-/Variablen-Dialoge, Data Preview)
+src/localtable.ts    ← Kapitel 8: lokale Tabellen (Spalten, Zeilen, CREATE/INSERT, Prüfung)
+src/views/table.ts   ← Kapitel 8: Tabellen-Editor mit Data Editor
+src/dac.ts           ← Kapitel 8: Data Access Controls – Definition, Zuweisung, `securedFrom` (lesen als Benutzer), DAC_USERS
+src/views/dac.ts     ← Kapitel 8: DAC-Editor
 src/views/semantics.ts ← Kapitel 6+: Spaltenrollen (Key/Attribute/Measure/Parent/Child) und Associations im Properties-Panel, `viewColumns`
 src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
 src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces, öffnet Objekte im Data Builder
@@ -79,7 +83,7 @@ src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete,
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
-src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c07.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
+src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c08.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric, model), Review-Regeln, XP
 src/missions/engine.ts ← Prüf-Engine: Ergebnis (SQL im SQL-View-Editor vs. Musterlösung, `diagnose`), Struktur, Fragen, Regeln auf Tenant + Ereignissen
 src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound, case_else); bei View-Missionen auf dem deployten SQL
@@ -89,7 +93,7 @@ src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scope
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
-src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–7: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
+src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–8: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Horizon-Design-Tokens (hell/dunkel) nach docs/design, Layer-Farben IN/HARM/REP; Seitentypen A–G am Dateiende
 src/brand.ts         ← MSC-Logo (Curlins Marke) statt SAP-Logo
 src/views/welcome.ts ← Seitentyp A: „Welcome to the …“ mit Space-Karten (usedMB, fmtSize)
@@ -110,13 +114,14 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (36 Missionen):
+Spielbar (40 Missionen):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
 - Kapitel 4 Inbound Layer: SQL-Profiling im Scratch-SQL-View
 - Kapitel 5 Harmonization: deployte SQL Views in `RHN_HARM` (`RHN_HA_V_CONTRACTS`, `RHN_HA_V_CUSTOMERS`, `RHN_HA_V_METER_READINGS`), Sharing nach `RHN_REP`
 - Kapitel 6 Semantics: Dimensionen `RHN_REP_D_GRID_AREA/_TARIFF/_CUSTOMER`, Facts `RHN_REP_F_CONSUMPTION/_INVOICES` mit Spaltenrollen und Associations; 1:1-Views `RHN_HA_V_GRID_AREAS/_TARIFFS/_INVOICES`
+- Kapitel 8 Data Access Controls: Berechtigungstabelle `RHN_REP_T_PERMISSIONS` (Data Editor), DAC `RHN_REP_DAC_GRID_AREA` (Single Values), zugewiesen an beide Facts; Prüfen „View as“ MBRANDT/ADEMIR/PLINDNER
 - Kapitel 7 Analytic Model: `RHN_REP_AM_INVOICES` (NET/TAX, GROSS_AMOUNT calculated, UNPAID_GROSS restricted, CUSTOMERS count distinct, Variable V_INVOICE_DATE) und `RHN_REP_AM_CONSUMPTION`, beide ohne Kundendimension
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
@@ -138,13 +143,14 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
+1. Kapitel 9 (Persistence and Performance, Handbuch 6.5.6, 10.3.4): View-Persistenz im Data Integration Monitor (Reiter Views: Persist, Remove Persisted Data,
+   Schedule), Laufzeiten im Vergleich, View Analyzer vereinfacht; Grenze aus Handbuch 9.3.7: Views, die einen DAC-geschützten View lesen, nicht persistierbar.
+   Expensive Statement Logs als echte Seite (Monitoring)
+2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
    + Space-Karten, Task Logs als Seite wie Bild 1, System-Reiter wie Bild 15. IDs/`data-*` beibehalten, danach `look.py` + alle Playtests
-2. Kapitel 8 (Data Access Controls, Handbuch 9.3): Kachel „Data Access Control“ (`NEW_TILES` id `dac`), DAC mit Kriterium `REGION`
-   (Single Values bzw. Operator and Values) und Berechtigungstabelle (Benutzer → Region); Zuweisung an `RHN_REP_D_GRID_AREA` bzw. die Facts;
-   Data Preview „als Benutzer“ (Markus sieht nur NORTH, Aylin nur SOUTH, Petra alles). DAC liegt laut Screenshots im Data Builder (Reiter + Kachel), kein eigener Navigationseintrag
 3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
 4. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-5. Hierarchy-Mission (Netzgebiet → Region) nachziehen, sobald klar ist, ob Ebenen-Hierarchie oder Eltern-Kind mit eigenen Knoten-IDs
-6. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
+5. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
+6. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
 7. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+   und ob die Data Preview im Data Builder die DAC des Modellierers anwendet

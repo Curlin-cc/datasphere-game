@@ -203,7 +203,7 @@ export interface NewTile {
 }
 
 export const NEW_TILES: NewTile[] = [
-  { id: 'table', label: 'Table', chapter: 3, text: 'A local table: data stored in the space, filled by upload, replication or a flow.',
+  { id: 'table', label: 'Table', chapter: 8, text: 'A local table: data stored in the space, filled by upload, replication or a flow.',
     icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M4 19.5h24M12 12v15M20 12v15"/>' },
   { id: 'graphical', label: 'Graphical View', text: 'A view built by dragging sources, joins and filters onto a canvas. This game uses SQL views instead.',
     icon: '<rect x="4" y="4" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M9.5 9.5V19"/><rect x="15" y="15" width="13" height="13" rx="3"/><path d="M18.5 21.5h6M21.5 18.5v6"/>' },

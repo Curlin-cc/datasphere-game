@@ -235,3 +235,28 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c08-m01: permissions table in the Data Editor while the tour waits
+from chapter8_data import TENANT8  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(8, 'c08-m01', TENANT8))
+    expect(pg, 'Chapter 8: Data access controls'); nexts(pg, 2)
+    if title(pg) == 'Space RHN_REP':
+        pg.click('[data-space="RHN_REP"]') if pg.locator('[data-space="RHN_REP"]').count() else None
+    expect(pg, 'New Table'); pg.click('[data-new="table"]')
+    expect(pg, 'Columns')
+    pg.fill('[data-col-name="0"]', 'USER_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
+    pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'GRID_AREA'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
+    pg.check('[data-col-key="1"]')
+    expect(pg, 'Data Editor')
+    for i, (u, a) in enumerate([('PLINDNER', 'NORTH'), ('PLINDNER', 'EAST'), ('PLINDNER', 'SOUTH'), ('PLINDNER', 'WEST'),
+                                ('MBRANDT', 'NORTH'), ('MBRANDT', 'EAST'), ('ADEMIR', 'SOUTH'), ('ADEMIR', 'WEST')]):
+        pg.click('#tbl-add-row'); pg.fill(f'[data-cell="{i}:0"]', u); pg.fill(f'[data-cell="{i}:1"]', a)
+    expect(pg, 'Names'); g.shot('g-c08-table'); pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_REP_T_PERMISSIONS')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Your answers'); g.answer('why-area', 1); g.answer('who', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

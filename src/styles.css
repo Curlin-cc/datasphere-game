@@ -1195,3 +1195,29 @@ table.grid.object-table .status { white-space: nowrap; }
 
 /* navigation labels wrap to a second line instead of being cut */
 .nav button .label { white-space: normal; line-height: 1.25; text-overflow: clip; }
+
+/* ================================================================ chapter 8: local tables and data access controls */
+.tbl-center { padding: 16px 20px; overflow: auto; }
+.tbl-section { background: var(--surface); border: 1px solid var(--tile-border); border-radius: var(--radius-m); padding: 12px 16px 14px; margin-bottom: 14px; }
+.tbl-section h3 { margin: 0 0 8px; font-size: 15px; }
+.tbl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.tbl-head h3 { margin: 0; flex: 1; }
+.tbl-section table.grid th { position: static; }
+.tbl-section table.grid th small { display: block; font-weight: 500; color: var(--ink-faint); font-size: 11.5px; }
+.tbl-section table.grid input, .tbl-section table.grid select { font: inherit; padding: 4px 6px; border: 1px solid var(--line-strong); border-bottom-color: var(--field-line); border-radius: 6px; background: var(--surface); color: var(--ink); min-width: 110px; width: 100%; box-sizing: border-box; }
+.tbl-section table.grid input[type=checkbox] { min-width: 0; width: auto; }
+.tbl-note { margin: 8px 0 0; font-size: 12.5px; }
+.dac-center { padding: 16px 20px; overflow: auto; }
+.dac-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.dac-type { display: grid; gap: 4px; text-align: left; padding: 10px 12px; border: 1px solid var(--tile-border); border-radius: var(--radius-m); background: var(--surface); font: inherit; color: var(--ink); cursor: pointer; }
+.dac-type.on { box-shadow: 0 0 0 2px var(--accent); }
+.dac-type.off { color: var(--ink-soft); border-style: dashed; }
+.dac-type small { color: var(--ink-soft); font-size: 12.5px; }
+.preview-as { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 16px; background: var(--warning-soft); border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.preview-as label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.preview-as select, .am-as { font: inherit; padding: 4px 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.am-as { width: 100%; }
+@media (max-width: 1700px) {
+  .tb-group small { display: none; }
+  .ed-title b, .ed-title small { max-width: 260px; }
+}

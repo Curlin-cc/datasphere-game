@@ -13,7 +13,7 @@ import {
   loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
   exportProgress, importProgress, freshProgress, CLEAN_BONUS,
 } from './progress';
-import { seedSourceTables, restoreViews, STATUS_LABEL } from './repo';
+import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
 import { usedMB, fmtSize } from './views/welcome';
 import { ctx, type ViewId } from './ctx';
 import { esc, icon, ICONS, setCrumb } from './ui';
@@ -774,6 +774,7 @@ async function prepareTenant() {
     generateDataset().tables.map((tb) => ({ space: tb.space, name: tb.name, businessName: SOURCE_BUSINESS_NAMES[tb.name] ?? tb.name })),
   );
   await restoreIntegration(t);
+  await restoreTables(t);
   await restoreViews(t);
 }
 

@@ -2,6 +2,8 @@ import { exec } from './db';
 import type { TenantState } from './tenant';
 import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom } from './integration';
 import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
+import { sanitizeTable, tableStatements, type TableDef } from './localtable';
+import { sanitizeDac, sanitizeAssignments, type DacDef, type DacAssignment } from './dac';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -12,8 +14,8 @@ import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
  *  - Deployed: what is saved is what runs
  */
 
-export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model';
-export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model'];
+export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model' | 'Data Access Control';
+export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model', 'Data Access Control'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
 export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text' | 'Hierarchy';
 
@@ -49,6 +51,8 @@ export interface Semantics {
   /** Every output column with its role. */
   columnRoles?: Record<string, ColumnRole>;
   associations?: Association[];
+  /** Data access controls assigned to a view (chapter 8). */
+  dacs?: DacAssignment[];
 }
 
 export interface RepoObject {
@@ -61,16 +65,21 @@ export interface RepoObject {
   /** Column roles and associations (chapter 6+), see Semantics. */
   columnRoles?: Record<string, ColumnRole>;
   associations?: Association[];
+  dacs?: DacAssignment[];
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef } & Partial<Semantics>;
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef; table?: TableDef; dac?: DacDef } & Partial<Semantics>;
   /** Remote tables: connection, source object, data access. */
   remote?: RemoteInfo;
   /** Replication flows: the saved definition. */
   flow?: FlowDef;
   /** Analytic models (chapter 7): the saved definition. */
   model?: AnalyticModelDef;
+  /** Local tables made by the player (chapter 8): columns and rows. */
+  table?: TableDef;
+  /** Data access controls (chapter 8): the saved definition. */
+  dac?: DacDef;
   /** Local tables created by a flow: where the data comes from, reloaded after a reload. */
   loadFrom?: LoadFrom;
   status: DeployStatus;
@@ -126,6 +135,8 @@ export function statusAfterSave(o: RepoObject): DeployStatus {
   const same = o.deployed.businessName === o.businessName && (o.kind !== 'SQL View' || o.deployed.sql === o.sql)
     && (o.kind !== 'Replication Flow' || JSON.stringify(o.deployed.flow) === JSON.stringify(o.flow))
     && (o.kind !== 'Analytic Model' || JSON.stringify(o.deployed.model) === JSON.stringify(o.model))
+    && JSON.stringify(o.deployed.table) === JSON.stringify(o.table)
+    && JSON.stringify(o.deployed.dac) === JSON.stringify(o.dac)
     && JSON.stringify(semanticsOf(o.deployed)) === JSON.stringify(semanticsOf(o));
   return same ? 'deployed' : 'changes';
 }
@@ -143,6 +154,7 @@ export function semanticsOf(o: Partial<Semantics>): Semantics {
     semanticUsage: o.semanticUsage ?? 'Relational Dataset',
     columnRoles: o.columnRoles && Object.keys(o.columnRoles).length ? o.columnRoles : undefined,
     associations: o.associations?.length ? o.associations : undefined,
+    dacs: o.dacs?.length ? o.dacs : undefined,
   };
 }
 
@@ -155,9 +167,17 @@ export async function deploy(o: RepoObject): Promise<string | null> {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
+  if (o.kind === 'Local Table' && o.table) {
+    try {
+      for (const stmt of tableStatements(o.space, o.name, o.table)) await exec(stmt);
+    } catch (err) {
+      return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
   o.deployed = {
     businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined,
-    model: o.model ? structuredClone(o.model) : undefined, ...structuredClone(semanticsOf(o)),
+    model: o.model ? structuredClone(o.model) : undefined, table: o.table ? structuredClone(o.table) : undefined,
+    dac: o.dac ? structuredClone(o.dac) : undefined, ...structuredClone(semanticsOf(o)),
   };
   o.status = 'deployed';
   o.changedAt = now();
@@ -166,7 +186,7 @@ export async function deploy(o: RepoObject): Promise<string | null> {
 
 export async function dropObject(o: RepoObject) {
   if ((o.kind === 'SQL View' && o.deployed) || o.kind === 'Remote Table') await exec(`DROP VIEW IF EXISTS "${o.space}"."${o.name}"`);
-  if (o.kind === 'Local Table' && o.loadFrom) await exec(`DROP TABLE IF EXISTS "${o.space}"."${o.name}"`);
+  if (o.kind === 'Local Table' && (o.loadFrom || o.deployed?.table)) await exec(`DROP TABLE IF EXISTS "${o.space}"."${o.name}"`);
 }
 
 /**
@@ -190,6 +210,18 @@ export function usedBy(key: string, t: TenantState): string[] {
 }
 
 const stripSemicolon = (sql: string) => sql.trim().replace(/;\s*$/, '');
+
+/** Recreates the player's deployed local tables after a reload (before the views that read them). */
+export async function restoreTables(t: TenantState) {
+  for (const o of t.objects) {
+    if (o.kind !== 'Local Table' || !o.deployed?.table) continue;
+    try {
+      for (const stmt of tableStatements(o.space, o.name, o.deployed.table)) await exec(stmt);
+    } catch {
+      /* a broken table stays missing; the editor shows it */
+    }
+  }
+}
 
 /** Recreates deployed views after a reload. Views can depend on each other, so retry until nothing changes. */
 export async function restoreViews(t: TenantState) {
@@ -245,12 +277,16 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
             sql: typeof o.deployed.sql === 'string' ? o.deployed.sql : undefined,
             flow: sanitizeFlow(o.deployed.flow),
             model: o.kind === 'Analytic Model' ? sanitizeModel(o.deployed.model) : undefined,
+            table: o.kind === 'Local Table' ? sanitizeTable(o.deployed.table) : undefined,
+            dac: o.kind === 'Data Access Control' ? sanitizeDac(o.deployed.dac) : undefined,
             ...sanitizeSemantics(o.deployed),
           }
         : undefined,
       remote: o.kind === 'Remote Table' ? sanitizeRemote(o.remote) : undefined,
       flow: o.kind === 'Replication Flow' ? sanitizeFlow(o.flow) : undefined,
       model: o.kind === 'Analytic Model' ? sanitizeModel(o.model) : undefined,
+      table: o.kind === 'Local Table' ? sanitizeTable(o.table) : undefined,
+      dac: o.kind === 'Data Access Control' ? sanitizeDac(o.dac) : undefined,
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,
@@ -282,5 +318,5 @@ function sanitizeSemantics(d: Record<string, unknown>): Semantics {
       .slice(0, 10);
     if (mapping.length) assoc.push({ target: a.target, mapping });
   }
-  return semanticsOf({ semanticUsage: usage, columnRoles: roles, associations: assoc });
+  return semanticsOf({ semanticUsage: usage, columnRoles: roles, associations: assoc, dacs: sanitizeAssignments(d.dacs) });
 }

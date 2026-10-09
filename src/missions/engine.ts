@@ -4,6 +4,7 @@ import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, Ru
 import { accessError, type TenantState } from '../tenant';
 import { findObject } from '../repo';
 import { attributeCatalog, modelSources, modelSql } from '../analytic';
+import { securedFrom } from '../dac';
 
 /**
  * Check engine: result check (result set vs. reference solution, independent of writing style),
@@ -306,11 +307,11 @@ async function checkModel(check: ModelCheck, tenant: TenantState): Promise<Check
   if (missing.length) return fail(`${name} has no measure ${missing.join(', ')}. Name the measures exactly as the ticket says.`);
   let player: QueryResult;
   try {
-    player = await runSql(modelSql(def, src, { rows: check.rows, measures: check.measures }));
+    player = await runSql(modelSql(def, src, { rows: check.rows, measures: check.measures, from: check.asUser ? (k) => securedFrom(tenant, k, check.asUser) : undefined }));
   } catch (err) {
     return fail(`${name} does not run: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const what = `${check.measures.join(', ')}${check.rows.length ? ` by ${check.rows.map((r) => r.split('.').pop()).join(', ')}` : ''}`;
+  const what = `${check.measures.join(', ')}${check.rows.length ? ` by ${check.rows.map((r) => r.split('.').pop()).join(', ')}` : ''}${check.asUser ? ` as ${check.asUser}` : ''}`;
   const tol = 0.01;
   if (compare(player, await runSql(check.expected), false, tol, true, 'The model').match) {
     return { label: check.label, ok: true, message: check.ok ?? `${what} is right.` };

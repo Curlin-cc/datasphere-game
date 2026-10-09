@@ -116,6 +116,8 @@ export interface ModelCheck {
   /** Known wrong results with a targeted message. */
   diagnose?: { sql: string; message: string }[];
   ok?: string;
+  /** Chapter 8: query as this user (data access controls apply), e.g. 'MBRANDT'. */
+  asUser?: string;
 }
 
 export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck | MetricCheck | ModelCheck;

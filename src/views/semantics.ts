@@ -5,6 +5,7 @@ import {
   ROLES_FOR, objectKey, findObject, type RepoObject, type SemanticUsage, type ColumnRole, type Association,
 } from '../repo';
 import { esc, spaceChip, openDialog, icon, ICONS } from '../ui';
+import { dacCandidates, type DacAssignment } from '../dac';
 
 /**
  * Semantic part of the SQL view editor (chapter 6+, Handbuch 6.5.3, 6.5.4):
@@ -16,6 +17,8 @@ export interface SemanticsDraft {
   /** Current role per column, for the columns the view returns now. */
   roles(): Record<string, ColumnRole>;
   associations(): Association[];
+  /** Data access controls assigned to the view (chapter 8). */
+  dacs(): DacAssignment[];
   /** New columns after a Data Preview: keep known roles, new columns become Attributes. */
   setColumns(columns: string[]): void;
   /** Semantic usage changed: roles that do not fit fall back to Attribute. */
@@ -41,6 +44,8 @@ export function mountSemantics(host: HTMLElement, o: RepoObject, usage: Semantic
   let columns: string[] = Object.keys(o.columnRoles ?? {});
   const roles: Record<string, ColumnRole> = { ...(o.columnRoles ?? {}) };
   let assoc: Association[] = structuredClone(o.associations ?? []);
+  let dacs: DacAssignment[] = structuredClone(o.dacs ?? []);
+  const withDac = ctx.currentChapter() >= 8;
   const self = objectKey(o);
 
   const fit = () => {
@@ -68,7 +73,14 @@ export function mountSemantics(host: HTMLElement, o: RepoObject, usage: Semantic
             <small class="mono">${a.mapping.map((m) => `${esc(m.from)} → ${esc(m.to)}`).join(', ')}</small>
             ${readOnly ? '' : `<button type="button" class="btn small link" data-assoc-del="${i}" aria-label="Remove association to ${esc(a.target)}">Remove</button>`}
           </li>`).join('')}</ul>` : '<p class="muted">No associations yet.</p>'}
-        ${readOnly ? '' : `<button type="button" class="btn small" id="assoc-add">${icon(ICONS.share)} Add Association</button>`}` : ''}`;
+        ${readOnly ? '' : `<button type="button" class="btn small" id="assoc-add">${icon(ICONS.share)} Add Association</button>`}` : ''}
+      ${withDac ? `<h3 class="sem-sub">Data Access Controls</h3>
+        ${dacs.length ? `<ul class="assoc-list" id="dac-list">${dacs.map((a, i) => `<li>
+            <div>${icon(ICONS.lock)}<span class="mono">${esc(a.dac.split('.')[1])}</span></div>
+            <small class="mono">${Object.entries(a.mapping).map(([c, v]) => `${esc(c)} → ${esc(v)}`).join(', ')}</small>
+            ${readOnly ? '' : `<button type="button" class="btn small link" data-dac-del="${i}" aria-label="Remove ${esc(a.dac)}">Remove</button>`}
+          </li>`).join('')}</ul>` : '<p class="muted">No data access control. Everyone who may use the view sees all rows.</p>'}
+        ${readOnly ? '' : `<button type="button" class="btn small" id="dac-assign">${icon(ICONS.lock)} Assign</button>`}` : ''}`;
 
     host.querySelectorAll<HTMLSelectElement>('[data-col]').forEach((sel) =>
       sel.addEventListener('change', () => {
@@ -82,6 +94,13 @@ export function mountSemantics(host: HTMLElement, o: RepoObject, usage: Semantic
       }),
     );
     host.querySelector('#assoc-add')?.addEventListener('click', openAssociationDialog);
+    host.querySelector('#dac-assign')?.addEventListener('click', openDacDialog);
+    host.querySelectorAll<HTMLButtonElement>('[data-dac-del]').forEach((b) =>
+      b.addEventListener('click', () => {
+        dacs.splice(Number(b.dataset.dacDel), 1);
+        render();
+      }),
+    );
   }
 
   function openAssociationDialog() {
@@ -137,8 +156,50 @@ export function mountSemantics(host: HTMLElement, o: RepoObject, usage: Semantic
     });
   }
 
+  function openDacDialog() {
+    const t = ctx.tenant();
+    const options = dacCandidates(t, o.space);
+    if (!columns.length) {
+      const d = openDialog('Assign Data Access Control', `<p class="guide-lead">Run the Data Preview first, so the view knows its columns.</p>
+        <div class="guide-actions"><button class="btn primary" type="submit">OK</button></div>`);
+      d.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        d.close();
+      });
+      return;
+    }
+    const { form, close } = openDialog('Assign Data Access Control', `
+      <p class="guide-lead">Map each criterion of the control to a column of this view. After deploying, a user sees only the rows
+        whose values match his entries in the permissions entity. A user without entries sees nothing.</p>
+      <div class="form-grid one"><label>Data Access Control
+        <select id="dac-pick"><option value="">Select a deployed data access control…</option>
+          ${options.map((d) => `<option value="${esc(objectKey(d))}">${esc(d.name)} · ${esc(d.deployed!.dac!.criteria.join(', '))}</option>`).join('')}
+        </select></label></div>
+      ${options.length ? '' : `<p class="muted">No deployed data access control in ${esc(o.space)} yet.</p>`}
+      <div id="dac-mapping"></div>
+      <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Assign</button></div>`);
+    const pick = form.querySelector<HTMLSelectElement>('#dac-pick')!;
+    const host2 = form.querySelector<HTMLElement>('#dac-mapping')!;
+    pick.addEventListener('change', () => {
+      const def = findObject(t, pick.value)?.deployed?.dac;
+      host2.innerHTML = def ? `<p class="muted">Criterion → column of this view</p><div class="form-grid one">${def.criteria.map((c) => `<label>${esc(c)}
+          <select data-map="${esc(c)}">${columns.map((col) => `<option ${col.toUpperCase() === c.toUpperCase() ? 'selected' : ''}>${esc(col)}</option>`).join('')}</select></label>`).join('')}</div>` : '';
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!pick.value) return;
+      const mapping: Record<string, string> = {};
+      form.querySelectorAll<HTMLSelectElement>('[data-map]').forEach((sel) => (mapping[sel.dataset.map!] = sel.value));
+      dacs = dacs.filter((a) => a.dac !== pick.value).concat({ dac: pick.value, mapping });
+      ctx.track(`dac-assign:${self}->${pick.value}`);
+      close();
+      render();
+    });
+  }
+
   render();
   return {
+    dacs: () => dacs,
     roles: () => {
       fit();
       return Object.fromEntries(columns.map((c) => [c, roles[c]]));

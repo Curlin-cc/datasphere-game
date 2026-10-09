@@ -8,6 +8,7 @@ import {
   type AnalyticModelDef, type Measure, type MeasureType, type ModelSources, type Selection, type Variable, type VariableValue, type Aggregation,
 } from '../analytic';
 import { lockError } from '../integration';
+import { DAC_USERS, securedFrom } from '../dac';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable } from '../ui';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
 
@@ -29,7 +30,7 @@ type Selected = 'model' | 'fact' | string;
 /** Draft of a new, unsaved model; survives switching views like a half-written SQL view. */
 let fresh: { space: string; def: AnalyticModelDef | null; business: string; technical: string; touched: boolean } | null = null;
 /** Preview settings per model (key or 'draft'). */
-const previews = new Map<string, { rows: string[]; measures: string[] | null; vars: Record<string, VariableValue> }>();
+const previews = new Map<string, { rows: string[]; measures: string[] | null; vars: Record<string, VariableValue>; user?: string }>();
 let selected: Selected = 'model';
 let lastKey = '';
 
@@ -271,6 +272,10 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
         <h4>Measures</h4>
         <div class="am-chips">${model.measures.map((m) => `<label><input type="checkbox" data-pmeas="${esc(m.name)}" ${measures.includes(m.name) ? 'checked' : ''}> ${esc(m.name)}</label>`).join('')}</div>
         ${model.variables.length ? `<h4>Variables</h4>${model.variables.map((v) => varInput(v)).join('')}` : ''}
+        ${ctx.currentChapter() >= 8 ? `<h4>View as</h4><select id="am-as" class="am-as" aria-label="View as user">
+          <option value="">You, modeling: no data access control</option>
+          ${DAC_USERS.map((u) => `<option value="${esc(u.id)}" ${pv.user === u.id ? 'selected' : ''}>${esc(u.id)} · ${esc(u.name)}</option>`).join('')}</select>
+          <p class="muted">The model takes over the data access controls of its fact and dimensions.</p>` : ''}
       </aside>`;
   }
 
@@ -302,10 +307,11 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
     try {
       const err = modelError(model, src, space);
       if (err) throw new Error(err);
-      const sql = modelSql(model, src, { rows: pv.rows, measures: pv.measures ?? [], variables: pv.vars });
+      const sql = modelSql(model, src, { rows: pv.rows, measures: pv.measures ?? [], variables: pv.vars, from: pv.user ? (k) => securedFrom(t, k, pv.user) : undefined });
+      if (pv.user) ctx.track(`am-preview-as:${key}:${pv.user}`);
       const res = await runSql(sql);
       const rows = res.rows.length;
-      out.innerHTML = `<div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'} in ${res.ms.toFixed(0)} ms</div>${resultTable(res.columns, res.rows.map((r) => r.map(round)))}`;
+      out.innerHTML = `<div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'} in ${res.ms.toFixed(0)} ms${pv.user ? ` · as ${esc(pv.user)}` : ''}</div>${resultTable(res.columns, res.rows.map((r) => r.map(round)))}`;
     } catch (err) {
       out.innerHTML = `<div class="result-status error">${esc(err instanceof Error ? err.message : String(err))}</div>`;
     }
@@ -314,6 +320,8 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
   function readPreview() {
     pv.rows = [...main.querySelectorAll<HTMLInputElement>('[data-prow]:checked')].map((i) => i.dataset.prow!);
     pv.measures = [...main.querySelectorAll<HTMLInputElement>('[data-pmeas]:checked')].map((i) => i.dataset.pmeas!);
+    const as = main.querySelector<HTMLSelectElement>('#am-as');
+    if (as) pv.user = as.value || undefined;
     for (const v of model.variables) {
       const pick = (sel: string) => main.querySelector<HTMLInputElement>(sel)?.value.trim() || undefined;
       pv.vars[v.name] = v.selection === 'Interval'

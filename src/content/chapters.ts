@@ -54,8 +54,8 @@ export const GLOSSARY: GlossaryTerm[] = [
   },
   {
     term: 'Local table',
-    text: 'A table whose data is stored inside Datasphere, filled by upload, replication flow or data flow.',
-    realTenant: 'Data Builder > New Table, or created by a replication flow.',
+    text: 'A table whose data is stored inside Datasphere, filled by upload, replication flow, data flow, or typed in its Data Editor (good for small mapping and permission tables).',
+    realTenant: 'Data Builder > New Table (Data Editor for the rows), or created by a replication flow.',
   },
   {
     term: 'Inbound layer',
@@ -261,6 +261,16 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Count distinct',
     text: 'Counts the different values of an attribute, e.g. customers. Not additive: the rows of a breakdown can add up to more than the total.',
     realTenant: 'Analytic model > Measures > Count Distinct.',
+  },
+  {
+    term: 'Data access control',
+    text: 'Row-level security: decides which rows of a view a user sees. Reads a permissions entity (user → allowed values) and is assigned to a view by mapping its criteria to view columns. A user without an entry sees nothing.',
+    realTenant: 'Data Builder > New Data Access Control; assigned in the view\'s properties, section Data Access Controls.',
+  },
+  {
+    term: 'Permissions entity',
+    text: 'The table or view behind a data access control: one row per user and allowed value, with an identifier column (user ID) and criteria columns.',
+    realTenant: 'Often a local table maintained by the business in its own space and shared with the modeling space.',
   },
   {
     term: 'Variable',
