@@ -20,6 +20,7 @@ import { missionProgress } from '../progress';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb, shownName } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
+import { openVersions } from './versions';
 import { EXCURSIONS } from '../content/chapters';
 import { packageOf } from '../transport';
 
@@ -418,6 +419,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         sub: `${o ? o.kind : 'SQL View'} · ${space}.${o?.name ?? '…'}`,
         statusHtml: o ? statusChip(o) : `<span class="status" data-status="new">New</span>`,
         note: readOnly ? `Shared from ${space} · read-only` : undefined,
+        versions: isView && o ? (chapter >= EXCURSIONS ? { enabled: true } : { enabled: false, why: 'Version history: you use it in the excursions' }) : undefined,
         groups: [
           ...(readOnly ? [] : [{ label: 'General', buttons: [
             { id: 'ed-save', icon: ICONS.save, label: 'Save', title: 'Save (design time)' },
@@ -497,6 +499,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   bindDetails(main);
   main.querySelector('#run')!.addEventListener('click', preview);
   main.querySelector('#ed-share')?.addEventListener('click', () => o && openShareDialog(objectKey(o)));
+  main.querySelector('#ed-versions')?.addEventListener('click', () => o && openVersions(o, !readOnly, () => ctx.renderView()));
   main.querySelector('#ed-save')?.addEventListener('click', async () => {
     if (saveObject()) ctx.renderView();
   });

@@ -59,6 +59,22 @@ export interface Semantics {
   exposed?: boolean;
 }
 
+/**
+ * One deployed version of a SQL view (excursions, Handbuch 11.4.9): every deployment adds one. Kept inside the tenant only;
+ * the game keeps the last MAX_VERSIONS. Other object types have no version history in the game.
+ */
+export interface ObjectVersion {
+  no: number;
+  at: string;
+  /** User ID of who deployed it. */
+  by: string;
+  businessName: string;
+  sql: string;
+  semantics: Semantics;
+}
+export const MAX_VERSIONS = 15;
+export const ME = 'DATA_ARCHITECT';
+
 export interface RepoObject {
   space: string;
   /** Technical name. */
@@ -98,6 +114,8 @@ export interface RepoObject {
   changedAt: string;
   /** Loaded by IT from a source system; cannot be deleted. */
   source?: boolean;
+  /** SQL views: deployed versions, oldest first (Versions in the editor toolbar). */
+  versions?: ObjectVersion[];
 }
 
 export const STATUS_LABEL: Record<DeployStatus, string> = {
@@ -200,7 +218,28 @@ export async function deploy(o: RepoObject): Promise<string | null> {
   };
   o.status = 'deployed';
   o.changedAt = now();
+  if (o.kind === 'SQL View') addVersion(o, ME, o.changedAt);
   return null;
+}
+
+/** Records the deployed state of a SQL view as its next version. */
+export function addVersion(o: RepoObject, by: string, at: string) {
+  if (!o.deployed?.sql) return;
+  const list = (o.versions ??= []);
+  list.push({ no: (list.at(-1)?.no ?? 0) + 1, at, by, businessName: o.deployed.businessName, sql: o.deployed.sql,
+    semantics: structuredClone(semanticsOf(o.deployed)) });
+  if (list.length > MAX_VERSIONS) list.splice(0, list.length - MAX_VERSIONS);
+}
+
+/**
+ * Restore (Handbuch 11.4.9): the version becomes the design-time state of the view (status Changes to Deploy).
+ * Whether a restored version must be deployed again is "nicht verifiziert"; the game asks for a deployment.
+ */
+export function restoreVersion(o: RepoObject, v: ObjectVersion) {
+  o.sql = v.sql;
+  o.businessName = v.businessName;
+  Object.assign(o, structuredClone(v.semantics));
+  touch(o);
 }
 
 export async function dropObject(o: RepoObject) {
@@ -318,9 +357,21 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       status: ['deployed', 'not_deployed', 'changes'].includes(o.status) ? o.status : 'not_deployed',
       changedAt: typeof o.changedAt === 'string' ? o.changedAt : now(),
       source: !!o.source,
+      versions: o.kind === 'SQL View' ? sanitizeVersions(o.versions) : undefined,
     });
   }
   return out;
+}
+
+function sanitizeVersions(d: unknown): ObjectVersion[] | undefined {
+  if (!Array.isArray(d)) return undefined;
+  const out: ObjectVersion[] = [];
+  for (const v of d.slice(-MAX_VERSIONS)) {
+    if (!v || typeof v.sql !== 'string' || !Number.isInteger(v.no) || v.no < 1) continue;
+    out.push({ no: v.no, at: typeof v.at === 'string' ? v.at : now(), by: typeof v.by === 'string' && /^[A-Z_]{1,30}$/.test(v.by) ? v.by : ME,
+      businessName: String(v.businessName ?? '').slice(0, 120), sql: v.sql, semantics: sanitizeSemantics(v.semantics ?? {}) });
+  }
+  return out.length ? out : undefined;
 }
 
 const ROLES: ColumnRole[] = ['Attribute', 'Key', 'Measure', 'Parent', 'Child'];

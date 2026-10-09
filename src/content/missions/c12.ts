@@ -1,6 +1,7 @@
 import type { Mission, RuleContext } from '../../missions/types';
 import type { TenantState } from '../../tenant';
-import { findObject, objectKey } from '../../repo';
+import { findObject, objectKey, addVersion } from '../../repo';
+import { REF_CONTRACTS_KEYS, M02_COLS, project } from './c05';
 import { packageStatus, presetPackage, validatePackage, validationMessages } from '../../transport';
 import { findAsset } from '../../catalog';
 import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
@@ -21,6 +22,7 @@ const SABINE = { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' }
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 
 const D_TARIFF = 'RHN_REP.RHN_REP_D_TARIFF';
+const CONTRACTS = 'RHN_HARM.RHN_HA_V_CONTRACTS';
 const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
 export const IN_PKG = 'RHN_IN_PKG_INBOUND';
 export const HARM_PKG = 'RHN_HARM_PKG_HARMONIZED';
@@ -481,5 +483,70 @@ export const CHAPTER_12: Mission[] = [
       without an entry he sees nothing.`,
     debrief: `<p>Three rows I can read in ten seconds, and next year nobody has to remember Markus. That is an audit finding closed.</p>
       <p><i>Calin adds:</i> The consumption fact still uses the old control. Migrating it is the same three clicks, whenever Sabine retires the old table.</p>`,
+  },
+  {
+    id: 'c12-m07',
+    chapter: 12,
+    title: 'Roll it back',
+    from: CFO,
+    ticket: `<p>Petra Lindner. This morning's board figures show 91 contracts fewer than yesterday, and the revenue of region West dropped.
+      Nobody told me about a change.</p>
+      <p><i>Calin adds:</i> Tim deployed a "clean-up" of <code>RHN_HA_V_CONTRACTS</code> yesterday afternoon. Do not rewrite the view from memory:
+      every deployment is a version. Open the <b>version history</b>, compare Tim's version with the one before, <b>restore</b> the good one
+      and deploy it. Everything built on the view gets the contracts back.</p>`,
+    tasks: [
+      'In <code>RHN_HARM</code>, open <code>RHN_HA_V_CONTRACTS</code> and press <b>Versions</b> in the toolbar.',
+      'Look at Tim\'s version and the one before it: what did he change?',
+      '<b>Restore</b> the version before Tim\'s change and <b>Deploy</b> it.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Versions is next to Details in the toolbar of the SQL view editor. Selecting a version shows it compared with the deployed one.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Restore puts the old version into the editor (status Changes to Deploy). It runs only after you deploy it, and the deployment becomes a new version.' },
+    ],
+    setup: (t) => {
+      const v = findObject(t, CONTRACTS);
+      if (!v?.deployed?.sql || v.deployed.sql.includes('T. Schulz')) return;
+      const day = 24 * 3600_000;
+      const good = v.deployed.sql.trim().replace(/;\s*$/, '');
+      // History before Tim: the version that runs now, deployed by you (older saves have no versions yet).
+      if (v.versions?.at(-1)?.sql !== v.deployed.sql) addVersion(v, 'DATA_ARCHITECT', new Date(Date.now() - 3 * day).toISOString());
+      const tim = `-- T. Schulz: legacy contracts are migrated to S/4 anyway, so only S4U contracts are kept\nSELECT x.*\nFROM (\n${good}\n) x\nWHERE x.SRC_SYS_ID = 'S4U'`;
+      v.sql = tim;
+      v.deployed.sql = tim;
+      v.status = 'deployed';
+      v.changedAt = new Date(Date.now() - 0.7 * day).toISOString();
+      addVersion(v, 'TSCHULZ', v.changedAt);
+    },
+    checks: [
+      {
+        type: 'rule', label: 'You used the version history', ok: 'The good version was restored from the history, not typed again.',
+        test: ({ events }) => ([...events].some((e) => e.startsWith(`version-restore:${CONTRACTS}:`))
+          ? null : 'Open Versions in the editor of RHN_HA_V_CONTRACTS, select the version before Tim\'s and press Restore.'),
+      },
+      {
+        type: 'result', label: 'All contracts are back', object: CONTRACTS, columns: M02_COLS, expected: project(M02_COLS, REF_CONTRACTS_KEYS),
+        counts: { 1087: 'Still only the S4U contracts: Tim\'s version is deployed. Restore the version before it, then Deploy.' },
+      },
+      {
+        type: 'question', id: 'production', label: 'And in production?',
+        prompt: 'Tim deployed the same change in the production tenant last week through a transport. Does restoring the version here fix production too?',
+        options: [
+          'Yes, the version history is shared by all tenants',
+          'No: versions exist only inside one tenant. The restored view has to reach production by transport again (export a new package version, import it there)',
+          'Yes, as soon as you deploy here',
+          'No, production can never get the old version back',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Where does the version history live, and how do changes travel between tenants?',
+      },
+    ],
+    review: ['no_select_star'],
+    xp: 45,
+    realTenant: `In a real tenant: open the object in the Data Builder, <b>Versions</b> (version history) in the toolbar; each deployment is a version.
+      You can view and restore an earlier version (Handbuch 11.4.9, SAP: "Reviewing and Restoring Object Versions"). Whether a restored version must be deployed
+      again and how many versions are kept is not verified; the game asks for a deployment and keeps the last 15.`,
+    debrief: `<p>1,178 contracts again, and region West is back where it was. Thank you, and please tell me before the next clean-up.</p>
+      <p><i>Calin adds:</i> Tim's version is still in the history, so nothing is lost. Next time a change like that goes through the test tenant first.</p>`,
   },
 ];

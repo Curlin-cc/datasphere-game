@@ -312,6 +312,12 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Analytic model > Measures > Count Distinct.',
   },
   {
+    term: 'Version history',
+    chapter: 12,
+    text: 'Every deployment of an object is a version: who, when and the definition. An earlier version can be compared and restored; the restored version is deployed again. Works inside one tenant only; other tenants get changes by transport.',
+    realTenant: 'Data Builder > open the object > Versions in the toolbar (Handbuch 11.4.9).',
+  },
+  {
     term: 'Mapping table',
     chapter: 5,
     text: 'A small local table that translates codes (legacy code → target code), joined in a view with LEFT JOIN and COALESCE. Replaces a long CASE; the business can maintain it in the Data Editor without changing SQL.',

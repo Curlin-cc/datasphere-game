@@ -63,6 +63,11 @@ Business Builder: Die Bezeichnung „Deprecated“ ist durch Curlins Screenshot 
 Nur erklärt: OData-API und OAuth-Clients, Excel-Add-in, Premium Outbound, Databricks/BDC, Marketplace, Data Sharing Cockpit, KPIs,
 CLI, SAP Cloud Transport Management, Versionshistorie.
 
+
+**Versionshistorie (c12-m07, Handbuch 11.4.9, ergänzt am 10.10.2026):** Jedes Deploy einer SQL View ist eine Version; Liste, Vergleich mit der
+deployten Version und Restore im Editor über *Versions*. Nur SQL Views, letzte 15 Versionen; Restore stellt in den Editor und verlangt ein Deploy
+(„nicht verifiziert“ im Handbuch, vereinfacht). Gilt nur im Mandanten; Produktion bekommt Änderungen per Transport.
+
 ## Was Kapitel 3 aus dem Handbuch umsetzt
 
 - Connection gehört genau einem Space, entsteht aus einem Typ; Validate zeigt verfügbare Features (5.1, 5.4.3, 5.4.4)

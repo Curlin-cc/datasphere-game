@@ -1486,3 +1486,23 @@ td.act { color: var(--link); }
 .set-field input { font: inherit; color: var(--ink); background: var(--surface); border: 0; border-bottom: 1px solid var(--field-line); padding: 6px 8px; }
 .set-radios { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
 .set-radios legend { font-weight: 700; margin-bottom: 8px; }
+
+/* ---------- Version history (excursions, Handbuch 11.4.9) ---------- */
+.dialog.versions-dlg { width: min(1000px, 94vw); max-width: none; }
+.ver-wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-height: 360px; }
+.ver-list { list-style: none; margin: 0; padding: 0; border-right: 1px solid var(--line); background: var(--surface-sunk); max-height: 60vh; overflow-y: auto; }
+.ver-list li { border-bottom: 1px solid var(--line); background: var(--surface); }
+.ver-list li.muted { padding: 12px; }
+.ver-list button { width: 100%; text-align: left; font: inherit; color: var(--ink); background: none; border: 2px solid transparent; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; }
+.ver-list button:hover { background: var(--surface-sunk); }
+.ver-list button[aria-current='true'] { background: var(--shell-active); border-color: var(--accent); }
+.ver-list small { color: var(--ink-soft); font-size: 12.5px; }
+.ver-tag { font-size: 11.5px; font-weight: 700; color: var(--ok); margin-left: 6px; }
+.ver-pane { padding: 12px 16px; min-width: 0; }
+.ver-pane h3 { margin: 0 0 4px; font-size: 15px; }
+.ver-diff { margin: 8px 0 0; font: 12.5px/1.55 'JetBrains Mono', monospace; background: var(--surface-sunk); border-radius: 6px; padding: 8px 0;
+  max-height: 46vh; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.ver-diff .dl { display: block; padding: 0 10px; }
+.ver-diff .dl.add, .diff-add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.ver-diff .dl.del, .diff-del { background: color-mix(in srgb, var(--critical) 14%, transparent); }
+.diff-add, .diff-del { padding: 0 4px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }

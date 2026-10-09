@@ -737,6 +737,14 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
   ],
+  'c12-m07': [
+    {
+      title: 'Every deployment is a version',
+      body: `<p>Each <b>Deploy</b> of a view adds a version to its history: who, when, and the full definition. <b>Versions</b> in the editor
+        toolbar lists them, compares one with what runs now, and <b>restores</b> an earlier one into the editor. Then you deploy it.</p>
+        <p>The history lives in this tenant only. Other tenants get a change by transport, not from the history.</p>`,
+    },
+  ],
   'c12-m06': [
     {
       title: 'Grant a node',
@@ -2826,6 +2834,47 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m07': [
+    [
+      {
+        title: 'Open the view',
+        view: 'builder:landing:RHN_HARM',
+        target: '#object-list',
+        body: `<p>The contracts view of the harmonization layer. Its status is Deployed: Tim's version is what runs.</p>`,
+        action: { do: 'Open <b>RHN_HA_V_CONTRACTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_V_CONTRACTS') },
+      },
+      {
+        title: 'Versions',
+        target: '#ed-versions',
+        body: `<p>Next to Details in the toolbar.</p>`,
+        action: { do: 'Press <b>Versions</b>.', appear: '#version-list' },
+      },
+    ],
+    [
+      {
+        title: 'Compare',
+        target: '#version-list',
+        body: `<p>The newest version is on top and marked Deployed. Select the one below it: the right side compares it with what runs now:
+          red lines (−) are in the deployed version only, green lines (+) only in the selected one.</p>`,
+        action: { do: 'Select the version before Tim\'s.', event: '^version-view:RHN_HARM\\.RHN_HA_V_CONTRACTS:' },
+      },
+    ],
+    [
+      {
+        title: 'Restore',
+        target: '#version-restore',
+        body: `<p>Restore puts this version into the editor. Nothing runs yet: the status becomes Changes to Deploy.</p>`,
+        action: { do: 'Press <b>Restore</b>.', event: '^version-restore:RHN_HARM\\.RHN_HA_V_CONTRACTS:' },
+      },
+      {
+        title: 'Deploy',
+        target: '#ed-deploy',
+        body: `<p>Deploying the restored definition makes it active and adds it as a new version.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_V_CONTRACTS$' },
+      },
+    ],
+    questions('Where does the version history live, and how do changes travel between tenants?'),
   ],
   // ================================================================ chapter 10
   'c10-m01': [

@@ -20,6 +20,7 @@
 - [ ] Wendet die **Data Preview im Data Builder die DAC des Modellierers** an?
 - [ ] Persistenz: ist ein **View mit eigener DAC persistierbar**? (Spiel: ja) Entfernt ein **erneutes Deploy** die persistierten Daten?
 - [ ] Task Chains: erreichen sie Objekte **anderer Spaces nur über geteilte Ketten**?
+- [ ] Versionshistorie (Handbuch 11.4.9): Wie heißt der Knopf im Editor (Spiel: **Versions** neben Details)? Muss eine **wiederhergestellte Version erneut deployt** werden? Wie viele Versionen bleiben erhalten? Gibt es einen Vergleich zweier Versionen? (Screenshot wäre ideal)
 - [ ] Standardrollen: welche Rollen-Vorlagen gibt es im Tenant wirklich (Handbuch belegt nur DW Administrator, DW Viewer, Catalog User)?
 
 ## Erledigt

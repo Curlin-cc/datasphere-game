@@ -23,6 +23,8 @@ export interface ToolbarOptions {
   groups: { label: string; buttons: ToolButton[] }[];
   /** Text shown instead of the buttons, e.g. read-only. */
   note?: string;
+  /** "Versions" works (SQL views in the excursions); otherwise the tooltip says why not. */
+  versions?: { enabled: boolean; why?: string };
 }
 
 export function objectToolbar(o: ToolbarOptions) {
@@ -35,7 +37,7 @@ export function objectToolbar(o: ToolbarOptions) {
       ${o.note ? `<span class="muted tb-note">${esc(o.note)}</span>` : ''}
       ${o.groups.map((g) => `<div class="tb-group"><small>${esc(g.label)}</small><div>${g.buttons.map(btn).join('')}</div></div>`).join('')}
       <span class="spacer"></span>
-      <button class="btn small" type="button" disabled title="Version history: not in this game">Versions</button>
+      <button class="btn small" type="button" id="ed-versions" ${o.versions?.enabled ? 'title="Version history: compare and restore deployed versions"' : `disabled title="${esc(o.versions?.why ?? 'Version history: only for SQL views in this game')}"`}>Versions</button>
       <button class="btn small primary" type="button" id="ed-details" aria-pressed="true" title="Show or hide the properties">Details</button>
     </div>`;
 }
