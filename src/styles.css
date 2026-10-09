@@ -13,7 +13,7 @@
   --shell-ink: #1d2d3e;
   --shell-ink-strong: #1d2d3e;
   --shell-active: #ebf8ff;
-  --nav-title: #556b82;
+  --nav-title: #475d75;
 
   --bg: #f5f6f7;
   --surface: #ffffff;
@@ -22,8 +22,8 @@
   --line-strong: #d9dce0;
   --field-line: #556b82;
   --ink: #1d2d3e;
-  --ink-soft: #556b82;
-  --ink-faint: #758ca4;
+  --ink-soft: #475d75;
+  --ink-faint: #64788f;
 
   --brand: #0070f2;
   --brand-ink: #ffffff;
@@ -158,9 +158,11 @@ body {
   font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
+  font-weight: 500;
   color: var(--ink);
   background: var(--bg);
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: auto;
+  text-rendering: optimizeLegibility;
 }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1118,3 +1120,78 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .hc-body.how .guide-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .home-card .path li { padding: 10px 16px; }
 .home-card .app-groups { margin-top: 4px; }
+
+/* ================================================================ clarity pass (Curlin, 09.10.2026):
+   heavier type, no sideways scrolling in navigation, side panels and lists, narrow screens down to 1366 px */
+strong, b, th, h1, h2, h3, h4, .t { font-weight: 700; }
+.nav button { font-weight: 500; }
+.nav button[aria-current='page'] { font-weight: 800; }
+.nav .nav-title { font-weight: 600; }
+.shell-app, .space-switch { font-weight: 800; }
+.btn, .tb-btn, .tb-icon, .link-btn, .db-tabs button, .side-tabs button { font-weight: 600; }
+table.grid th { font-weight: 800; }
+table.grid td { font-weight: 500; }
+.tile-label { font-weight: 600; color: var(--ink); }
+.new-tile.off .tile-label { color: var(--ink-soft); }
+.muted, .view-lead, .welcome-head p { font-weight: 500; }
+.ticket-body, .task-steps, .guide-steps p { font-weight: 500; }
+.mission-head h2, .view-title, .welcome-head h1, .sm-head h1, .home-head h1 { font-weight: 800; }
+
+/* nothing in a menu or side panel scrolls sideways: long names are cut with an ellipsis, the full name is in the tooltip */
+.nav, .objects, .props, .am-pivot, .re-side, .sm-side, .mission, .flow-source { overflow-x: hidden; }
+.nav button .label, .objects .oname, .src-folder summary span, .re-row, .sm-row { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.objects li button { min-width: 0; }
+.objects .otype { flex: none; }
+.props input, .props select, .props textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+.props * { max-width: 100%; }
+.props .grid.compact { table-layout: fixed; width: 100%; }
+.props .grid.compact td { white-space: normal; word-break: break-word; }
+.props-head, .props-title { max-width: none; }
+.db-tabs { flex-wrap: wrap; overflow: visible; row-gap: 0; }
+
+/* lists wrap instead of scrolling sideways; long technical names break */
+table.grid.object-table td, table.grid.object-table th { white-space: normal; height: auto; }
+table.grid.object-table td { word-break: break-word; }
+table.grid.object-table .link-btn { text-align: left; }
+.object-table .link-btn { align-items: flex-start; }
+table.grid.object-table .status { white-space: nowrap; }
+
+@media (max-width: 1700px) {
+  .app { grid-template-columns: 236px minmax(0, 1fr) 330px; }
+  .object-table .col-opt { display: none; }
+  .welcome-head { padding: 32px 32px 24px; }
+  .welcome-head.tight { padding: 28px 32px 0; }
+  .space-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 20px; }
+  .home-card.wide { grid-column: 1 / -1; }
+  .new-tiles { padding: 18px 16px; }
+  .db-list { margin: 14px 16px 0; }
+  .shell-avatar, #shell-apps { display: none; }
+}
+@media (max-width: 1450px) {
+  .app { grid-template-columns: 220px minmax(0, 1fr) 310px; }
+  .rank strong { display: none; }
+  .welcome-body { grid-template-columns: minmax(0, 1fr); }
+  .welcome-empty { display: none; }
+  .is-view .ed-body { grid-template-columns: 200px minmax(0, 1fr) 260px; }
+  .sm-page { grid-template-columns: 270px minmax(0, 1fr); }
+  .re-body { grid-template-columns: 190px minmax(0, 1fr); }
+  .am-preview { grid-template-columns: 240px minmax(0, 1fr); }
+}
+
+/* editors never get wider than the page: toolbar wraps, labels shrink on narrow screens */
+.editor-page { grid-template-columns: minmax(0, 1fr); }
+.ed-toolbar { flex-wrap: wrap; row-gap: 4px; min-width: 0; }
+.ed-title { min-width: 0; }
+.ed-title b, .ed-title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+@media (max-width: 1450px) {
+  .tb-group small { display: none; }
+  .tb-group { padding-left: 8px; }
+  .tb-btn { padding: 0 6px; }
+  .tb-btn:not(#run) span { display: none; }
+  .ed-title b, .ed-title small { max-width: 200px; }
+  .ed-toolbar .btn[disabled][title^="Version"] { display: none; }
+}
+
+/* navigation labels wrap to a second line instead of being cut */
+.nav button .label { white-space: normal; line-height: 1.25; text-overflow: clip; }

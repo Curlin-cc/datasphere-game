@@ -1,17 +1,19 @@
 """Design check: screenshots of the main pages for comparison with docs/design/screenshots (no assertions).
-Usage: python3 look.py <folder> [dark]"""
+Usage: python3 look.py <folder> [dark] [WIDTHxHEIGHT]"""
 import sys
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter7_data import TENANT7
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-DARK = len(sys.argv) > 2 and sys.argv[2] == 'dark'
+DARK = 'dark' in sys.argv[2:]
+SIZE = next((a for a in sys.argv[2:] if 'x' in a), '1910x915')
+W, H = (int(v) for v in SIZE.split('x'))
 
 with sync_playwright() as p:
     g = Game(p, S)
     pg = g.pg
-    pg.set_viewport_size({'width': 1910, 'height': 915})
+    pg.set_viewport_size({'width': W, 'height': H})
     if DARK:
         pg.add_init_script("localStorage.setItem('dsg-theme','dark')")
     g.start(save_before(7, 'c07-m01', TENANT7))

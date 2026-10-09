@@ -187,7 +187,7 @@ function renderLanding(main: HTMLElement) {
         <div class="list-in">List Objects In: <span class="globe">${icon(ICONS.globe)}</span><b>All</b> <span class="muted">(${shown.length})</span></div>
         <div class="table-scroll"><table class="grid object-table" id="object-list">
           <thead><tr><th class="cb"><input type="checkbox" aria-label="Select all" disabled></th><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th>
-            <th>Space</th><th>Status</th><th>Changed On</th><th class="fav">Favorite</th><th></th></tr></thead>
+            <th class="col-opt">Space</th><th>Status</th><th>Changed On</th><th class="fav col-opt">Favorite</th><th></th></tr></thead>
           <tbody>${shown.length ? shown.map((o) => objectRow(o, canShare)).join('') : `<tr><td colspan="9" class="empty-row">No objects here yet.</td></tr>`}</tbody>
         </table></div>
       </div>
@@ -295,9 +295,9 @@ function objectRow(o: RepoObject, canShare: boolean) {
     <td class="cb"><input type="checkbox" aria-label="Select ${esc(o.name)}"></td>
     <td><button type="button" class="link-btn" data-open="${esc(key)}">${typeIcon(o)}${esc(o.businessName)}</button></td>
     <td>${esc(o.name)}</td>
-    <td>${typeText(o)}</td><td>${esc(o.space)}</td><td>${statusChip(o)}</td>
+    <td>${typeText(o)}</td><td class="col-opt">${esc(o.space)}</td><td>${statusChip(o)}</td>
     <td>${fmtStamp(o.changedAt)}</td>
-    <td class="fav"><button type="button" class="star ${fav ? 'on' : ''}" data-fav="${esc(key)}" aria-label="Favorite ${esc(o.name)}" aria-pressed="${fav}">${icon(ICONS.star)}</button></td>
+    <td class="fav col-opt"><button type="button" class="star ${fav ? 'on' : ''}" data-fav="${esc(key)}" aria-label="Favorite ${esc(o.name)}" aria-pressed="${fav}">${icon(ICONS.star)}</button></td>
     <td class="row-actions">
       ${canShare ? `<button type="button" class="share-btn" data-share="${esc(key)}" title="Share ${esc(o.name)} with other spaces" aria-label="Share ${esc(o.name)}">
         ${icon(ICONS.share)}${ctx.tenant().shares.some((s) => s.object === key) ? '<span class="share-dot"></span>' : ''}</button>` : ''}

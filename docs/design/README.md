@@ -177,6 +177,9 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
 - [x] Repository Explorer mit Suche oben, Filterspalte Collection/Space, Tabelle wie im Data Builder (E)
 - [x] Home: „Hello, Data Architect“, Kartenraster (Welcome mit MSC, Spaces mit Balken und „Working“, Data Builder – Top 5, How to play, Lernpfad, App-Übersicht, Fortschritt) (G)
 - [x] Missions-Panel als Horizon-Seitenpanel (blaues Kopfband)
+- [x] Übersichtlichkeit (Wunsch von Curlin): Grundschrift 500 statt 400, Überschriften/Tabellenköpfe 800, dunklere Sekundärtexte;
+      **keine seitlichen Scrollbalken** in Navigation, Seitenpanels, Reitern und Objektlisten (Umbruch statt Scrollen, lange Namen mit „…“ und Tooltip);
+      SQL-Editor bricht lange Zeilen um; schmale Bildschirme bis 1366 px (Spalten schmaler, Werkzeugleiste nur Icons). Nur die Datenvorschau scrollt seitlich (Daten)
 
 Noch offen:
 - [ ] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A); heute Space-Auswahl per Dropdown
@@ -191,5 +194,5 @@ Noch offen:
 2. Beschriftungen wörtlich aus den Screenshots übernehmen (englisch). Was im Spiel nicht funktioniert, bleibt sichtbar, aber deaktiviert
    oder öffnet eine Info („not in this game“) – wie bisher bei nicht gebauten Kacheln.
 3. Farben nur über die CSS-Variablen in `src/styles.css`, keine festen Farbwerte in Views.
-4. Nach dem Bauen: `cd tests/playtest && python3 look.py <ordner> [dark]` macht Screenshots aller Hauptseiten; mit dem Original vergleichen, Abweichungen hier unter 4. festhalten.
+4. Nach dem Bauen: `cd tests/playtest && python3 look.py <ordner> [dark] [1366x768]` macht Screenshots aller Hauptseiten; mit dem Original vergleichen, Abweichungen hier unter 4. festhalten.
 5. Neue Screenshots von Curlin: nach `screenshots/` mit nächster Nummer, Beschreibung ergänzen, diese Datei aktualisieren.

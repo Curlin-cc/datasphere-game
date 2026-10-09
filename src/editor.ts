@@ -50,6 +50,7 @@ export function createSqlEditor(parent: HTMLElement, initial: string, onRun: () 
     doc: initial,
     extensions: [
       basicSetup,
+      EditorView.lineWrapping,
       language.of(lang({})),
       Prec.highest(syntaxHighlighting(highlight)),
       Prec.highest(
