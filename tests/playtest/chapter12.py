@@ -137,4 +137,5 @@ with sync_playwright() as p:
     pg.click('[data-bb-tab="Perspectives"]'); pg.wait_for_timeout(200)
     g.shot('c12-business')
     g.check('m04 solved')
+    print('   new badges:', pg.locator('#badge-new b').all_inner_texts())
     g.done()

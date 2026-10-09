@@ -32,6 +32,7 @@ import { renderTransport, transportTo, transportPage, TRANSPORT_PAGES, type Tran
 import { renderCatalog, catalogReset } from './views/catalog';
 import { renderBusiness, businessReset } from './views/business';
 import { EXCURSIONS } from './content/chapters';
+import { BADGES, BADGE_ICON, earnedBadges, type Badge } from './badges';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
 const SOURCE_BUSINESS_NAMES: Record<string, string> = {
@@ -47,7 +48,7 @@ const SOURCE_BUSINESS_NAMES: Record<string, string> = {
 const state = {
   report: null as CheckReport | null,
   checking: false,
-  solved: null as { xp: number; bonus: boolean; promotedTo?: string } | null,
+  solved: null as { xp: number; bonus: boolean; promotedTo?: string; badges?: Badge[] } | null,
   navCollapsed: readPref('dsg-nav') === 'collapsed',
   /** Closed navigation groups. Monitoring and Catalog start closed, Apps and Utilities open, as in the tenant (Bild 3, 17). */
   closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog,transport').split(',').filter(Boolean)),
@@ -515,6 +516,13 @@ function renderHome(main: HTMLElement) {
               }).join('')}</div>`).join('')}
           </div></div>
         </section>
+        <section class="home-card full" aria-label="Badges" id="badges">
+          <div class="hc-head"><h3>Badges</h3><small>${earnedBadges(ctx.progress).length} of ${BADGES.length} earned</small></div>
+          <div class="hc-body"><div class="badge-grid">${BADGES.map((b) => {
+            const on = b.earned(ctx.progress);
+            return `<div class="badge ${on ? 'on' : ''}" data-badge="${b.id}" title="${on ? 'Earned' : 'Not earned yet'}">${BADGE_ICON}<span><b>${esc(b.name)}</b><small>${esc(b.text)}</small></span></div>`;
+          }).join('')}</div></div>
+        </section>
         <section class="home-card full progress" aria-label="Your progress">
           <div class="hc-head"><h3>Your progress</h3></div>
           <div class="hc-body"><div class="progress-row">
@@ -599,14 +607,21 @@ function renderAppInfo(main: HTMLElement, a: AppInfo) {
 }
 
 function renderGlossary(main: HTMLElement) {
+  // Terms appear from the chapter in which the player first meets them.
+  const reached = currentChapter();
+  const open = GLOSSARY.filter((g) => g.chapter <= reached);
+  const later = GLOSSARY.length - open.length;
+  const chapters = [...new Set(open.map((g) => g.chapter))].sort((a, b) => b - a);
   main.innerHTML = `
     <h1 class="view-title">Glossary</h1>
-    <p class="view-lead">The terms you meet in the missions, and where to find them in a real tenant.</p>
+    <p class="view-lead">The terms you have met so far, newest chapter first, and where to find them in a real tenant.
+      ${later ? `${later} more ${later === 1 ? 'term appears' : 'terms appear'} as you reach later chapters.` : 'You have met every term of the game.'}</p>
+    ${chapters.map((nr) => `<h2 class="glossary-chapter">Chapter ${nr}: ${esc(CHAPTERS[nr]?.title ?? '')}${nr === reached ? ' <span class="chip">New</span>' : ''}</h2>
     <div class="glossary">
-      ${GLOSSARY.map(
+      ${open.filter((g) => g.chapter === nr).map(
         (g) => `<article class="panel term"><h3>${esc(g.term)}</h3><p>${esc(g.text)}</p><p class="real">In a real tenant: ${esc(g.realTenant)}</p></article>`,
       ).join('')}
-    </div>`;
+    </div>`).join('')}`;
 }
 
 // ---------------------------------------------------------------- mission panel
@@ -745,13 +760,14 @@ function reportHtml() {
     <div class="success" role="status">
       ${s ? `<div class="gain">+${s.xp} XP${s.bonus ? ` <small>incl. ${CLEAN_BONUS} for a clean review</small>` : ''}</div>` : ''}
       ${s?.promotedTo ? `<div class="promotion">Promoted to <b>${esc(s.promotedTo)}</b></div>` : ''}
+      ${s?.badges?.length ? `<div class="badge-new" id="badge-new">${s.badges.map((b) => `<span class="badge on">${BADGE_ICON}<span><b>New badge: ${esc(b.name)}</b><small>${esc(b.text)}</small></span></span>`).join('')}</div>` : ''}
       <div class="debrief"><span class="avatar" aria-hidden="true">${esc(m.from.initials)}</span><div>${m.debrief}</div></div>
     </div>
     ${notes}
     <div class="real-tenant"><b>In the real tenant</b><p>${m.realTenant}</p></div>
     ${next
       ? `<button class="btn primary" type="button" id="next-mission">Next mission: ${esc(next.title)}</button>`
-      : `<p class="muted">That was the last mission: the main game is complete. Excursions (Business Builder, Catalog, Transport, consumption) are in the making; your progress is saved.</p>`}`;
+      : `<p class="muted">That was the last mission: the main game and the excursions are complete. Your progress is saved.</p>`}`;
 }
 
 async function runCheck() {
@@ -773,11 +789,15 @@ async function runCheck() {
     const bonus = state.report.notes.length === 0;
     const gained = m.xp + (bonus ? CLEAN_BONUS : 0);
     const before = rankOf(ctx.progress.xp).name;
+    const badgesBefore = new Set(earnedBadges(ctx.progress).map((b) => b.id));
     mp.done = true;
     mp.xpEarned = gained;
     ctx.progress.xp += gained;
     const after = rankOf(ctx.progress.xp).name;
-    state.solved = { xp: gained, bonus, promotedTo: after !== before ? after : undefined };
+    state.solved = {
+      xp: gained, bonus, promotedTo: after !== before ? after : undefined,
+      badges: earnedBadges(ctx.progress).filter((b) => !badgesBefore.has(b.id)),
+    };
   }
   state.checking = false;
   save();

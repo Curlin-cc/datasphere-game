@@ -81,7 +81,7 @@ src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (No
 src/db.ts            ← DuckDB-WASM: initDb, runSql, exec, listObjects (Spaces = DuckDB-Schemas)
 src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete, Farben über CSS-Variablen
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
-src/content/chapters.ts ← Kapitel, Ränge, Glossar
+src/content/chapters.ts ← Kapitel, Ränge, Glossar (jeder Begriff mit `chapter`: erscheint ab diesem Kapitel)
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt), heute nur Sammelstelle für `guided.ts` – jede neue Mission braucht beides!
 src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c12.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
 src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric, model), Review-Regeln, XP
@@ -109,6 +109,7 @@ src/views/transport.ts ← Kapitel 12: Transport › Packages (Editor mit Objekt
 src/catalog.ts       ← Kapitel 12: Katalog-Metadaten (Assets, Glossarbegriffe, Tag-Hierarchien), Suche
 src/views/catalog.ts ← Kapitel 12: Catalog & Marketplace › Search (Suche, Filter, Asset-Detailseite, Glossarbegriffe, Veröffentlichen)
 src/views/business.ts ← Kapitel 12: Business Builder (Deprecated), lesend, mit Altobjekten von 2023 in RHN_REP
+src/badges.ts        ← Badges (aus dem Spielstand abgeleitet, nichts extra gespeichert): Kapitel-Meilensteine, First Try, Calin Approves, Self-Reliant
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
 
@@ -165,10 +166,9 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
    v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
 2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Security-Listen im Tabellenstil, System-Unterpunkte,
    Import-Kacheln, Settings-Dialog. Echten Screenshot der Connections-App besorgen (Bild 12 zeigt Translation)
-3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
-4. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
-5. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
-6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
+3. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
+4. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
+5. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
    und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
    erneutes Deploy die persistierten Daten entfernt; Kapitel 10: ob Task Chains Objekte anderer Spaces nur über geteilte Ketten erreichen
-7. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+6. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)

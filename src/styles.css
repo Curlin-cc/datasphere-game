@@ -1430,3 +1430,19 @@ td.act { color: var(--link); }
   .mon-head, .mon-body, .sys-section { padding-left: 24px; padding-right: 24px; }
   .sys-section { grid-template-columns: 1fr; }
 }
+
+/* ---------------------------------------------------------------- Glossary chapters and badges */
+.glossary-chapter { font-size: 16px; font-weight: 800; margin: 22px 0 10px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.glossary-chapter:first-of-type { margin-top: 4px; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.badge { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: var(--tile-w) dashed var(--line-strong); border-radius: var(--radius-m);
+  color: var(--ink-faint); background: var(--surface); }
+.badge span { display: grid; gap: 2px; min-width: 0; }
+.badge b { color: var(--ink-soft); font-size: 13.5px; }
+.badge small { font-size: 12px; line-height: 1.35; }
+.badge-ic { width: 30px; height: 30px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.badge.on { border-style: solid; border-color: var(--tile-border); color: var(--ink-soft); }
+.badge.on b { color: var(--ink); }
+.badge.on .badge-ic { stroke: var(--msc-orange); fill: var(--warning-soft); }
+.badge.on .badge-ic path:first-child { fill: none; stroke: var(--msc-purple); }
+.badge-new { display: grid; gap: 8px; margin: 8px 0; }
