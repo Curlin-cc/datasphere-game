@@ -57,7 +57,7 @@ docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen, Quellsy
 docs/design/         ← verbindliches Design: README (Regeln, Farben, Seitentypen, Abgleich), screenshots/ (21 Bilder), BILDBESCHREIBUNGEN.md, quelle/ (docx)
 docs/handbuch/       ← Curlins SAP-Datasphere-Handbuch: docx + Markdown je Kapitel (fachliche Quelle, README = Inhaltsverzeichnis)
 docs/HANDBUCH_ABGLEICH.md ← Abgleich mit Curlins SAP-Datasphere-Handbuch: was abgedeckt ist, was dort „nicht verifiziert“ ist
-src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
+src/main.ts          ← Shell (Tenant-Banner, Shellbar, Seitennavigation mit Gruppen), Routing, Zurück-Verlauf, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
 src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
 src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebnistabelle
 src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
@@ -90,7 +90,10 @@ src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabi
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
 src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–7: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
-src/styles.css       ← Design-Tokens (noch Shell navy/Akzent teal – Umbau auf Horizon laut docs/design offen), Layer-Farben IN/HARM/REP, Hell/Dunkel
+src/styles.css       ← Horizon-Design-Tokens (hell/dunkel) nach docs/design, Layer-Farben IN/HARM/REP; Seitentypen A–G am Dateiende
+src/brand.ts         ← MSC-Logo (Curlins Marke) statt SAP-Logo
+src/views/welcome.ts ← Seitentyp A: „Welcome to the …“ mit Space-Karten (usedMB, fmtSize)
+src/views/toolbar.ts ← Objekt-Werkzeugleiste der Editoren, „Details“, Kopf „Model Properties“
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
 
@@ -135,9 +138,8 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. **Oberfläche auf das Datasphere-Design umstellen** (`docs/design/README.md`, Abschnitt 4 als Checkliste): zuerst Shell, Seitennavigation
-   mit Gruppen und Farben/Tokens, dann Data Builder (Willkommensseite, Reiter, Kachelleiste, Tabelle), Editor mit „Model Properties“,
-   danach die übrigen Apps. Tutorials und Playtests nutzen IDs/Selektoren – beim Umbau die `id`/`data-*`-Attribute behalten oder mitziehen
+1. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
+   + Space-Karten, Task Logs als Seite wie Bild 1, System-Reiter wie Bild 15. IDs/`data-*` beibehalten, danach `look.py` + alle Playtests
 2. Kapitel 8 (Data Access Controls, Handbuch 9.3): Kachel „Data Access Control“ (`NEW_TILES` id `dac`), DAC mit Kriterium `REGION`
    (Single Values bzw. Operator and Values) und Berechtigungstabelle (Benutzer → Region); Zuweisung an `RHN_REP_D_GRID_AREA` bzw. die Facts;
    Data Preview „als Benutzer“ (Markus sieht nur NORTH, Aylin nur SOUTH, Petra alles). DAC liegt laut Screenshots im Data Builder (Reiter + Kachel), kein eigener Navigationseintrag

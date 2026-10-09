@@ -24,7 +24,7 @@ export interface TourStep {
   title: string;
   /** Trusted HTML from our own content files. */
   body: string;
-  /** CSS selector of the element to spotlight. Without it the card sits in the centre. */
+  /** CSS selector of the element to spotlight; "A || B" falls back to B. Without it the card sits in the centre. */
   target?: string;
   /** View to open before the step is shown, e.g. 'builder'. */
   view?: string;
@@ -247,8 +247,14 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   go(0);
 }
 
-const firstVisible = (selector: string) =>
-  [...document.querySelectorAll<HTMLElement>(selector)].find((el) => el.getBoundingClientRect().height > 0) ?? null;
+/** First visible match. "A || B" tries A first, then B (e.g. a nav entry, else its closed group). */
+const firstVisible = (selector: string): HTMLElement | null => {
+  for (const part of selector.split(' || ')) {
+    const el = [...document.querySelectorAll<HTMLElement>(part)].find((x) => x.getBoundingClientRect().height > 0);
+    if (el) return el;
+  }
+  return null;
+};
 
 const visible = (selector: string) => firstVisible(selector) !== null;
 

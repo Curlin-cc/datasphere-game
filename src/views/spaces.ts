@@ -2,6 +2,7 @@ import { ctx } from '../ctx';
 import { exec, listObjects } from '../db';
 import { CAPACITY, NEW_SPACE_DEFAULTS, assigned, spaceIdError, storageError, sharedWith, round1, type Space } from '../tenant';
 import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, icon, ICONS } from '../ui';
+import { usedMB, fmtSize } from './welcome';
 
 /** Space Management: one tile per space with storage and priority, create, edit and delete. */
 
@@ -20,36 +21,58 @@ export async function renderSpaces(main: HTMLElement) {
   );
   const objectsIn = (id: string) => Math.max(t.objects.filter((o) => o.space === id).length, deployed.filter((o) => o.schema === id).length);
 
+  const healthy = spaces.filter((sp) => !sp.locked).length;
+  const locked = spaces.length - healthy;
+  const barRow = (label: string, usedMb: number, capGb: number) => {
+    const pct = Math.min(100, (usedMb / (capGb * 1024)) * 100);
+    return `<small>${label}</small><span>${fmtSize(usedMb)} of ${capGb} GB</span>
+      <span class="bar ${pct >= 100 ? 'over' : ''}"><i style="width:${Math.max(2, pct).toFixed(1)}%"></i></span>`;
+  };
+  main.classList.add('bleed');
   main.innerHTML = `
-    <div class="view-head">
-      <div><h1 class="view-title">Space Management</h1>
-        <p class="view-lead">Each space has its own members, storage and priority. Objects in one space are invisible to the others
-          until you share them.${canCreate ? '' : ' Creating spaces unlocks in chapter 1. For now you can look at the space IT prepared.'}</p></div>
-      <button class="btn primary" type="button" id="create-space" ${canCreate ? '' : 'disabled title="Unlocks in chapter 1"'}>Create space</button>
-    </div>
-    <section class="panel capacity" aria-label="Tenant capacity">
-      ${bar('Disk', used.diskGB, CAPACITY.diskGB)}
-      ${bar('In-memory', used.memoryGB, CAPACITY.memoryGB)}
-    </section>
-    <div class="space-tiles" id="space-list">
-      ${spaces.map((sp) => {
-        const sharedIn = sharedWith(t, sp.id).length;
-        const n = objectsIn(sp.id);
-        return `<article class="panel space-tile ${sp.locked ? 'is-locked' : ''}" data-space-tile="${esc(sp.id)}">
-          <div class="space-tile-head">${spaceChip(sp.id)}${sp.locked ? `<span class="chip warn lock-chip">${icon(ICONS.lock)} Locked</span>` : ''}<span class="spacer"></span><span class="prio" title="Priority, 1 lowest to 5 highest">Priority ${sp.priority}</span></div>
-          <h3>${esc(sp.name)}</h3>
-          <p class="muted">${layerName(sp.id)} layer${sp.system ? ' · prepared by IT' : ''}</p>
-          <dl class="tile-facts">
-            <div><dt>Disk</dt><dd>${sp.diskGB} GB${sp.usedDiskGB !== undefined ? ` <small class="${sp.usedDiskGB > sp.diskGB ? 'over' : 'muted'}">${sp.usedDiskGB} GB used</small>` : ''}</dd></div>
-            <div><dt>In-memory</dt><dd>${sp.memoryGB} GB</dd></div>
-            <div><dt>Objects</dt><dd>${n}${sharedIn ? ` <small class="muted">+${sharedIn} shared in</small>` : ''}</dd></div>
-          </dl>
-          ${sp.locked ? `<p class="lock-note">Exceeds its disk storage. No data can be loaded or deployed until it has enough storage and is unlocked.</p>` : ''}
-          ${canCreate ? `<div class="tile-actions"><button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>
-            ${sp.locked ? `<button class="btn small primary" type="button" data-unlock="${esc(sp.id)}">Unlock</button>` : ''}
-            ${sp.system ? '' : `<button class="btn small link" type="button" data-delete="${esc(sp.id)}">Delete</button>`}</div>` : ''}
-        </article>`;
-      }).join('')}
+    <div class="sm-page">
+      <aside class="sm-side" aria-label="Spaces overview">
+        ${canCreate ? '' : `<div class="msg warn">${icon(ICONS.info)}<span>Creating spaces unlocks in chapter 1. For now you can look at the space IT prepared.</span></div>`}
+        <div class="sm-box"><h3>Spaces</h3>
+          <button type="button" class="sm-row on">All Spaces<b>${spaces.length}</b>${icon(ICONS.right)}</button>
+          <button type="button" class="sm-row" disabled>Recycle Bin<b>0</b>${icon(ICONS.right)}</button></div>
+        <section class="sm-box capacity" aria-label="Tenant capacity"><h3>Tenant Capacity</h3>
+          ${bar('Disk', used.diskGB, CAPACITY.diskGB)}
+          ${bar('In-memory', used.memoryGB, CAPACITY.memoryGB)}
+        </section>
+      </aside>
+      <section class="sm-main">
+        <div class="sm-head"><h1>Spaces <span>(${spaces.length})</span></h1>
+          <span class="sm-counts"><span class="ok" title="Healthy">${icon(ICONS.check)} ${healthy}</span><span class="bad" title="Locked">${icon(ICONS.lock)} ${locked}</span></span></div>
+        <div class="sm-toolbar">
+          <button class="btn small link" type="button" id="create-space" ${canCreate ? '' : 'disabled title="Unlocks in chapter 1"'}>${icon(ICONS.plus)} Create</button>
+          <span class="spacer"></span>
+          <button class="btn small link" type="button" disabled>Edit</button><button class="btn small link" type="button" disabled>Delete</button>
+          <button class="btn small link" type="button" disabled>Lock</button><button class="btn small link" type="button" disabled>Unlock</button>
+          <button class="btn small link" type="button" disabled>Monitor</button>
+        </div>
+        <p class="muted sm-lead">Each space has its own members, storage and priority. Objects in one space are invisible to the others until you share them.</p>
+        <div class="space-tiles" id="space-list">
+          ${spaces.map((sp) => {
+            const sharedIn = sharedWith(t, sp.id).length;
+            const n = objectsIn(sp.id);
+            const mb = usedMB(t, sp.id);
+            return `<article class="space-tile ${sp.locked ? 'is-locked' : ''}" data-space-tile="${esc(sp.id)}">
+              <div class="st-top"><div><h3>${esc(sp.name)}</h3><span class="sc-id">${spaceChip(sp.id)}${layerName(sp.id)} layer${sp.system ? ' · prepared by IT' : ''}</span></div>
+                <input type="checkbox" aria-label="Select ${esc(sp.id)}"></div>
+              <span class="st-status ${sp.locked ? 'bad' : 'ok'}">${sp.locked ? `${icon(ICONS.lock)} Locked` : 'Healthy'}</span>
+              <span class="muted st-meta">Priority ${sp.priority} · ${n} ${n === 1 ? 'object' : 'objects'}${sharedIn ? `, +${sharedIn} shared in` : ''}</span>
+              <div class="sc-body">${barRow('Disk for Storage:', sp.usedDiskGB !== undefined ? sp.usedDiskGB * 1024 : mb, sp.diskGB)}</div>
+              <div class="sc-body">${barRow('Memory for Storage:', Math.round(mb * 0.35), sp.memoryGB)}</div>
+              ${sp.locked ? `<p class="lock-note">Exceeds its disk storage. No data can be loaded or deployed until it has enough storage and is unlocked.</p>` : ''}
+              <div class="st-foot"><span class="chip">Datasphere Game</span><span class="spacer"></span>
+                ${canCreate ? `${sp.system ? '' : `<button class="btn small link" type="button" data-delete="${esc(sp.id)}">Delete</button>`}
+                ${sp.locked ? `<button class="btn small primary" type="button" data-unlock="${esc(sp.id)}">Unlock</button>` : ''}
+                <button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>` : ''}</div>
+            </article>`;
+          }).join('')}
+        </div>
+      </section>
     </div>`;
   main.querySelector('#create-space')?.addEventListener('click', () => openSpaceDialog());
   main.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>

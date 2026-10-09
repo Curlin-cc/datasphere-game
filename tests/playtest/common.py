@@ -59,6 +59,13 @@ class Game:
             self.pg.click('[data-act="skip"]')
 
     def nav(self, app):
+        """Open an app from the side navigation; opens a closed group (Monitoring, Catalog & Marketplace) first."""
+        if not self.pg.locator(f'.nav [data-view="{app}"]').count():
+            for grp in ['monitoring', 'catalog', 'apps', 'utilities']:
+                self.pg.click(f'.nav [data-group="{grp}"]')
+                if self.pg.locator(f'.nav [data-view="{app}"]').count():
+                    break
+                self.pg.click(f'.nav [data-group="{grp}"]')
         self.pg.click(f'.nav [data-view="{app}"]')
         self.pg.wait_for_timeout(250)
 

@@ -37,6 +37,8 @@ with sync_playwright() as p:
     for app, label in [('repository', 'Repository Explorer'), ('builder', 'Data Builder'), ('monitor', 'Data Integration Monitor'),
                        ('connections', 'Connections'), ('spaces', 'Space Management'), ('security', 'Security')]:
         expect(pg, f'Open {label}')
+        if not pg.locator(f'.nav [data-view="{app}"]').count():
+            pg.click('.nav [data-group="monitoring"]')
         pg.click(f'.nav [data-view="{app}"]')
     expect(pg, 'Your map'); g.shot('g-c00-map'); nexts(pg)
     expect(pg, 'Your answers')

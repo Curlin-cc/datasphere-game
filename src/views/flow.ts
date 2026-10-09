@@ -7,7 +7,8 @@ import {
 } from '../integration';
 import { startFlowRun } from './monitor';
 import { monitorTo } from './monitor';
-import { esc, spaceChip, icon, ICONS, openDialog, toast } from '../ui';
+import { objectToolbar, bindDetails } from './toolbar';
+import { esc, spaceChip, ICONS, openDialog, toast } from '../ui';
 
 /**
  * Data Builder, chapter 3: "Import Remote Tables" wizard and the replication flow editor.
@@ -98,15 +99,19 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
     const src = conn ? sourceOf(conn) : undefined;
     main.innerHTML = `
       <div class="editor-page is-flow">
-        <div class="ed-toolbar">
-          <button class="btn small link" type="button" id="ed-back">${icon(ICONS.back)} ${esc(space)}</button>
-          <div class="ed-title"><b>${esc(business || 'New Replication Flow')}</b><small>Replication Flow · ${esc(space)}.${esc(technical || '…')}</small></div>
-          ${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>` : `<span class="status" data-status="new">New</span>`}
-          <span class="spacer"></span>
-          <button class="btn" type="button" id="ed-save">Save</button>
-          <button class="btn" type="button" id="ed-deploy">Deploy</button>
-          <button class="btn primary" type="button" id="flow-run-ed" ${o?.deployed ? '' : 'disabled title="Deploy first"'}>Run</button>
-        </div>
+        ${objectToolbar({
+          space,
+          title: business || 'New Replication Flow',
+          sub: `Replication Flow · ${space}.${technical || '…'}`,
+          statusHtml: o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>` : `<span class="status" data-status="new">New</span>`,
+          groups: [
+            { label: 'General', buttons: [
+              { id: 'ed-save', icon: ICONS.save, label: 'Save', title: 'Save (design time)' },
+              { id: 'ed-deploy', icon: ICONS.deploy, label: 'Deploy', title: 'Deploy (runtime)' },
+            ] },
+            { label: 'Run', buttons: [{ id: 'flow-run-ed', icon: ICONS.flow, label: 'Run', disabled: !o?.deployed, title: o?.deployed ? 'Run the flow' : 'Deploy first' }] },
+          ],
+        })}
         <div class="ed-body">
           <aside class="objects flow-source" aria-label="Source">
             <h3>Source</h3>
@@ -171,6 +176,7 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
       tn.value = technical = tn.value.toUpperCase();
     });
     main.querySelector('#ed-back')!.addEventListener('click', nav.back);
+    bindDetails(main);
     main.querySelector<HTMLSelectElement>('#flow-conn')!.addEventListener('change', (e) => {
       const v = (e.target as HTMLSelectElement).value;
       if (v !== draft.connection && draft.objects.length && !confirm('A flow has one source connection. Changing it removes the replication objects. Continue?')) return draw();

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 126 40" width="252" height="80" role="img" aria-label="MSC">
+  <!-- MSC: Curlins eigene Marke, ersetzt im Spiel das SAP-Logo. Wortmarke fett, Akzent: drei steigende Balken. Farben: Lila #5B2A86, Weinrot #7A1F3D, Orange #F07C1A. Quelle im Code: src/brand.ts -->
+  <text x="0" y="32" font-family="Inter, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="800" letter-spacing="-1.5" fill="#1D2D3E">MSC</text>
+  <g transform="translate(84 4.5) scale(1.15)">
+    <path d="M0 24h6l3.2-8h-6z" fill="#5B2A86"/>
+    <path d="M9 24h6l6-15h-6z" fill="#7A1F3D"/>
+    <path d="M18 24h6l8.8-22h-6z" fill="#F07C1A"/>
+  </g>
+</svg>

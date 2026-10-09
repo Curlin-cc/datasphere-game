@@ -4,6 +4,10 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | **MSC statt SAP-Logo**: Curlins eigene Marke, Wortmarke im Big-4-Stil + drei steigende Balken in Lila, Weinrot, Orange (`src/brand.ts`, `docs/design/msc-logo.svg`) | Wunsch von Curlin; keine SAP-Marken im Spiel |
+| 2026-10-09 | Oberfläche auf Horizon umgebaut, IDs und `data-*`-Attribute der alten Oberfläche bleiben (Tests und Tutorials) | Umbau ohne Bruch der 36 Missionen und Tutorials |
+| 2026-10-09 | Monitoring und Catalog & Marketplace starten zugeklappt; Tutorials zeigen erst auf die Gruppe (Ziel „A || B“ in `tutorial.ts`) | Wie Bild 3/17 im echten Tenant |
+| 2026-10-09 | Import Remote Tables / CSV als Kacheln hinter einem Trenner statt im Import-Menü | Tutorials aus Kapitel 3 brauchen ein sichtbares Ziel |
 | 2026-10-09 | **Optik folgt der echten SAP Datasphere (Horizon)** nach `docs/design/` (Screenshots und Beschreibung von Curlin); ersetzt „eigener Look, Struktur echt, Optik eigenständig“ (Eintrag vom selben Tag weiter unten). Ausnahmen: keine SAP-Logos, -Bilder, -Schriftdateien; Missions-Panel bleibt | Wunsch von Curlin: Wiedererkennen im echten Tenant ist Lernziel |
 | 2026-10-09 | Seitennavigation wie im Tenant: Monitoring › (System and Spaces, Capacities, Task Logs, …, Data Integration), Gruppen Apps und Utilities, Security/System unten | Bild 3/9/17 in `docs/design/`; klärt Abgleich-Punkte 1 und 2 |
 | 2026-10-09 | Analytic Model als eigener Objekttyp ohne DB-Objekt: Data Preview und Prüfungen erzeugen daraus eine SQL-Abfrage (`modelSql`), die eine Dimension nur joint, wenn die Abfrage sie braucht | Handbuch 6.10: Modell definiert, was Konsumenten sehen; zeigt nebenbei, wann aus einer Association ein Join wird |

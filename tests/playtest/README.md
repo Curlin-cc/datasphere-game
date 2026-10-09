@@ -16,4 +16,5 @@ Aus dem Ordner `tests/playtest/` starten, damit `common.py` gefunden wird.
 Neue Missionen: Skript für das Kapitel ergänzen, bevor committet wird.
 Kapitel 5: `chapter5.py` baut alle Views mit typischen Fehlern; SQL und Startzustand in `chapter5_data.py` (auch von `guided.py` genutzt).
 Kapitel 6: `chapter6.py` (Startzustand mit den Kapitel-5-Views in `chapter6_data.py`), Helfer `Game.semantics(usage, roles, assoc)`.
+Design: `look.py <ordner> [dark]` macht Screenshots aller Hauptseiten zum Vergleich mit `docs/design/screenshots/` (keine Prüfung).
 Kapitel 7: `chapter7.py` (Startzustand mit Dimensionen und Facts in `chapter7_data.py`), baut beide Analytic Models mit typischen Fehlern; `guided.py` spielt c07-m01.

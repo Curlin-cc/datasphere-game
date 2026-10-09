@@ -9,6 +9,7 @@ import {
 } from '../analytic';
 import { lockError } from '../integration';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable } from '../ui';
+import { objectToolbar, bindDetails, propsHead } from './toolbar';
 
 /**
  * Analytic Model editor (chapter 7, Handbuch 6.10.2): canvas with the fact source in the middle and its associated
@@ -108,7 +109,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
         ${toolbar()}
         <div class="ed-body">
           <section class="ed-center am-canvas" id="am-canvas" aria-label="Canvas">${canvas()}</section>
-          <aside class="props" id="properties" aria-label="Properties">${properties()}</aside>
+          <aside class="props" id="properties" aria-label="Properties">${propsHead('Model Properties', ICONS.cube, `Analytic Model ${technical || ''}`)}${properties()}</aside>
         </div>
         <div class="results am-preview" id="results">${previewControls()}<div class="am-out" id="am-out">
           <div class="placeholder"><b>Data Preview</b> shows the model the way SAP Analytics Cloud users see it: pick attributes for the rows,
@@ -118,16 +119,19 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
   };
 
   function toolbar() {
-    return `<div class="ed-toolbar">
-        <button class="btn small link" type="button" id="ed-back">${icon(ICONS.back)} ${esc(space)}</button>
-        <div class="ed-title"><b id="ed-title-text">${esc(business || 'New Analytic Model')}</b>
-          <small>Analytic Model · ${esc(space)}.${esc(technical || '…')}</small></div>
-        ${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>` : `<span class="status" data-status="new">New</span>`}
-        <span class="spacer"></span>
-        <button class="btn" type="button" id="ed-save" ${def ? '' : 'disabled'}>Save</button>
-        <button class="btn" type="button" id="ed-deploy" ${def ? '' : 'disabled'}>Deploy</button>
-        <button class="btn primary" type="button" id="run" ${def ? '' : 'disabled'}>Data Preview</button>
-      </div>`;
+    return objectToolbar({
+      space,
+      title: business || 'New Analytic Model',
+      sub: `Analytic Model · ${space}.${technical || '…'}`,
+      statusHtml: o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>` : `<span class="status" data-status="new">New</span>`,
+      groups: [
+        { label: 'General', buttons: [
+          { id: 'ed-save', icon: ICONS.save, label: 'Save', disabled: !def, title: 'Save (design time)' },
+          { id: 'ed-deploy', icon: ICONS.deploy, label: 'Deploy', disabled: !def, title: 'Deploy (runtime)' },
+        ] },
+        { label: 'View', buttons: [{ id: 'run', icon: ICONS.preview, label: 'Data Preview', disabled: !def }] },
+      ],
+    });
   }
 
   function canvas() {
@@ -330,6 +334,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
       keepFresh();
       nav.back();
     });
+    bindDetails(main);
   }
 
   function bind() {

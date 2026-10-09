@@ -35,6 +35,26 @@ export const ICONS = {
   remote: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5h11M8 8.5v3M6.5 10l1.5 1.5 1.5-1.5"/>',
   flow: '<circle cx="3.5" cy="8" r="1.6"/><circle cx="12.5" cy="8" r="1.6"/><path d="M5.1 8h5.8M9 6l2 2-2 2"/>',
   info: '<circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v4M8 5v.2"/>',
+  book: '<path d="M3 3.5h3.5A1.5 1.5 0 018 5v8a1.5 1.5 0 00-1.5-1.5H3zM13 3.5H9.5A1.5 1.5 0 008 5v8a1.5 1.5 0 011.5-1.5H13z"/>',
+  help: '<circle cx="8" cy="8" r="5.8"/><path d="M6.3 6.4a1.8 1.8 0 113 1.4c-.8.5-1.3.9-1.3 1.7M8 11.2v.2"/>',
+  theme: '<path d="M12.5 9.5A5 5 0 016.5 3.5a5 5 0 106 6z"/>',
+  grid: '<circle cx="4" cy="4" r=".9"/><circle cx="8" cy="4" r=".9"/><circle cx="12" cy="4" r=".9"/><circle cx="4" cy="8" r=".9"/><circle cx="8" cy="8" r=".9"/><circle cx="12" cy="8" r=".9"/><circle cx="4" cy="12" r=".9"/><circle cx="8" cy="12" r=".9"/><circle cx="12" cy="12" r=".9"/>',
+  right: '<path d="M6 3.5L10.5 8 6 12.5"/>',
+  search: '<circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2l3.3 3.3"/>',
+  filter: '<path d="M2.5 3.5h11l-4.3 5v4l-2.4 1.2V8.5z"/>',
+  plus: '<path d="M8 3v10M3 8h10"/>',
+  star: '<path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.6.7 3.8L8 11.1l-3.4 1.8.7-3.8-2.8-2.6 3.8-.5z"/>',
+  folder: '<path d="M2.5 4.5h4l1.2 1.5h5.8v6.5h-11z"/>',
+  save: '<path d="M3 3h8l2 2v8H3zM5.5 3v3h4V3M5 13V9h6v4"/>',
+  deploy: '<path d="M8 11V3M5 6l3-3 3 3M3 10.5V13h10v-2.5"/>',
+  preview: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5h11M6.5 6.5V13M10 6.5V13"/>',
+  edit: '<path d="M3 13l1-3.5L10.5 3 13 5.5 6.5 12z"/>',
+  trash: '<path d="M3.5 4.5h9M6 4.5V3h4v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5"/>',
+  sort: '<path d="M5 3v10M3 11l2 2 2-2M11 13V3M9 5l2-2 2 2"/>',
+  gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6L5 5M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4"/>',
+  list: '<path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5"/>',
+  globe: '<circle cx="8" cy="8" r="5.8"/><path d="M2.2 8h11.6M8 2.2c1.6 1.6 2.4 3.6 2.4 5.8S9.6 12.2 8 13.8M8 2.2C6.4 3.8 5.6 5.8 5.6 8s.8 4.2 2.4 5.8"/>',
+  check: '<path d="M3.5 8.5l3 3 6-7"/>',
   cube: '<path d="M8 2l5.5 3v6L8 14l-5.5-3V5zM2.5 5L8 8l5.5-3M8 8v6"/>',
 };
 
@@ -55,6 +75,12 @@ export function openDialog(title: string, body: string, cls = '') {
   overlay.addEventListener('click', (e) => e.target === overlay && close());
   overlay.querySelectorAll('[data-act="cancel"]').forEach((b) => b.addEventListener('click', close));
   return { form: overlay.querySelector<HTMLFormElement>('form')!, close };
+}
+
+/** Content right of the app name in the shellbar (breadcrumb: space, object). Cleared on every view change. */
+export function setCrumb(html: string) {
+  const el = document.querySelector<HTMLElement>('#shell-crumb');
+  if (el) el.innerHTML = html;
 }
 
 /** Short message at the bottom of the screen, e.g. "Deployed". */

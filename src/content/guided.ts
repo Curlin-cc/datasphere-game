@@ -27,11 +27,19 @@ const answered = () => {
   return sets.length > 0 && sets.every((f) => f.querySelector('input:checked'));
 };
 
+/** Apps inside the expandable Monitoring entry: the tour first points at Monitoring, then the entry opens. */
+const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces' };
+
 const nav = (id: string, label: string, body: string): TourStep => ({
   title: `Open ${label}`,
-  target: `.nav [data-view="${id}"]`,
+  target: IN_MONITORING[id] ? `.nav [data-view="${id}"] || .nav [data-group="monitoring"]` : `.nav [data-view="${id}"]`,
   body,
-  action: { do: `Click <b>${label}</b> in the side navigation.`, check: () => appOpen(id) },
+  action: {
+    do: IN_MONITORING[id]
+      ? `Click <b>Monitoring</b> in the side navigation, then <b>${IN_MONITORING[id]}</b>.`
+      : `Click <b>${label}</b> in the side navigation.`,
+    check: () => appOpen(id),
+  },
 });
 
 const questions = (hint: string): TourStep[] => [
@@ -235,9 +243,10 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     {
       title: 'The side navigation',
       target: '.nav',
-      body: `<p>On the left are the <b>apps</b>. Each one does one job. The upper group is about data: finding, modeling, integrating.
-        The lower group runs the tenant: spaces, monitoring, security, transport, system.</p>
-        <p>An <b>ⓘ</b> means the app only shows an info page in this game, for now. The <b>☰</b> button folds the navigation to icons.</p>`,
+      body: `<p>On the left are the <b>apps</b>, in the same order as in a real tenant. <b>Monitoring</b> and <b>Catalog &amp; Marketplace</b>
+        open a list when you click them. Under <b>Apps</b> you model and integrate data, under <b>Utilities</b> you run spaces, translation and transport.
+        <b>Security</b> and <b>System</b> sit at the bottom.</p>
+        <p>Some apps only show an info page in this game for now (an <b>ⓘ</b> appears when you point at them). The <b>☰</b> button folds the navigation to icons.</p>`,
     },
   ],
   'c00-m02': [

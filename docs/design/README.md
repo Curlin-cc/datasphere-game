@@ -22,7 +22,8 @@ im echten Tenant sofort zurecht.
 
 **Nicht übernehmen (bleibt anders):**
 - Kein SAP-Logo, keine SAP-Wortmarke, keine SAP-Bilder (Hero-Bild, Illustrationen, Blog-Inhalte). An die Stelle des Logos kommt
-  die Spielmarke „Datasphere Game“; Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
+  **MSC**, Curlins eigene Marke (`msc-logo.svg`, im Code `src/brand.ts`): fette Wortmarke im Big-4-Stil plus drei steigende, schräge Balken
+  in Lila `#5B2A86`, Weinrot `#7A1F3D` und Orange `#F07C1A`. Illustrationen werden schlicht selbst gezeichnet (SVG, Linienstil).
 - Keine Schriftdateien von SAP („72“). Schrift: `"72", "Segoe UI", "Helvetica Neue", Arial, sans-serif` – nutzt 72 nur, wenn es lokal installiert ist.
 - Das **Missions-Panel rechts** gibt es nur im Spiel. Es wird wie ein Horizon-Seitenpanel gestaltet (weiß, Rahmen links, Kopf wie „Model Properties“), damit es nicht stört.
 - Layer-Farben (IN/HARM/REP) nur als kleine Chips, nie als Flächenfarben.
@@ -158,23 +159,31 @@ Space-Karte: Checkbox rechts oben, Name, ID, Status (Cold blau / Healthy grün),
 - **Settings** (Bild 20): zentraler Dialog, links Kategorien (User Account, Appearance – Horizon, Home Screen, Language & Region, Notifications,
   UI Settings – Show Business Name, Privacy), rechts Inhalt, „Close“ unten rechts
 
-## 4. Abgleich Spiel ↔ Design (Stand 09.10.2026, offen)
+## 4. Abgleich Spiel ↔ Design (Stand 09.10.2026)
 
-Das Spiel folgt bisher der Struktur, aber noch nicht der Optik. Umbau als eigene Aufgabe (siehe „Nächster Schritt“ in `AI_CONTEXT.md`):
+Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell und dunkel):
 
-- [ ] Shell: dunkle Kopfleiste → Petrol-Banner + weiße Shellbar mit App-Name und Icons rechts
-- [ ] Seitennavigation: Gruppen *Apps*, *Utilities*, *Monitoring ›*, *Catalog & Marketplace ›*, unten Security/System; Auswahlstil `#EBF8FF` + Balken;
-      Data Integration Monitor unter Monitoring › Data Integration, System Monitor als Monitoring › System and Spaces
-- [ ] Farben/Formen: Teal-Akzent → Horizon-Blau `#0070F2`/`#0064D9`, Hintergrund `#F5F6F7`, Karten 12 px, Schrift 72-Ersatz
-- [ ] Data Builder: Willkommensseite mit Space-Karten (A), Startseite mit Reitern, Kachelleiste mit Icon über Text, Suche, Werkzeugleiste, Tabelle
-      mit Checkbox/Favorite und „Type (Semantic Usage)“ (B); `+`-Menü
-- [ ] Editor: Objekt-Werkzeugleiste mit Icon-Gruppen, „Details“-Button, Repository/Sources links, blaues „Model Properties“-Panel mit Label-über-Feld (C)
-- [ ] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A)
-- [ ] Space Management mit zweiter Spalte, Statuszählern, Textaktionen und Karten wie F
-- [ ] Repository Explorer mit Collection/Space-Filterspalte (E)
-- [ ] Status-Darstellung: „✔ Deployed“ mit Icon; Laufstatus als farbiger Großbuchstaben-Text (D)
-- [ ] Home wie G (mit Karten zu Missionen statt Blog)
-- [ ] Missions-Panel als Horizon-Seitenpanel
+- [x] Shell: Petrol-Banner „Stadtwerke Rheinau · Training Tenant“, weiße Shellbar mit Menü, Zurück, MSC-Logo, App-Symbol + App-Name,
+      Breadcrumb (Space-Wechsel im Data Builder), rechts Rang/XP, Glossar, Hilfe, Theme, Avatar, App-Raster
+- [x] Seitennavigation in echter Reihenfolge: Monitoring › und Catalog & Marketplace › (aufklappbar, anfangs zu), Gruppen *Apps* und *Utilities*,
+      Security/System unten; Auswahl `#EBF8FF` + blauer Balken; Info-Apps ergänzt (Capacities, Task Logs, Expensive Statement Logs,
+      Elastic Compute Nodes, Marketplace Data Products, Translation, Data Sharing Cockpit) als Infoseiten
+- [x] Farben/Formen: Horizon-Tokens in `src/styles.css` (hell und dunkel), Karten 12 px, Buttons 8 px, Schrift Inter als 72-Ersatz
+- [x] Data Builder: Willkommensseite mit Space-Karten (A), Startseite mit Reitern, Kachelleiste (Icon über Text), Suche, Werkzeugleiste mit `+`-Menü,
+      „List Objects In: All (n)“, Tabelle mit Checkbox, Type (Semantic Usage), Status mit Icon, Changed On, Favorite (B)
+- [x] Editoren (SQL View, Replication Flow, Analytic Model): Objekt-Werkzeugleiste mit Icon-Gruppen, „Versions“/„Details“, blaues „Model Properties“-Panel,
+      SQL-View-Editor links „Repository / Sources“ mit Ordnern je Typ (C)
+- [x] Space Management mit zweiter Spalte (Spaces, Recycle Bin, Tenant Capacity), „Spaces (n)“ + Zähler, Textaktionen, Karten mit Healthy/Locked und Balken (F)
+- [x] Repository Explorer mit Suche oben, Filterspalte Collection/Space, Tabelle wie im Data Builder (E)
+- [x] Home: „Hello, Data Architect“, Kartenraster (Welcome mit MSC, Spaces mit Balken und „Working“, Data Builder – Top 5, How to play, Lernpfad, App-Übersicht, Fortschritt) (G)
+- [x] Missions-Panel als Horizon-Seitenpanel (blaues Kopfband)
+
+Noch offen:
+- [ ] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A); heute Space-Auswahl per Dropdown
+- [ ] Monitoring-Listen wie D (Task Logs als echte Seite mit Filterzeile, Status als farbiger Großbuchstaben-Text)
+- [ ] System mit Reiterleiste wie Bild 15, Security-Listen im Tabellenstil
+- [ ] Import-Kacheln: im Original im Import-Menü der Werkzeugleiste (Bild 19); im Spiel als Kacheln rechts vom Trenner, damit die Tutorials sie zeigen können
+- [ ] Settings-Dialog (Bild 20) statt einzelner Shell-Buttons
 
 ## 5. Arbeitsweise
 
@@ -182,5 +191,5 @@ Das Spiel folgt bisher der Struktur, aber noch nicht der Optik. Umbau als eigene
 2. Beschriftungen wörtlich aus den Screenshots übernehmen (englisch). Was im Spiel nicht funktioniert, bleibt sichtbar, aber deaktiviert
    oder öffnet eine Info („not in this game“) – wie bisher bei nicht gebauten Kacheln.
 3. Farben nur über die CSS-Variablen in `src/styles.css`, keine festen Farbwerte in Views.
-4. Nach dem Bauen: Screenshot im Playtest (`g.shot(...)`) und mit dem Original vergleichen; Abweichungen hier unter 4. festhalten.
+4. Nach dem Bauen: `cd tests/playtest && python3 look.py <ordner> [dark]` macht Screenshots aller Hauptseiten; mit dem Original vergleichen, Abweichungen hier unter 4. festhalten.
 5. Neue Screenshots von Curlin: nach `screenshots/` mit nächster Nummer, Beschreibung ergänzen, diese Datei aktualisieren.

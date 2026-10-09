@@ -2,7 +2,8 @@ import './styles.css';
 import { initDb, exec } from './db';
 import { generateDataset, datasetToSql } from './data/generator';
 import { CHAPTERS, GLOSSARY, GUIDANCE_INFO } from './content/chapters';
-import { APPS, appById, type AppInfo } from './content/apps';
+import { appById, NAV_ORDER, type AppInfo, type AppId, type NavSection } from './content/apps';
+import { MSC_LOGO } from './brand';
 import { TUTORIALS, TASK_TOURS } from './content/tutorials';
 import { MISSIONS, missionById, missionsOfChapter } from './content/missions';
 import { checkMission, type CheckReport } from './missions/engine';
@@ -12,10 +13,11 @@ import {
   loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
   exportProgress, importProgress, freshProgress, CLEAN_BONUS,
 } from './progress';
-import { seedSourceTables, restoreViews } from './repo';
+import { seedSourceTables, restoreViews, STATUS_LABEL } from './repo';
+import { usedMB, fmtSize } from './views/welcome';
 import { ctx, type ViewId } from './ctx';
-import { esc, icon, ICONS } from './ui';
-import { renderBuilder, enterBuilder, builderTo, rememberEditor } from './views/builder';
+import { esc, icon, ICONS, setCrumb } from './ui';
+import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
 import { renderSecurity } from './views/security';
@@ -40,6 +42,10 @@ const state = {
   checking: false,
   solved: null as { xp: number; bonus: boolean; promotedTo?: string } | null,
   navCollapsed: readPref('dsg-nav') === 'collapsed',
+  /** Closed navigation groups. Monitoring and Catalog start closed, Apps and Utilities open, as in the tenant (Bild 3, 17). */
+  closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog').split(',').filter(Boolean)),
+  /** Views visited before, for the Back button in the shellbar. */
+  history: [] as ViewId[],
 };
 
 ctx.progress = loadProgress();
@@ -85,16 +91,21 @@ function writePref(key: string, value: string) {
 function renderFrame() {
   app.innerHTML = `
     <div class="app ${state.navCollapsed ? 'nav-collapsed' : ''}">
+      <div class="tenant-banner" id="tenant-banner">Stadtwerke Rheinau · Training Tenant</div>
       <header class="shellbar">
-        <button class="shell-btn menu" id="nav-toggle" type="button" aria-label="${state.navCollapsed ? 'Expand' : 'Collapse'} navigation"
+        <button class="shell-icon" id="nav-toggle" type="button" aria-label="${state.navCollapsed ? 'Expand' : 'Collapse'} navigation"
           title="Expand or collapse the side navigation">${icon(ICONS.menu)}</button>
-        <span class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Datasphere Game</span>
-        <span class="tenant">Stadtwerke Rheinau<small>training tenant</small></span>
+        <button class="shell-icon" id="shell-back" type="button" aria-label="Back" title="Back">${icon(ICONS.back)}</button>
+        <button class="brand" id="brand-home" type="button" title="Home">${MSC_LOGO}</button>
+        <span class="shell-app" id="shell-app"></span>
+        <span class="shell-crumb" id="shell-crumb"></span>
         <span class="spacer"></span>
         <span class="rank" id="rank" title="Earn XP by solving missions. Hints cost XP.">${rankHtml()}</span>
-        <button class="shell-btn" id="glossary-open" type="button">Glossary</button>
-        <button class="shell-btn" id="guide-open" type="button">How to play</button>
-        <button class="shell-btn" id="theme-toggle" type="button">Theme</button>
+        <button class="shell-icon" id="glossary-open" type="button" aria-label="Glossary" title="Glossary">${icon(ICONS.book)}</button>
+        <button class="shell-icon" id="guide-open" type="button" aria-label="How to play" title="How to play">${icon(ICONS.help)}</button>
+        <button class="shell-icon" id="theme-toggle" type="button" aria-label="Switch light or dark theme" title="Theme">${icon(ICONS.theme)}</button>
+        <span class="shell-avatar" title="You: data architect at Stadtwerke Rheinau">DA</span>
+        <button class="shell-icon" id="shell-apps" type="button" aria-label="Home" title="Home">${icon(ICONS.grid)}</button>
       </header>
       <nav class="nav" aria-label="Side navigation">${navHtml()}</nav>
       <main class="main" id="main"></main>
@@ -102,11 +113,17 @@ function renderFrame() {
     </div>`;
 
   bindNav();
+  renderShellApp();
   app.querySelector('#nav-toggle')!.addEventListener('click', () => {
     state.navCollapsed = !state.navCollapsed;
     writePref('dsg-nav', state.navCollapsed ? 'collapsed' : 'expanded');
     app.querySelector('.app')!.classList.toggle('nav-collapsed', state.navCollapsed);
   });
+  app.querySelector('#shell-back')!.addEventListener('click', () => {
+    const prev = state.history.pop();
+    if (prev) setView(prev, true, false);
+  });
+  app.querySelectorAll('#brand-home, #shell-apps').forEach((b) => b.addEventListener('click', () => setView('home')));
   app.querySelector('#theme-toggle')!.addEventListener('click', toggleTheme);
   app.querySelector('#guide-open')!.addEventListener('click', openGuide);
   app.querySelector('#glossary-open')!.addEventListener('click', () => setView('glossary'));
@@ -114,17 +131,48 @@ function renderFrame() {
   renderMission();
 }
 
+/** App name in the shellbar, like "Data Builder" next to the logo. */
+function renderShellApp() {
+  const el = app.querySelector('#shell-app');
+  if (!el) return;
+  const a = appById(ctx.view);
+  el.innerHTML = a ? `${icon(a.icon)}<span>${esc(a.label)}</span>` : ctx.view === 'glossary' ? `${icon(ICONS.book)}<span>Glossary</span>` : '';
+}
+
+const SECTION_TITLE: Partial<Record<NavSection, string>> = { apps: 'Apps', utilities: 'Utilities' };
+const EXPANDABLE: Partial<Record<NavSection, { label: string; icon: string }>> = {
+  monitoring: { label: 'Monitoring', icon: '<rect x="2.5" y="3" width="11" height="8" rx="1"/><path d="M6 13.5h4M8 11v2.5"/>' },
+  catalog: { label: 'Catalog & Marketplace', icon: '<path d="M3 3.5h4.5v9H3zM8.5 3.5H13v9H8.5z"/>' },
+};
+
 function navHtml() {
-  const item = (a: AppInfo) => {
+  const item = (id: AppId, child = false) => {
+    const a = appById(id)!;
     const infoOnly = a.interactive === undefined || a.interactive > currentChapter();
-    return `<button type="button" data-view="${a.id}" ${ctx.view === a.id ? 'aria-current="page"' : ''} title="${esc(a.label)}: ${esc(a.summary)}">
-      ${icon(a.icon)}<span class="label">${esc(a.label)}</span>
-      ${infoOnly ? `<span class="info-only" aria-label="Info page only">${icon(ICONS.info)}</span>` : ''}
+    return `<button type="button" class="${child ? 'child' : ''}" data-view="${a.id}" ${ctx.view === a.id ? 'aria-current="page"' : ''} title="${esc(a.label)}: ${esc(a.summary)}">
+      ${child ? '' : icon(a.icon)}<span class="label">${esc(a.navLabel ?? a.label)}</span>
+      ${infoOnly ? `<span class="info-only" aria-label="Info page only">${icon(ICONS.info)}</span>` : a.section === 'bottom' ? `<span class="chev">${icon(ICONS.right)}</span>` : ''}
     </button>`;
   };
-  return `${APPS.filter((a) => a.group === 'top').map(item).join('')}
-    <div class="nav-spacer"></div><div class="nav-sep"></div>
-    ${APPS.filter((a) => a.group === 'bottom').map(item).join('')}`;
+  const section = (sec: NavSection) => {
+    const ids = NAV_ORDER[sec];
+    const exp = EXPANDABLE[sec];
+    if (exp) {
+      const open = !state.closedGroups.has(sec) || ids.includes(ctx.view as AppId);
+      return `<button type="button" class="group-head ${open ? 'open' : ''}" data-group="${sec}" aria-expanded="${open}" title="${esc(exp.label)}">
+          ${icon(exp.icon)}<span class="label">${esc(exp.label)}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
+        ${open ? `<div class="nav-children">${ids.map((id) => item(id, true)).join('')}</div>` : ''}`;
+    }
+    const title = SECTION_TITLE[sec];
+    if (title) {
+      const open = !state.closedGroups.has(sec) || ids.includes(ctx.view as AppId);
+      return `<button type="button" class="nav-title" data-group="${sec}" aria-expanded="${open}"><span class="label">${title}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
+        ${open ? ids.map((id) => item(id)).join('') : ''}`;
+    }
+    return ids.map((id) => item(id)).join('');
+  };
+  return `${section('top')}${section('monitoring')}${section('catalog')}${section('apps')}${section('utilities')}
+    <div class="nav-spacer"></div><div class="nav-sep"></div>${section('bottom')}`;
 }
 
 function bindNav() {
@@ -134,6 +182,19 @@ function bindNav() {
       setView(b.dataset.view as ViewId, true);
     }),
   );
+  app.querySelectorAll<HTMLButtonElement>('.nav [data-group]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const g = b.dataset.group as NavSection;
+      if (state.navCollapsed) {
+        state.navCollapsed = false;
+        app.querySelector('.app')!.classList.remove('nav-collapsed');
+        state.closedGroups.delete(g);
+      } else if (state.closedGroups.has(g)) state.closedGroups.delete(g);
+      else state.closedGroups.add(g);
+      writePref('dsg-nav-closed', [...state.closedGroups].join(','));
+      refreshNav();
+    }),
+  );
 }
 
 function refreshNav() {
@@ -141,12 +202,14 @@ function refreshNav() {
   if (!nav) return;
   nav.innerHTML = navHtml();
   bindNav();
+  renderShellApp();
 }
 
 /** Switches the app. `force` re-renders even when the app is already open (e.g. back to the Data Builder start). */
-function setView(view: ViewId, force = false) {
+function setView(view: ViewId, force = false, remember = true) {
   if (ctx.view === view && !force) return;
   rememberEditor();
+  if (remember && ctx.view !== view) state.history = [...state.history.slice(-20), ctx.view];
   ctx.view = view;
   ctx.track(`app:${view}`);
   refreshNav();
@@ -156,8 +219,9 @@ function setView(view: ViewId, force = false) {
 function renderView() {
   const main = document.querySelector<HTMLElement>('#main');
   if (!main) return;
-  main.classList.remove('flush');
+  main.classList.remove('flush', 'bleed');
   main.scrollTop = 0;
+  setCrumb('');
   if (ctx.view !== 'builder') {
     rememberEditor();
     ctx.editor = null;
@@ -343,67 +407,93 @@ function renderHome(main: HTMLElement) {
   const reached = reachedChapter(ctx.progress);
   const solved = MISSIONS.filter((m) => ctx.progress.missions[m.id]?.done).length;
   const r = rankOf(ctx.progress.xp);
+  const t = ctx.tenant();
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const recent = [...t.objects].filter((o) => !o.source).sort((x, y) => y.changedAt.localeCompare(x.changedAt)).slice(0, 5);
+  main.classList.add('bleed');
   main.innerHTML = `
-    <h1 class="view-title">Welcome to Stadtwerke Rheinau</h1>
-    <p class="view-lead">The board wants one trusted view of revenue, consumption and receivables per grid area.
-      You are the new data architect. Build the Datasphere landscape that delivers it, one ticket at a time.</p>
-    <section class="panel how" aria-label="How to play">
-      <h3>How to play</h3>
-      ${guideList()}
-    </section>
-    <section class="panel app-guide" id="app-guide" aria-label="Your tenant">
-      <h3>Your tenant at a glance</h3>
-      <p class="muted">The side navigation groups the apps by what you do. Click one to open it.</p>
-      <div class="app-groups">
-        ${APP_GROUPS.map((g) => `<div class="app-group"><h4>${g.title}<small>${g.text}</small></h4>
-          ${g.apps.map((id) => {
-            const a = appById(id)!;
-            return `<button type="button" class="app-link" data-app="${a.id}">${icon(a.icon)}<span><b>${esc(a.label)}</b><small>${esc(a.summary)}</small></span></button>`;
-          }).join('')}</div>`).join('')}
+    <div class="home">
+      <header class="home-head"><div><h1>Hello, Data Architect</h1><span class="date">${esc(today)}</span></div><span class="spacer"></span>
+        <span class="muted">${esc(r.name)} · ${ctx.progress.xp} XP · ${solved} of ${MISSIONS.length} missions solved</span></header>
+      <div class="home-cards">
+        <section class="home-card wide" aria-label="Welcome">
+          <div class="hc-hero">${MSC_LOGO}<p>Learn SAP Datasphere by building it.</p></div>
+          <div class="hc-body"><h3 class="view-title" style="font-size:20px;margin-top:16px">Welcome to Stadtwerke Rheinau</h3>
+            <p class="muted">The board wants one trusted view of revenue, consumption and receivables per grid area.
+              You are the new data architect. Build the Datasphere landscape that delivers it, one ticket at a time.</p></div>
+        </section>
+        <section class="home-card" aria-label="Spaces">
+          <div class="hc-head"><h3>Spaces</h3><small>Storage / Status</small></div>
+          <div class="hc-body"><ul class="mini-list">${t.spaces.map((sp) => {
+            const mb = usedMB(t, sp.id);
+            return `<li><span class="grow"><b>${esc(sp.id)}</b><small>Used ${fmtSize(mb)} of ${sp.diskGB} GB</small>
+              <span class="bar"><i style="width:${Math.max(2, Math.min(100, (mb / (sp.diskGB * 1024)) * 100)).toFixed(1)}%;background:var(--ok-bar)"></i></span></span>
+              ${sp.locked ? '<span class="status" data-status="failed">Locked</span>' : `<span class="ok">${icon(ICONS.check)} Working</span>`}</li>`;
+          }).join('')}</ul></div>
+          <div class="hc-foot"><button type="button" data-app="spaces">Open Space Management</button></div>
+        </section>
+        <section class="home-card wide" aria-label="How to play">
+          <div class="hc-head"><h3>How to play</h3></div>
+          <div class="hc-body how">${guideList()}</div>
+        </section>
+        <section class="home-card" aria-label="Data Builder">
+          <div class="hc-head"><h3>Data Builder</h3><small>Recently changed – Top 5</small></div>
+          <div class="hc-body">${recent.length ? `<ul class="mini-list">${recent.map((o) => `<li>${typeIcon(o)}<span class="grow">${esc(o.businessName)}<small>${esc(o.space)}.${esc(o.name)}</small></span>
+            <span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing built yet. Your first objects appear here.</p>'}</div>
+          <div class="hc-foot"><button type="button" data-app="builder">Open Data Builder</button></div>
+        </section>
+        <section class="home-card wide" aria-label="Learning path">
+          <div class="hc-head"><h3>Learning path</h3><small>Chapters and missions</small></div>
+          <ol class="path">
+            ${CHAPTERS.map((c) => {
+              const missions = missionsOfChapter(c.nr);
+              const done = missions.filter((m) => ctx.progress.missions[m.id]?.done).length;
+              const label = !missions.length ? 'Coming soon' : done === missions.length ? 'Done' : c.nr > reached ? 'Locked' : `${done} of ${missions.length}`;
+              return `<li class="${c.nr === reached ? 'current' : ''}">
+                <span class="num">${c.nr}</span>
+                <span><span class="t">${esc(c.title)}</span><br><span class="d">${esc(c.summary)}</span>
+                  ${missions.length && missions.some((m) => isUnlocked(ctx.progress, m.id)) ? `<span class="path-missions">${missions
+                    .map((m) => `<button type="button" class="mission-link ${ctx.progress.missions[m.id]?.done ? 'done' : ''}" data-mission="${m.id}" ${isUnlocked(ctx.progress, m.id) ? '' : 'disabled'}>${esc(m.title)}</button>`)
+                    .join('')}</span>` : ''}</span>
+                <span class="state">${label}</span>
+              </li>`;
+            }).join('')}
+          </ol>
+        </section>
+        <section class="home-card arch" aria-label="Target architecture">
+          <div class="hc-head"><h3>What you will build</h3><small>Three spaces, three layers</small></div>
+          <div class="hc-body"><div class="arch-stack">
+            <div class="arch-layer" style="--c:var(--layer-in)"><b>RHN_IN</b>Inbound layer<br><span>Source data 1:1, tagged with its source system</span></div>
+            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_HARM') ? '' : 'dim'}" style="--c:var(--layer-ha)"><b>RHN_HARM</b>Harmonization layer<br><span>Cleaned, unified and reusable views</span></div>
+            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_REP') ? '' : 'dim'}" style="--c:var(--layer-rep)"><b>RHN_REP</b>Reporting layer<br><span>Facts, dimensions, analytic models and access controls</span></div>
+          </div></div>
+        </section>
+        <section class="home-card full app-guide" id="app-guide" aria-label="Your tenant">
+          <div class="hc-head"><h3>Your tenant at a glance</h3><small>The side navigation groups the apps by what you do. Click one to open it.</small></div>
+          <div class="hc-body"><div class="app-groups">
+            ${APP_GROUPS.map((g) => `<div class="app-group"><h4>${g.title}<small>${g.text}</small></h4>
+              ${g.apps.map((id) => {
+                const a = appById(id)!;
+                return `<button type="button" class="app-link" data-app="${a.id}">${icon(a.icon)}<span><b>${esc(a.label)}</b><small>${esc(a.summary)}</small></span></button>`;
+              }).join('')}</div>`).join('')}
+          </div></div>
+        </section>
+        <section class="home-card full progress" aria-label="Your progress">
+          <div class="hc-head"><h3>Your progress</h3></div>
+          <div class="hc-body"><div class="progress-row">
+            <div class="stat"><b>${esc(r.name)}</b><span>Rank</span></div>
+            <div class="stat"><b>${ctx.progress.xp}</b><span>XP${r.next ? `, ${r.next - ctx.progress.xp} to the next rank` : ''}</span></div>
+            <div class="stat"><b>${solved} of ${MISSIONS.length}</b><span>Missions solved</span></div>
+            <span class="spacer"></span>
+            <div class="save-actions">
+              <button class="btn" type="button" id="save-export">Export save</button>
+              <button class="btn" type="button" id="save-import">Import save</button>
+              <button class="btn link" type="button" id="save-reset">Start over</button>
+            </div>
+          </div>
+          <p class="save-note" id="save-note">Your progress is saved in this browser. Export it to move to another PC or browser.</p></div>
+        </section>
       </div>
-    </section>
-    <section class="panel progress" aria-label="Your progress">
-      <h3>Your progress</h3>
-      <div class="progress-row">
-        <div class="stat"><b>${esc(r.name)}</b><span>Rank</span></div>
-        <div class="stat"><b>${ctx.progress.xp}</b><span>XP${r.next ? `, ${r.next - ctx.progress.xp} to the next rank` : ''}</span></div>
-        <div class="stat"><b>${solved} of ${MISSIONS.length}</b><span>Missions solved</span></div>
-        <span class="spacer"></span>
-        <div class="save-actions">
-          <button class="btn" type="button" id="save-export">Export save</button>
-          <button class="btn" type="button" id="save-import">Import save</button>
-          <button class="btn link" type="button" id="save-reset">Start over</button>
-        </div>
-      </div>
-      <p class="save-note" id="save-note">Your progress is saved in this browser. Export it to move to another PC or browser.</p>
-    </section>
-    <div class="home-grid">
-      <section class="panel" aria-label="Learning path">
-        <ol class="path">
-          ${CHAPTERS.map((c) => {
-            const missions = missionsOfChapter(c.nr);
-            const done = missions.filter((m) => ctx.progress.missions[m.id]?.done).length;
-            const label = !missions.length ? 'Coming soon' : done === missions.length ? 'Done' : c.nr > reached ? 'Locked' : `${done} of ${missions.length}`;
-            return `<li class="${c.nr === reached ? 'current' : ''}">
-              <span class="num">${c.nr}</span>
-              <span><span class="t">${esc(c.title)}</span><br><span class="d">${esc(c.summary)}</span>
-                ${missions.length && missions.some((m) => isUnlocked(ctx.progress, m.id)) ? `<span class="path-missions">${missions
-                  .map((m) => `<button type="button" class="mission-link ${ctx.progress.missions[m.id]?.done ? 'done' : ''}" data-mission="${m.id}" ${isUnlocked(ctx.progress, m.id) ? '' : 'disabled'}>${esc(m.title)}</button>`)
-                  .join('')}</span>` : ''}</span>
-              <span class="state">${label}</span>
-            </li>`;
-          }).join('')}
-        </ol>
-      </section>
-      <section class="panel arch" aria-label="Target architecture">
-        <h3>What you will build</h3>
-        <div class="arch-stack">
-          <div class="arch-layer" style="--c:var(--layer-in)"><b>RHN_IN</b>Inbound layer<br><span>Source data 1:1, tagged with its source system</span></div>
-          <div class="arch-layer dim" style="--c:var(--layer-ha)"><b>RHN_HARM</b>Harmonization layer<br><span>Cleaned, unified and reusable views</span></div>
-          <div class="arch-layer dim" style="--c:var(--layer-rep)"><b>RHN_REP</b>Reporting layer<br><span>Facts, dimensions, analytic models and access controls</span></div>
-        </div>
-        <p class="arch-note">Only the inbound space exists at the start. You create the others in chapter 1.</p>
-      </section>
     </div>`;
 
   main.querySelectorAll<HTMLButtonElement>('[data-app]').forEach((b) =>

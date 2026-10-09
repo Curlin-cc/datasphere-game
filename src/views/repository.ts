@@ -1,7 +1,7 @@
 import { ctx } from '../ctx';
 import { objectKey, STATUS_LABEL, OBJECT_KINDS } from '../repo';
-import { esc, spaceChip, icon, fmtDate } from '../ui';
-import { openObjectInBuilder, typeIcon } from './builder';
+import { esc, spaceChip, icon, ICONS } from '../ui';
+import { openObjectInBuilder, typeIcon, fmtStamp } from './builder';
 
 /** Repository Explorer: search all objects of all spaces you are a member of, open them in their editor. */
 
@@ -9,28 +9,44 @@ const filter = { text: '', type: 'all', space: 'all' };
 
 export function renderRepository(main: HTMLElement) {
   const t = ctx.tenant();
+  main.classList.add('bleed');
   main.innerHTML = `
-    <h1 class="view-title">Repository Explorer</h1>
-    <p class="view-lead">Every object in every space you are a member of, in one list. Search by business or technical name,
-      filter, and open an object in its editor.</p>
-    <div class="repo-filters">
-      <label class="search">${icon('<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>')}
-        <input id="repo-search" type="search" placeholder="Search business or technical name" value="${esc(filter.text)}" autocomplete="off"></label>
-      <label>Type <select id="repo-type">
-        ${[['all', 'All types'], ...OBJECT_KINDS.map((k) => [k, k])].map(([v, l]) => `<option value="${v}" ${filter.type === v ? 'selected' : ''}>${l}</option>`).join('')}
-      </select></label>
-      <label>Space <select id="repo-space">
-        <option value="all">All spaces</option>
-        ${t.spaces.map((s) => `<option ${filter.space === s.id ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}
-      </select></label>
-      <span class="spacer"></span>
-      <span class="muted" id="repo-count"></span>
-    </div>
-    <div class="panel">
-      <div class="table-scroll"><table class="grid" id="repo-list">
-        <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type</th><th>Space</th><th>Status</th><th>Changed On</th></tr></thead>
-        <tbody></tbody>
-      </table></div>
+    <div class="re-page">
+      <div class="re-top">
+        <label class="search-field wide">${icon(ICONS.search)}<input id="repo-search" type="search" placeholder='Search in: "All"' value="${esc(filter.text)}" autocomplete="off" aria-label="Search business or technical name"></label>
+      </div>
+      <div class="re-body">
+        <aside class="re-side" aria-label="Filters">
+          <h3>Collection</h3>
+          <button type="button" class="re-row on">${icon(ICONS.globe)} All</button>
+          <button type="button" class="re-row" disabled>${icon(ICONS.sort)} Recent</button>
+          <button type="button" class="re-row" disabled>${icon(ICONS.edit)} My Objects</button>
+          <button type="button" class="re-row" disabled>${icon(ICONS.share)} Shared</button>
+          <button type="button" class="re-row" disabled>${icon(ICONS.star)} Favorites</button>
+          <h3>Space</h3>
+          <button type="button" class="re-row ${filter.space === 'all' ? 'on' : ''}" data-space-filter="all">All spaces</button>
+          ${t.spaces.map((s) => `<button type="button" class="re-row ${filter.space === s.id ? 'on' : ''}" data-space-filter="${esc(s.id)}">${spaceChip(s.id)}</button>`).join('')}
+        </aside>
+        <section class="re-main db-list">
+          <div class="list-toolbar repo-filters">
+            <label>Type <select id="repo-type">
+              ${[['all', 'All types'], ...OBJECT_KINDS.map((k) => [k, k])].map(([v, l]) => `<option value="${v}" ${filter.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select></label>
+            <label>Space <select id="repo-space">
+              <option value="all">All spaces</option>
+              ${t.spaces.map((s) => `<option ${filter.space === s.id ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}
+            </select></label>
+            <span class="spacer"></span>
+            <button type="button" class="tb-icon" disabled title="Sort">${icon(ICONS.sort)}</button>
+            <button type="button" class="tb-icon" disabled title="Settings">${icon(ICONS.gear)}</button>
+          </div>
+          <div class="list-in">Search In: <span class="globe">${icon(ICONS.globe)}</span><b>All</b> <span class="muted" id="repo-count"></span></div>
+          <div class="table-scroll"><table class="grid object-table" id="repo-list">
+            <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th><th>Space</th><th>Status</th><th>Changed On</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+      </div>
     </div>`;
 
   const body = main.querySelector<HTMLElement>('#repo-list tbody')!;
@@ -43,15 +59,15 @@ export function renderRepository(main: HTMLElement) {
         (filter.space === 'all' || o.space === filter.space) &&
         (!q || o.name.toLowerCase().includes(q) || o.businessName.toLowerCase().includes(q)),
     );
-    count.textContent = `${rows.length} of ${t.objects.length} objects`;
+    count.textContent = `(${rows.length} of ${t.objects.length})`;
     body.innerHTML = rows.length
       ? rows.map((o) => `<tr>
-          <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${esc(o.businessName)}</button></td>
-          <td class="mono">${esc(o.name)}</td>
-          <td>${typeIcon(o)}${o.kind}</td>
-          <td>${spaceChip(o.space)}</td>
+          <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+          <td>${esc(o.name)}</td>
+          <td>${esc(o.kind)}${o.kind === 'Analytic Model' || o.kind === 'Replication Flow' ? '' : ` <span class="muted">(${esc(o.semanticUsage)})</span>`}</td>
+          <td>${esc(o.space)}</td>
           <td><span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span></td>
-          <td class="muted">${fmtDate(o.changedAt)}</td></tr>`).join('')
+          <td>${fmtStamp(o.changedAt)}</td></tr>`).join('')
       : `<tr><td colspan="6" class="muted">Nothing matches your search.</td></tr>`;
     body.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -76,9 +92,13 @@ export function renderRepository(main: HTMLElement) {
     ctx.track(`filter:repository:type:${filter.type}`);
     draw();
   });
-  main.querySelector<HTMLSelectElement>('#repo-space')!.addEventListener('change', (e) => {
-    filter.space = (e.target as HTMLSelectElement).value;
+  const setSpace = (v: string) => {
+    filter.space = v;
     ctx.track(`filter:repository:space:${filter.space}`);
+    main.querySelector<HTMLSelectElement>('#repo-space')!.value = v;
+    main.querySelectorAll<HTMLElement>('[data-space-filter]').forEach((b) => b.classList.toggle('on', b.dataset.spaceFilter === v));
     draw();
-  });
+  };
+  main.querySelector<HTMLSelectElement>('#repo-space')!.addEventListener('change', (e) => setSpace((e.target as HTMLSelectElement).value));
+  main.querySelectorAll<HTMLButtonElement>('[data-space-filter]').forEach((b) => b.addEventListener('click', () => setSpace(b.dataset.spaceFilter!)));
 }

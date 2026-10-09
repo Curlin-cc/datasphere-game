@@ -13,7 +13,9 @@ import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
 import { renderModelEditor, newModelDraft } from './analytic';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
-import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable, fmtDate } from '../ui';
+import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb } from '../ui';
+import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
+import { objectToolbar, bindDetails, propsHead } from './toolbar';
 
 /**
  * Data Builder, modelled on SAP Datasphere:
@@ -22,10 +24,18 @@ import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable,
  */
 
 type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' } | { kind: 'new-model' };
-type ListTab = 'all' | 'tables' | 'views' | 'models' | 'flows';
+type ListTab = 'all' | 'tables' | 'views' | 'er' | 'models' | 'flows' | 'lookups' | 'chains' | 'dac';
+/** Tabs of the start page, as in the real Data Builder (docs/design/README.md B.2). */
+const LIST_TABS: [ListTab, string][] = [
+  ['all', 'All Files'], ['tables', 'Tables'], ['views', 'Views'], ['er', 'E/R Models'], ['models', 'Analytic Models'],
+  ['flows', 'Flows'], ['lookups', 'Intelligent Lookups'], ['chains', 'Task Chains'], ['dac', 'Data Access Controls'],
+];
 
 /** "New" tiles that work in this build of the game, from their chapter on. */
 const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic']);
+/** Favorites (star column), for this visit. */
+const favorites = new Set<string>();
+let listFilter = '';
 
 let page: Page = { kind: 'spaces' };
 /** The space picker shows once per visit, like choosing a space when you open the Data Builder. */
@@ -75,6 +85,7 @@ export async function renderBuilder(main: HTMLElement) {
   rememberEditor();
   ctx.editor = null;
   main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow' || page.kind === 'new-model');
+  main.classList.toggle('bleed', page.kind === 'spaces' || page.kind === 'landing');
   if (page.kind === 'spaces') return renderSpacePicker(main);
   if (page.kind === 'landing') return renderLanding(main);
   if (page.kind === 'new-view') return renderEditor(main, null);
@@ -96,22 +107,19 @@ function go(p: Page) {
   ctx.renderView();
 }
 
-// ---------------------------------------------------------------- 1. space picker
+// ---------------------------------------------------------------- 1. space picker (page type A)
 
 function renderSpacePicker(main: HTMLElement) {
   const t = ctx.tenant();
-  main.innerHTML = `
-    <h1 class="view-title">Data Builder</h1>
-    <p class="view-lead">Select a space. Everything you build in the Data Builder lives in exactly one space,
-      and you only see the spaces you are a member of.</p>
-    <div class="space-picker" id="space-picker">
-      ${t.spaces.map((s) => {
-        const n = t.objects.filter((o) => o.space === s.id).length;
-        return `<button type="button" class="panel space-card" data-space="${esc(s.id)}">
-          ${spaceChip(s.id)}<b>${esc(s.name)}</b><span>${layerName(s.id)} layer · ${n} ${n === 1 ? 'object' : 'objects'}</span>
-        </button>`;
-      }).join('')}
-    </div>`;
+  main.innerHTML = welcomeSpacesHtml({
+    title: 'Welcome to the Data Builder',
+    text: 'Create views and tables to prepare data for your stories, and use entity-relationship models to visualize and make associations between artifacts.',
+    emptyTitle: 'Select a space',
+    emptyText: 'Everything you build in the Data Builder lives in exactly one space. You only see the spaces you are a member of.',
+    cardAttrs: (id) => `data-space="${esc(id)}"`,
+    gridId: 'space-picker',
+  });
+  bindSpaceSearch(main);
   main.querySelectorAll<HTMLButtonElement>('[data-space]').forEach((b) =>
     b.addEventListener('click', () => {
       t.activeSpace = b.dataset.space!;
@@ -123,82 +131,128 @@ function renderSpacePicker(main: HTMLElement) {
   );
 }
 
-// ---------------------------------------------------------------- 2. start page
+// ---------------------------------------------------------------- 2. start page (page type B)
 
-function spaceSwitch() {
+/** Space switch in the shellbar breadcrumb, like the space name next to "Data Builder" in the real tenant. */
+function showSpaceCrumb() {
   const t = ctx.tenant();
   const s = t.spaces.find((x) => x.id === t.activeSpace);
-  return `<button type="button" class="space-switch" id="space-switch" title="Change space">
-      ${spaceChip(t.activeSpace)}<span>${esc(s?.name ?? '')}</span>${icon(ICONS.down)}</button>`;
+  setCrumb(`<button type="button" class="space-switch" id="space-switch" title="Change space">
+      ${spaceChip(t.activeSpace)}<span>${esc(s?.name ?? '')}</span>${icon(ICONS.down)}</button>`);
+  document.querySelector('#space-switch')?.addEventListener('click', () => go({ kind: 'spaces' }));
 }
+
+const isBuilt = (n: NewTile) => n.chapter !== undefined && BUILT_TILES.has(n.id) && ctx.currentChapter() >= n.chapter;
 
 function renderLanding(main: HTMLElement) {
   const t = ctx.tenant();
   const space = t.activeSpace;
-  const chapter = ctx.currentChapter();
   const own = t.objects.filter((o) => o.space === space);
-  const shown = own.filter((o) => inTab(o, listTab));
+  const q = listFilter.toLowerCase();
+  const shown = own.filter((o) => inTab(o, listTab) && (!q || `${o.businessName} ${o.name} ${o.kind}`.toLowerCase().includes(q)));
   const shared = t.objects.filter((o) => o.space !== space && isShared(t, objectKey(o), space));
   const canShare = t.spaces.length > 1;
-  const groups = ['Model', 'Integrate', 'Secure'] as const;
+  const tile = (n: NewTile) => `<button type="button" class="new-tile ${isBuilt(n) ? '' : 'off'}" data-new="${n.id}" title="${esc(n.text)}">
+      <span class="tile-box"><svg viewBox="0 0 32 32" aria-hidden="true">${n.icon}</svg></span><span class="tile-label">${esc(n.verb ?? 'New')} ${esc(n.label)}</span></button>`;
 
+  showSpaceCrumb();
   main.innerHTML = `
-    <div class="db-crumbs"><span>Data Builder</span><span class="sep">/</span>${spaceSwitch()}</div>
-    <section class="new-tiles" id="new-tiles" aria-label="Create new objects">
-      ${groups.map((g) => `<div class="tile-group"><h3>${g}</h3><div class="tile-row">
-        ${NEW_TILES.filter((n) => n.group === g).map((n) => {
-          const on = n.chapter !== undefined && BUILT_TILES.has(n.id) && chapter >= n.chapter;
-          return `<button type="button" class="new-tile ${on ? '' : 'off'}" data-new="${n.id}" title="${esc(n.text)}">
-            <span class="plus">+</span><span>${esc(n.verb ?? 'New')} ${esc(n.label)}</span></button>`;
-        }).join('')}
-      </div></div>`).join('')}
-    </section>
-    <div class="panel">
-      <div class="table-head">
-        <h3>Objects in ${esc(space)}</h3>
-        <div class="tabs small" role="tablist">
-          ${(['all', 'tables', 'views', 'models', 'flows'] as const).map((k) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)} <small>${own.filter((o) => inTab(o, k)).length}</small></button>`).join('')}
+    <div class="db-start">
+      <header class="welcome-head tight"><h1>Welcome to the Data Builder</h1>
+        <p>Load data into tables, prepare and model it in views, and combine it in tightly-focused analytic models for consumption in SAP Analytics Cloud, Microsoft Excel, and other clients, apps, and tools.</p>
+        <div class="db-tabs" role="tablist" id="list-tabs">
+          ${LIST_TABS.map(([k, label]) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${label}</button>`).join('')}
         </div>
+      </header>
+      <section class="new-tiles" id="new-tiles" aria-label="Create new objects">
+        ${NEW_TILES.filter((n) => !n.importTile).map(tile).join('')}
+        <span class="tile-sep" aria-hidden="true"></span>
+        ${NEW_TILES.filter((n) => n.importTile).map(tile).join('')}
+      </section>
+      <div class="db-list">
+        <label class="search-field wide">${icon(ICONS.search)}<input type="search" id="object-search" placeholder='Search in: "All"' value="${esc(listFilter)}" aria-label="Search objects"></label>
+        <div class="list-toolbar">
+          <button type="button" class="tb-icon" title="Filter" aria-label="Filter">${icon(ICONS.filter)}</button>
+          <span class="spacer"></span>
+          <span class="menu-wrap"><button type="button" class="tb-icon" id="new-menu-btn" title="New" aria-haspopup="menu">${icon(ICONS.plus)}${icon(ICONS.down, 'mini')}</button></span>
+          <button type="button" class="tb-icon" disabled title="Deploy: open the object">${icon(ICONS.deploy)}</button>
+          <button type="button" class="tb-icon" disabled title="Edit: open the object">${icon(ICONS.edit)}</button>
+          <button type="button" class="tb-icon" disabled title="Delete: use the row action">${icon(ICONS.trash)}</button>
+          <button type="button" class="tb-icon" disabled title="Share: use the row action">${icon(ICONS.share)}</button>
+          <span class="tb-sep"></span>
+          <button type="button" class="tb-icon" disabled title="Sort">${icon(ICONS.sort)}</button>
+          <button type="button" class="tb-icon" disabled title="Settings">${icon(ICONS.gear)}</button>
+          <span class="tb-toggle"><button type="button" class="tb-icon on" title="Table">${icon(ICONS.preview)}</button><button type="button" class="tb-icon" disabled title="List">${icon(ICONS.list)}</button></span>
+        </div>
+        <div class="list-in">List Objects In: <span class="globe">${icon(ICONS.globe)}</span><b>All</b> <span class="muted">(${shown.length})</span></div>
+        <div class="table-scroll"><table class="grid object-table" id="object-list">
+          <thead><tr><th class="cb"><input type="checkbox" aria-label="Select all" disabled></th><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th>
+            <th>Space</th><th>Status</th><th>Changed On</th><th class="fav">Favorite</th><th></th></tr></thead>
+          <tbody>${shown.length ? shown.map((o) => objectRow(o, canShare)).join('') : `<tr><td colspan="9" class="empty-row">No objects here yet.</td></tr>`}</tbody>
+        </table></div>
       </div>
-      <div class="table-scroll"><table class="grid" id="object-list">
-        <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type</th><th>Semantic Usage</th><th>Status</th><th>Changed On</th><th></th></tr></thead>
-        <tbody>${shown.length ? shown.map((o) => objectRow(o, canShare)).join('') : `<tr><td colspan="7" class="muted">No objects here yet.</td></tr>`}</tbody>
-      </table></div>
-    </div>
-    ${shared.length ? `<div class="panel shared-panel">
-      <div class="table-head"><h3>Shared with ${esc(space)}</h3><span class="muted">Objects of other spaces you can use as sources here. They stay read-only.</span></div>
-      <div class="table-scroll"><table class="grid" id="shared-list">
-        <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type</th><th>From space</th></tr></thead>
-        <tbody>${shared.map((o) => `<tr><td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${esc(o.businessName)}</button></td>
-          <td class="mono">${esc(o.name)}</td><td>${typeIcon(o)}${o.kind}</td><td>${spaceChip(o.space)}</td></tr>`).join('')}</tbody>
-      </table></div></div>` : ''}`;
+      ${shared.length ? `<div class="db-list shared-panel">
+        <div class="list-in"><b>Shared with ${esc(space)}</b> <span class="muted">Objects of other spaces you can use as sources here. They stay read-only.</span></div>
+        <div class="table-scroll"><table class="grid object-table" id="shared-list">
+          <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th><th>From Space</th></tr></thead>
+          <tbody>${shared.map((o) => `<tr><td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+            <td>${esc(o.name)}</td><td>${typeText(o)}</td><td>${spaceChip(o.space)}</td></tr>`).join('')}</tbody>
+        </table></div></div>` : ''}
+    </div>`;
 
-  main.querySelector('#space-switch')!.addEventListener('click', () => go({ kind: 'spaces' }));
   main.querySelectorAll<HTMLButtonElement>('[data-list]').forEach((b) =>
     b.addEventListener('click', () => {
-      listTab = b.dataset.list as typeof listTab;
+      listTab = b.dataset.list as ListTab;
       renderLanding(main);
     }),
   );
-  main.querySelectorAll<HTMLButtonElement>('[data-new]').forEach((b) =>
-    b.addEventListener('click', () => {
-      const tile = NEW_TILES.find((n) => n.id === b.dataset.new)!;
-      ctx.track(`new:${tile.id}`);
-      if (b.classList.contains('off')) return tileInfo(tile);
-      if (tile.id === 'remote') return openImportRemote(() => renderLanding(main));
-      if (tile.id === 'replication') return go({ kind: 'new-flow' });
-      if (tile.id === 'analytic') {
-        newModelDraft();
-        return go({ kind: 'new-model' });
-      }
-      ctx.sqlOwner = 'draft';
-      go({ kind: 'new-view' });
-    }),
-  );
+  const search = main.querySelector<HTMLInputElement>('#object-search')!;
+  search.addEventListener('input', () => {
+    listFilter = search.value;
+    renderLanding(main);
+    const again = main.querySelector<HTMLInputElement>('#object-search')!;
+    again.focus();
+    again.setSelectionRange(again.value.length, again.value.length);
+  });
+  const create = (id: string) => {
+    const n = NEW_TILES.find((x) => x.id === id)!;
+    ctx.track(`new:${n.id}`);
+    if (!isBuilt(n)) return tileInfo(n);
+    if (n.id === 'remote') return openImportRemote(() => renderLanding(main));
+    if (n.id === 'replication') return go({ kind: 'new-flow' });
+    if (n.id === 'analytic') {
+      newModelDraft();
+      return go({ kind: 'new-model' });
+    }
+    ctx.sqlOwner = 'draft';
+    go({ kind: 'new-view' });
+  };
+  main.querySelectorAll<HTMLButtonElement>('[data-new]').forEach((b) => b.addEventListener('click', () => create(b.dataset.new!)));
+  main.querySelector('#new-menu-btn')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wrap = (e.currentTarget as HTMLElement).parentElement!;
+    if (wrap.querySelector('.menu')) return wrap.querySelector('.menu')!.remove();
+    const menu = document.createElement('div');
+    menu.className = 'menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = `<button type="button" role="menuitem" disabled>${icon(ICONS.folder)} Folder</button>${NEW_TILES.filter((n) => !n.importTile).map((n) =>
+      `<button type="button" role="menuitem" data-menu-new="${n.id}" class="${isBuilt(n) ? '' : 'off'}"><svg class="ic" viewBox="0 0 32 32" aria-hidden="true">${n.icon}</svg> ${esc(n.id === 'table' ? 'Local Table' : n.label)}</button>`).join('')}`;
+    wrap.append(menu);
+    menu.querySelectorAll<HTMLButtonElement>('[data-menu-new]').forEach((b) => b.addEventListener('click', () => create(b.dataset.menuNew!)));
+    setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }));
+  });
   main.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
     b.addEventListener('click', () => {
       ctx.track(`open:${b.dataset.open}`);
       go({ kind: 'object', key: b.dataset.open! });
+    }),
+  );
+  main.querySelectorAll<HTMLButtonElement>('[data-fav]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const k = b.dataset.fav!;
+      if (favorites.has(k)) favorites.delete(k);
+      else favorites.add(k);
+      renderLanding(main);
     }),
   );
   main.querySelectorAll<HTMLButtonElement>('[data-share]').forEach((b) => b.addEventListener('click', () => openShareDialog(b.dataset.share!)));
@@ -219,17 +273,31 @@ export const typeIcon = (o: Pick<RepoObject, 'kind'>) =>
   icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow
     : o.kind === 'Analytic Model' ? ICONS.cube : ICONS.table, 'type-ic');
 
+/** "SQL View (Dimension)": type with the semantic usage in brackets, like the real list. */
+const typeText = (o: RepoObject) =>
+  `${esc(o.kind)}${o.kind === 'SQL View' || o.kind === 'Local Table' || o.kind === 'Remote Table' ? ` <span class="muted">(${esc(o.semanticUsage)})</span>` : ''}`;
+
 function statusChip(o: Pick<RepoObject, 'status'>) {
   return `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>`;
 }
 
+/** "Oct 9, 2026, 08:00:00" like the real lists. */
+export const fmtStamp = (iso: string) => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+};
+
 function objectRow(o: RepoObject, canShare: boolean) {
   const key = objectKey(o);
+  const fav = favorites.has(key);
   return `<tr>
-    <td><button type="button" class="link-btn" data-open="${esc(key)}">${esc(o.businessName)}</button></td>
-    <td class="mono">${esc(o.name)}</td>
-    <td>${typeIcon(o)}${o.kind}</td><td>${o.kind === 'Analytic Model' ? '<span class="muted">–</span>' : o.semanticUsage}</td><td>${statusChip(o)}</td>
-    <td class="muted">${fmtDate(o.changedAt)}</td>
+    <td class="cb"><input type="checkbox" aria-label="Select ${esc(o.name)}"></td>
+    <td><button type="button" class="link-btn" data-open="${esc(key)}">${typeIcon(o)}${esc(o.businessName)}</button></td>
+    <td>${esc(o.name)}</td>
+    <td>${typeText(o)}</td><td>${esc(o.space)}</td><td>${statusChip(o)}</td>
+    <td>${fmtStamp(o.changedAt)}</td>
+    <td class="fav"><button type="button" class="star ${fav ? 'on' : ''}" data-fav="${esc(key)}" aria-label="Favorite ${esc(o.name)}" aria-pressed="${fav}">${icon(ICONS.star)}</button></td>
     <td class="row-actions">
       ${canShare ? `<button type="button" class="share-btn" data-share="${esc(key)}" title="Share ${esc(o.name)} with other spaces" aria-label="Share ${esc(o.name)}">
         ${icon(ICONS.share)}${ctx.tenant().shares.some((s) => s.object === key) ? '<span class="share-dot"></span>' : ''}</button>` : ''}
@@ -294,26 +362,28 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
 
   main.innerHTML = `
     <div class="editor-page ${isView ? 'is-view' : 'is-table'}">
-      <div class="ed-toolbar">
-        <button class="btn small link" type="button" id="ed-back">${icon(ICONS.back)} ${esc(t.activeSpace)}</button>
-        <div class="ed-title"><b id="ed-title-text">${esc(o?.businessName || 'New SQL View')}</b>
-          <small>${o ? o.kind : 'SQL View'} · ${esc(space)}.${esc(o?.name ?? '…')}</small></div>
-        ${o ? statusChip(o) : `<span class="status" data-status="new">New</span>`}
-        <span class="spacer"></span>
-        ${readOnly
-          ? `<span class="muted">Shared from ${esc(space)} · read-only</span>`
-          : `<button class="btn" type="button" id="ed-save">Save</button>
-             <button class="btn" type="button" id="ed-deploy">Deploy</button>
-             ${o && t.spaces.length > 1 ? `<button class="btn" type="button" id="ed-share">${icon(ICONS.share)} Share</button>` : ''}`}
-        <button class="btn primary" type="button" id="run" title="Ctrl+Enter">Data Preview</button>
-      </div>
+      ${objectToolbar({
+        space: t.activeSpace,
+        title: o?.businessName || 'New SQL View',
+        sub: `${o ? o.kind : 'SQL View'} · ${space}.${o?.name ?? '…'}`,
+        statusHtml: o ? statusChip(o) : `<span class="status" data-status="new">New</span>`,
+        note: readOnly ? `Shared from ${space} · read-only` : undefined,
+        groups: [
+          ...(readOnly ? [] : [{ label: 'General', buttons: [
+            { id: 'ed-save', icon: ICONS.save, label: 'Save', title: 'Save (design time)' },
+            { id: 'ed-deploy', icon: ICONS.deploy, label: 'Deploy', title: 'Deploy (runtime)' },
+            ...(o && t.spaces.length > 1 ? [{ id: 'ed-share', icon: ICONS.share, label: 'Share' }] : []),
+          ] }]),
+          { label: 'View', buttons: [{ id: 'run', icon: ICONS.preview, label: 'Data Preview', title: isView ? 'Data Preview (Ctrl+Enter)' : 'Data Preview' }] },
+        ],
+      })}
       <div class="ed-body">
-        ${isView ? `<aside class="objects" id="sources" aria-label="Sources"><h3>Sources</h3><div id="source-list"></div></aside>` : ''}
+        ${isView ? `<aside class="objects" id="sources" aria-label="Repository"><div class="side-tabs" role="tablist"><button type="button" role="tab" aria-selected="true">Repository</button><button type="button" role="tab" aria-selected="false" disabled title="Sources of connections: not in this game">Sources</button></div><div id="source-list"></div></aside>` : ''}
         <section class="ed-center">
           ${isView ? '<div class="editor-host" id="editor"></div>' : '<div class="columns-panel" id="columns"><div class="placeholder">Loading columns…</div></div>'}
         </section>
         <aside class="props" id="properties" aria-label="Properties">
-          <h3>General</h3>
+          ${propsHead(o ? 'Model Properties' : 'Model Properties', o ? (o.kind === 'SQL View' ? ICONS.view : ICONS.table) : ICONS.view, o ? `${o.kind} ${o.name}` : 'New SQL View')}
           <label>Business Name <small>for people; can change any time</small>
             <input id="prop-business" value="${esc(o?.businessName ?? '')}" ${readOnly ? 'readonly' : ''} maxlength="120" autocomplete="off"></label>
           <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
@@ -371,6 +441,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   }
 
   main.querySelector('#ed-back')!.addEventListener('click', () => go({ kind: 'landing' }));
+  bindDetails(main);
   main.querySelector('#run')!.addEventListener('click', preview);
   main.querySelector('#ed-share')?.addEventListener('click', () => o && openShareDialog(objectKey(o)));
   main.querySelector('#ed-save')?.addEventListener('click', async () => {
@@ -531,11 +602,15 @@ async function renderSources(main: HTMLElement, space: string) {
   const shared = t.objects.filter((o) => o.space !== space && isShared(t, objectKey(o), space) && usable(o));
   const item = (o: RepoObject) => `<li><button type="button" data-src="${esc(objectKey(o))}" title="Insert ${esc(objectKey(o))}">
       ${typeIcon(o)}<span class="oname">${esc(o.name)}</span>${o.space !== space ? `<span class="otype">${esc(o.space)}</span>` : ''}</button></li>`;
+  // Folders by type, like the Repository tab of the real editor.
+  const kinds = [...new Set(own.map((o) => o.kind))];
+  const folder = (label: string, list: RepoObject[], open: boolean) => `<details class="src-folder" ${open ? 'open' : ''}>
+      <summary>${icon(ICONS.folder)}<span>${esc(label)}</span><small>${list.length}</small></summary><ul>${list.map(item).join('')}</ul></details>`;
   host.innerHTML = `
-    <div class="space-head">${spaceChip(space)}</div>
-    ${own.length ? `<ul>${own.map(item).join('')}</ul>` : '<p class="repo-empty">No deployed objects in this space.</p>'}
-    ${shared.length ? `<div class="space-head shared-head">Shared Objects</div><ul>${shared.map(item).join('')}</ul>` : ''}
-    <p class="repo-empty hint-text">Click a source to insert its name. Only deployed objects can be used.</p>`;
+    <div class="src-search">${spaceChip(space)}<span class="muted">All (${own.length + shared.length})</span></div>
+    ${own.length ? kinds.map((k) => folder(k, own.filter((o) => o.kind === k), true)).join('') : '<p class="repo-empty">No deployed objects in this space.</p>'}
+    ${shared.length ? folder('Shared Objects', shared, true) : ''}
+    <p class="repo-empty hint-text">Click an object to insert its name. Only deployed objects can be used.</p>`;
   host.querySelectorAll<HTMLButtonElement>('[data-src]').forEach((b) => b.addEventListener('click', () => ctx.editor?.insert(b.dataset.src!)));
   const schema: Record<string, string[]> = {};
   [...own, ...shared].forEach((o) => (schema[objectKey(o)] = columns.get(objectKey(o)) ?? []));
