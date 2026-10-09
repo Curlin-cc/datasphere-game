@@ -36,7 +36,7 @@ export const CHAPTERS: Chapter[] = [
   { nr: 9, title: 'Persistence and performance', summary: 'Decide what to persist and why', guidance: 'paid' },
   { nr: 10, title: 'Operations', summary: 'Task chains, monitoring and failed loads', guidance: 'paid' },
   { nr: 11, title: 'Board request', summary: 'An end-to-end change, no hints', guidance: 'none' },
-  { nr: 12, title: 'Excursions', summary: 'Power BI and database users, transport, catalog, and the old Business Builder', guidance: 'light' },
+  { nr: 12, title: 'Excursions', summary: 'Power BI and database users, transport, catalog, the old Business Builder, hierarchies', guidance: 'light' },
 ];
 
 /** Chapter of the excursions after the main game (Handbuch 7, 8, 11, 12). */
@@ -400,5 +400,17 @@ export const GLOSSARY: GlossaryTerm[] = [
     chapter: 10,
     text: 'Every run of every space with status, records and duration. The Data Integration Monitor shows one space; the task logs show them all.',
     realTenant: 'Monitoring > Task Logs.',
+  },
+  {
+    term: 'Hierarchy',
+    chapter: 12,
+    text: 'A view with semantic usage Hierarchy: one row per node with a Child (node) and a Parent column, e.g. company > region > grid area. Associated with a dimension, it offers drill-down; each node stands for everything below it. Node IDs must be unique.',
+    realTenant: 'Data Builder > SQL or graphical view > Semantic Usage Hierarchy (or Hierarchy with Directory); association from the dimension.',
+  },
+  {
+    term: 'Hierarchy data access control',
+    chapter: 12,
+    text: 'A data access control of type Hierarchy: each entry names a node, and the user sees the rows of that node and all its descendants. A new leaf below a granted node is covered without a new entry.',
+    realTenant: 'Data Builder > New Data Access Control > criteria type Hierarchy, with a hierarchy view.',
   },
 ];

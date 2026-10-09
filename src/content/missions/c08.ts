@@ -29,15 +29,15 @@ const PERMISSIONS: [string, string][] = [
   ['PLINDNER', 'NORTH'], ['PLINDNER', 'EAST'], ['PLINDNER', 'SOUTH'], ['PLINDNER', 'WEST'],
   ['MBRANDT', 'NORTH'], ['MBRANDT', 'EAST'], ['ADEMIR', 'SOUTH'], ['ADEMIR', 'WEST'],
 ];
-const values = (rows: [string, string][]) => rows.map(([u, g]) => `SELECT '${u}' AS USER_ID, '${g}' AS GRID_AREA`).join(' UNION ALL ');
+export const values = (rows: [string, string][]) => rows.map(([u, g]) => `SELECT '${u}' AS USER_ID, '${g}' AS GRID_AREA`).join(' UNION ALL ');
 
 // ---------------------------------------------------------------- reference figures (never shown)
 
 const AREAS: Record<string, string> = { MBRANDT: `'NORTH', 'EAST'`, ADEMIR: `'SOUTH', 'WEST'`, PLINDNER: `'NORTH', 'EAST', 'SOUTH', 'WEST'` };
 const BY_REGION = `JOIN RHN_IN.GRID_AREAS g ON f.GRID_AREA = g.GRID_AREA`;
-const netAs = (user: string) => `SELECT g.REGION, SUM(f.NET_AMOUNT) FROM (${REF_F_INV}) f ${BY_REGION} WHERE f.GRID_AREA IN (${AREAS[user]}) GROUP BY 1`;
+export const netAs = (user: string) => `SELECT g.REGION, SUM(f.NET_AMOUNT) FROM (${REF_F_INV}) f ${BY_REGION} WHERE f.GRID_AREA IN (${AREAS[user]}) GROUP BY 1`;
 const kwhAs = (user: string) => `SELECT g.REGION, SUM(f.CONSUMPTION_KWH) FROM (${REF_F_CONS}) f ${BY_REGION} WHERE f.GRID_AREA IN (${AREAS[user]}) GROUP BY 1`;
-const NOTHING = `SELECT 'x' AS REGION, 0 AS V WHERE FALSE`;
+export const NOTHING = `SELECT 'x' AS REGION, 0 AS V WHERE FALSE`;
 const OPEN_INV = (who: string) => [{ sql: netAs('PLINDNER'), message: `${who} still sees every region. The deployed fact RHN_REP_F_INVOICES has no data access control yet.` }];
 /** Control only on the dimension: the fact rows stay, the hidden grid areas just lose their region. */
 const dimOnly = (user: string) => `SELECT CASE WHEN f.GRID_AREA IN (${AREAS[user]}) THEN g.REGION END, SUM(f.CONSUMPTION_KWH) FROM (${REF_F_CONS}) f ${BY_REGION} GROUP BY 1`;

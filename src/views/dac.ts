@@ -3,14 +3,16 @@ import { runSql, describeColumns } from '../db';
 import {
   STATUS_LABEL, STATUS_HELP, objectKey, findObject, objectNameError, suggestTechnicalName, touch, deploy, type RepoObject,
 } from '../repo';
-import { dacError, entityCandidates, type DacDef } from '../dac';
+import { dacError, entityCandidates, hierarchyCandidates, hierarchyColumns, type DacDef } from '../dac';
+import { EXCURSIONS } from '../content/chapters';
 import { lockError } from '../integration';
 import { esc, spaceChip, icon, ICONS, toast, resultTable, openDialog } from '../ui';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
 
 /**
  * Data Access Control editor (chapter 8, Handbuch 9.3): criteria type, permissions entity, identifier column (user IDs)
- * and criteria columns. Only "Single Values" works in the game; the other types explain themselves.
+ * and criteria columns. "Single Values" works from chapter 8, "Hierarchy" from the excursions (chapter 12); "Operator and Values"
+ * explains itself.
  */
 
 export interface DacNav {
@@ -38,6 +40,8 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
     if (!o && fresh) Object.assign(fresh, { def, business, technical, touched: techTouched });
   };
   const entities = entityCandidates(t, space);
+  const hierarchyOn = ctx.currentChapter() >= EXCURSIONS;
+  const hierarchies = hierarchyCandidates(t, space);
   let columns: string[] | null = null;
 
   const loadColumns = async () => {
@@ -69,12 +73,24 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
             <div class="tbl-section">
               <h3>Criteria Type</h3>
               <div class="dac-types" id="dac-type">
-                <label class="dac-type on"><input type="radio" name="dac-type" checked> <b>Single Values</b>
+                <label class="dac-type ${def.type === 'Single Values' ? 'on' : ''}"><input type="radio" name="dac-type" value="Single Values" ${def.type === 'Single Values' ? 'checked' : ''}> <b>Single Values</b>
                   <small>A user sees the rows that match one of the values listed for him, e.g. his grid areas.</small></label>
                 <button type="button" class="dac-type off" data-dac-info="operator"><b>Operator and Values</b><small>Ranges and patterns, like BW analysis authorizations. Not in this game.</small></button>
-                <button type="button" class="dac-type off" data-dac-info="hierarchy"><b>Hierarchy</b><small>A node and everything below it. Not in this game yet.</small></button>
+                ${hierarchyOn
+                  ? `<label class="dac-type ${def.type === 'Hierarchy' ? 'on' : ''}"><input type="radio" name="dac-type" value="Hierarchy" ${def.type === 'Hierarchy' ? 'checked' : ''}> <b>Hierarchy</b>
+                      <small>An entry names a node; the user sees that node and everything below it, e.g. a region with all its grid areas.</small></label>`
+                  : `<button type="button" class="dac-type off" data-dac-info="hierarchy"><b>Hierarchy</b><small>A node and everything below it. You use it in the excursions.</small></button>`}
               </div>
             </div>
+            ${def.type === 'Hierarchy' ? `<div class="tbl-section">
+              <h3>Hierarchy</h3>
+              <p class="muted">A deployed view with semantic usage <b>Hierarchy</b>: its Parent and Child columns decide what lies below a node.</p>
+              <div class="form-grid"><label>Hierarchy
+                <select id="dac-hierarchy"><option value="">Select a hierarchy…</option>
+                  ${hierarchies.map((h) => `<option value="${esc(objectKey(h))}" ${objectKey(h) === def.hierarchy ? 'selected' : ''}>${esc(h.name)}${h.space !== space ? ` · ${esc(h.space)}` : ''}</option>`).join('')}
+                </select></label></div>
+              ${hierarchies.length ? '' : `<p class="form-error">No deployed hierarchy in ${esc(space)} yet. Build a view with semantic usage Hierarchy first.</p>`}
+            </div>` : ''}
             <div class="tbl-section">
               <h3>Permissions Entity</h3>
               <p class="muted">The table or view that says which user may see which values: one row per user and value.</p>
@@ -92,7 +108,8 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
             <div class="tbl-section">
               <h3>Criteria</h3>
               <p class="muted">The columns whose values decide what a user sees. They are mapped to columns of the protected view later.</p>
-              <div class="am-chips" id="dac-criteria">${cols.filter((c) => c !== def.identifier).map((c) => `<label><input type="checkbox" data-criterion="${esc(c)}" ${def.criteria.includes(c) ? 'checked' : ''}> ${esc(c)}</label>`).join('') || '<span class="muted">Choose the permissions entity first.</span>'}</div>
+              ${def.type === 'Hierarchy' ? '<p class="muted">Hierarchy: exactly one criterion, the column with the node a user may see.</p>' : ''}
+              <div class="am-chips" id="dac-criteria">${cols.filter((c) => c !== def.identifier).map((c) => `<label><input type="${def.type === 'Hierarchy' ? 'radio' : 'checkbox'}" name="dac-crit" data-criterion="${esc(c)}" ${def.criteria.includes(c) ? 'checked' : ''}> ${esc(c)}</label>`).join('') || '<span class="muted">Choose the permissions entity first.</span>'}</div>
             </div>
           </section>
           <aside class="props" id="properties" aria-label="Properties">
@@ -143,15 +160,30 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
     });
     main.querySelectorAll<HTMLInputElement>('[data-criterion]').forEach((c) =>
       c.addEventListener('change', () => {
-        def.criteria = c.checked ? [...new Set([...def.criteria, c.dataset.criterion!])] : def.criteria.filter((x) => x !== c.dataset.criterion);
+        if (def.type === 'Hierarchy') def.criteria = c.checked ? [c.dataset.criterion!] : [];
+        else def.criteria = c.checked ? [...new Set([...def.criteria, c.dataset.criterion!])] : def.criteria.filter((x) => x !== c.dataset.criterion);
         keep();
       }),
     );
+    main.querySelectorAll<HTMLInputElement>('input[name="dac-type"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        def.type = r.value as DacDef['type'];
+        if (def.type === 'Hierarchy') def.criteria = def.criteria.slice(0, 1);
+        else delete def.hierarchy;
+        ctx.track(`dac-type:${def.type}`);
+        draw();
+      }),
+    );
+    main.querySelector<HTMLSelectElement>('#dac-hierarchy')?.addEventListener('change', (e) => {
+      def.hierarchy = (e.target as HTMLSelectElement).value;
+      ctx.track(`dac-hierarchy:${def.hierarchy}`);
+      keep();
+    });
     main.querySelectorAll<HTMLButtonElement>('[data-dac-info]').forEach((b) =>
       b.addEventListener('click', () => {
         const text = b.dataset.dacInfo === 'operator'
           ? 'Operator and Values: each entry is a pair of operator and value (for example between, contains pattern), combined with AND and OR, like analysis authorizations in SAP BW. The handbook marks the details as not verified, so the game leaves it out.'
-          : 'Hierarchy: an entry names a node of a hierarchy; the user sees that node and everything below it, for example a region and all its grid areas. It needs a hierarchy view, which the game does not model yet.';
+          : 'Hierarchy: an entry names a node of a hierarchy; the user sees that node and everything below it, for example a region and all its grid areas. It needs a hierarchy view; you build one in the excursions (chapter 12).';
         const d = openDialog(b.querySelector('b')!.textContent!, `<p class="guide-lead">${esc(text)}</p><div class="guide-actions"><button class="btn primary" type="submit">Got it</button></div>`);
         d.form.addEventListener('submit', (ev) => {
           ev.preventDefault();
@@ -185,9 +217,17 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
       ctx.track(`preview:${o ? objectKey(o) : 'draft'}`);
       const [es, en] = def.entity.split('.');
       const crit = def.criteria.map((c) => `"${c}"`).join(` || ' · ' || `);
+      const hc = def.type === 'Hierarchy' && def.hierarchy ? hierarchyColumns(t, def.hierarchy) : null;
+      const sql = hc
+        ? `WITH RECURSIVE sub(u, n) AS (SELECT "${def.identifier}", ${crit} FROM "${es}"."${en}"
+             UNION SELECT sub.u, h."${hc.child}" FROM ${def.hierarchy!.split('.').map((x) => `"${x}"`).join('.')} h JOIN sub ON h."${hc.parent}" = sub.n)
+           SELECT p."${def.identifier}" AS USER_ID, string_agg(DISTINCT p.${crit}, ', ') AS NODES,
+             (SELECT string_agg(n, ', ' ORDER BY n) FROM sub WHERE sub.u = p."${def.identifier}") AS NODES_AND_ALL_BELOW
+           FROM "${es}"."${en}" p GROUP BY 1 ORDER BY 1`
+        : `SELECT "${def.identifier}" AS USER_ID, count(*) AS ENTRIES, string_agg(${crit}, ', ' ORDER BY ${crit}) AS ALLOWED_VALUES
+          FROM "${es}"."${en}" GROUP BY 1 ORDER BY 1`;
       try {
-        const res = await runSql(`SELECT "${def.identifier}" AS USER_ID, count(*) AS ENTRIES, string_agg(${crit}, ', ' ORDER BY ${crit}) AS ALLOWED_VALUES
-          FROM "${es}"."${en}" GROUP BY 1 ORDER BY 1`);
+        const res = await runSql(sql);
         out.innerHTML = `<div class="result-status ok">${res.rows.length} ${res.rows.length === 1 ? 'user' : 'users'} with entries. Everyone else sees nothing in a protected view.</div>${resultTable(res.columns, res.rows)}`;
       } catch (e) {
         out.innerHTML = `<div class="result-status error">${esc(e instanceof Error ? e.message : String(e))}</div>`;

@@ -723,6 +723,20 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         label the app <b>Deprecated</b>; you meet it in existing projects.</p>`,
     },
   ],
+  'c12-m05': [
+    {
+      title: 'Parent and child',
+      body: `<p>A <b>hierarchy</b> view has one row per node: the node itself (Child) and the node above it (Parent). The root has no parent.
+        Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
+    },
+  ],
+  'c12-m06': [
+    {
+      title: 'Grant a node',
+      body: `<p>A data access control of type <b>Hierarchy</b> reads entries like the Single Values type, but each entry is a <b>node</b>:
+        the user sees the rows of that node and of all its descendants. The tree decides what a region contains, not the permissions table.</p>`,
+    },
+  ],
   'c11-m01': [
     {
       title: 'Chapter 11: The board request',
@@ -2721,6 +2735,77 @@ GROUP BY c.TARIFF;`,
       },
     ],
     questions('What did you build in chapter 7 for net and tax by region?'),
+  ],
+  'c12-m05': [
+    [
+      { ...newView(`<p>A new SQL view in RHN_REP. The harmonized grid areas are under Shared Objects.</p>`), view: 'builder:landing:RHN_REP' },
+      {
+        title: 'Stack the levels',
+        target: '#editor',
+        body: `<p>Three groups of rows, stacked with <code>UNION ALL</code>: the root, the regions, the grid areas. Each group returns the same columns.
+          The example stacks two levels of the tariffs: a commodity node above each tariff.</p>`,
+        example: `SELECT DISTINCT 'C_' || COMMODITY AS NODE_ID, NULL AS PARENT_ID FROM RHN_HARM.RHN_HA_V_TARIFFS
+UNION ALL
+SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
+        action: { do: 'Write the grid area tree and run <b>Data Preview</b>: seven rows, every node ID once.', check: ranWith('UNION ALL', 'NODE_ID', 'PARENT_ID', 'GRID_AREAS') },
+      },
+      ...nameSaveDeploy('RHN_REP_H_GRID_AREA', 'Grid Area Hierarchy', 'RHN_REP', false),
+    ],
+    [
+      {
+        title: 'Semantic usage Hierarchy',
+        target: '#prop-semantic',
+        body: `<p>Choose <b>Hierarchy</b>. The columns then get the roles Parent and Child.</p>`,
+        action: { do: 'Set Hierarchy, PARENT_ID → Parent, NODE_ID → Child, then <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_H_GRID_AREA$' },
+      },
+    ],
+    [
+      {
+        title: 'The dimension',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Open <b>RHN_REP_D_GRID_AREA</b>. In its properties, Associations › Add: target RHN_REP_H_GRID_AREA, GRID_AREA → NODE_ID.</p>`,
+        action: { do: 'Add the association and <b>Deploy</b> the dimension.', event: '^deploy:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+      },
+    ],
+    questions('What does a node stand for?'),
+  ],
+  'c12-m06': [
+    [
+      {
+        title: 'New Table',
+        view: 'builder:landing:RHN_REP',
+        target: '[data-new="table"]',
+        body: `<p>Like the permissions table of chapter 8, but with nodes: USER_ID and NODE_ID, three rows.</p>`,
+        action: { do: 'Create, fill and deploy <b>RHN_REP_T_PERMISSION_NODES</b>.', event: '^deploy:RHN_REP\\.RHN_REP_T_PERMISSION_NODES$' },
+      },
+    ],
+    [
+      {
+        title: 'New Data Access Control',
+        view: 'builder:landing:RHN_REP',
+        target: '[data-new="dac"]',
+        body: `<p>Criteria type <b>Hierarchy</b>, then the hierarchy, the node table, USER_ID as identifier and NODE_ID as criterion.</p>`,
+        action: { do: 'Create and deploy <b>RHN_REP_DAC_REGION</b>.', event: '^deploy:RHN_REP\\.RHN_REP_DAC_REGION$' },
+      },
+    ],
+    [
+      {
+        title: 'Swap the control',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Open <b>RHN_REP_F_INVOICES</b>. In Data Access Controls remove the old one and assign the new one, NODE_ID → GRID_AREA.</p>`,
+        action: { do: 'Swap the control and <b>Deploy</b> the fact.', event: '^deploy:RHN_REP\\.RHN_REP_F_INVOICES$' },
+      },
+      {
+        title: 'Check as Markus',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Open the invoice model, REGION in the rows, View as MBRANDT, Data Preview: only the North.</p>`,
+        action: { do: 'Preview <b>RHN_REP_AM_INVOICES</b> as MBRANDT.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_INVOICES:MBRANDT' },
+      },
+    ],
+    questions('What does the control resolve R_NORTH to?'),
   ],
   // ================================================================ chapter 10
   'c10-m01': [

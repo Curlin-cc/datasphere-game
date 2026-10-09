@@ -75,6 +75,7 @@ export function dependencies(o: RepoObject, t: TenantState): string[] {
   for (const a of o.associations ?? []) deps.add(a.target);
   for (const d of o.dacs ?? []) deps.add(d.dac);
   if (o.dac?.entity) deps.add(o.dac.entity);
+  if (o.dac?.hierarchy) deps.add(o.dac.hierarchy);
   for (const s of o.chain?.steps ?? []) deps.add(s.object);
   deps.delete(objectKey(o));
   return [...deps].filter((k) => findObject(t, k));

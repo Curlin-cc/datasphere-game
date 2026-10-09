@@ -4,6 +4,8 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Hierarchie-Missionen als c12-m05/m06 an die Exkurse angehängt statt in Kapitel 6/8 eingefügt | Eingefügte Missionen würden weiter fortgeschrittene Spielstände zurücksetzen (Freischaltung „alle vorherigen gelöst“); als Vertiefung passt das Ende |
+| 2026-10-09 | DAC-Typ Hierarchy: genau ein Kriterium (Knotenspalte), Hierarchie = deployter View mit Parent/Child-Rollen, Auflösung per rekursiver CTE in `securedFrom` | Handbuch 9.3.4 beschreibt Knoten + Nachfahren; Details der Oberfläche nicht belegt |
 | 2026-10-09 | Badges werden aus dem Spielstand berechnet statt gespeichert; Glossar schaltet je Kapitel frei (Kapitel = erster Kontakt) | Alte Spielstände bekommen ihre Badges sofort, keine Migration; „beim ersten Kontakt“ als Kapitel genau genug |
 | 2026-10-09 | SQL-Schritte in Hands-on-Tutorials prüfen nur Bausteine (Tabelle, Klauseln, Spalten) plus eine erfolgreiche Data Preview, nie die Lösung selbst | Tutorial führt die Klicks, die Abfrage bleibt Aufgabe des Spielers; Bewertung macht weiter die Prüf-Engine |
 | 2026-10-09 | **Exkurse als Kapitel 12** (4 Missionen, Tipp-Stufe `light`): Verbrauch, Transport, Katalog, Business Builder; Apps Transport, Catalog & Marketplace › Search und Business Builder werden ab Kapitel 12 interaktiv | Neue Apps nach dem Spiel ohne Hinweise: wieder etwas Hilfe; Reihenfolge nach Nähe zum Gebauten (erst Daten nach außen, dann Produktion, Katalog, Altbestand) |

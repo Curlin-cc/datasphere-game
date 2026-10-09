@@ -65,7 +65,7 @@ src/analytic.ts      ← Kapitel 7: Analytic Model – Definition (Measures, Var
 src/views/analytic.ts ← Kapitel 7: Editor des Analytic Model (Fact-Auswahl, Canvas, Properties, Measure-/Variablen-Dialoge, Data Preview)
 src/localtable.ts    ← Kapitel 8: lokale Tabellen (Spalten, Zeilen, CREATE/INSERT, Prüfung)
 src/views/table.ts   ← Kapitel 8: Tabellen-Editor mit Data Editor
-src/dac.ts           ← Kapitel 8: Data Access Controls – Definition, Zuweisung, `securedFrom` (lesen als Benutzer), DAC_USERS
+src/dac.ts           ← Kapitel 8/12: Data Access Controls – Single Values und Hierarchy (Knoten + Nachfahren, rekursiv), Zuweisung, `securedFrom` (lesen als Benutzer), DAC_USERS
 src/views/dac.ts     ← Kapitel 8: DAC-Editor
 src/views/semantics.ts ← Kapitel 6+: Spaltenrollen (Key/Attribute/Measure/Parent/Child) und Associations im Properties-Panel, `viewColumns`
 src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
@@ -126,7 +126,7 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (55 Missionen, Hauptspiel und Exkurse komplett):
+Spielbar (57 Missionen, Hauptspiel und Exkurse komplett):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
@@ -141,7 +141,8 @@ Spielbar (55 Missionen, Hauptspiel und Exkurse komplett):
 - Kapitel 12 Exkurse: Power BI (`RHN_REP_D_TARIFF` exposed, Datenbankbenutzer `RHN_REP#…` nur lesend, Kunden nicht freigeben); Transport (Paket in RHN_REP
   mit Modell + Fact + Dimensionen + DAC + Berechtigungstabelle, erforderliches Paket `RHN_HARM_PKG_HARMONIZED`, Export an Test und Production);
   Katalog (Asset `RHN_REP_AM_CONSUMPTION` beschreiben, taggen, Glossarbegriff verknüpfen, beides veröffentlichen); Business Builder (Altobjekte lesen,
-  Ablösung durch `RHN_REP_AM_INVOICES`)
+  Ablösung durch `RHN_REP_AM_INVOICES`); Hierarchien: `RHN_REP_H_GRID_AREA` (RHEINAU → R_NORTH/R_SOUTH → Netzgebiete) an `RHN_REP_D_GRID_AREA`,
+  DAC `RHN_REP_DAC_REGION` (Typ Hierarchy, Tabelle `RHN_REP_T_PERMISSION_NODES` mit 3 Zeilen) ersetzt auf `RHN_REP_F_INVOICES` die Single-Values-DAC
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht

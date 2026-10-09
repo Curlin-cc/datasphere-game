@@ -3,12 +3,16 @@ import type { TenantState } from '../../tenant';
 import { findObject, objectKey } from '../../repo';
 import { packageStatus, presetPackage, validatePackage, validationMessages } from '../../transport';
 import { findAsset } from '../../catalog';
+import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
 
 /**
  * Chapter 12, Excursions (Handbuch 12, 11, 8, 7): four short side trips after the main game, one per app the main game
  * only mentioned. Consumption (Expose for Consumption, database user for Power BI), Transport (package with dependencies,
  * export to test and production), Catalog (describe, tag, glossary term, publish), Business Builder (read the old chain,
- * decide what replaces it). Parts the handbook marks as "nicht verifiziert" are simplified, see docs/HANDBUCH_ABGLEICH.md.
+ * decide what replaces it). Then two missions on hierarchies (Handbuch 6.5.3, 6.5.4, 9.3.4, 9.9 Ablauf B): a parent-child hierarchy
+ * company → region → grid area, associated with the grid area dimension, and a data access control of type Hierarchy that
+ * grants a region node instead of single grid areas. Parts the handbook marks as "nicht verifiziert" are simplified,
+ * see docs/HANDBUCH_ABGLEICH.md.
  */
 
 const JONAS = { name: 'Jonas Becker', role: 'Head of IT', initials: 'JB' };
@@ -96,6 +100,67 @@ function termReady({ tenant }: RuleContext): string | null {
   const linked = own.filter((x) => a?.terms.includes(x.id));
   if (!linked.length) return 'Your glossary term is not linked to RHN_REP_AM_CONSUMPTION yet.';
   return linked.some((x) => x.published) ? null : `"${linked[0].name}" is not published. Terms are published on their own.`;
+}
+
+// ---------------------------------------------------------------- m05/m06 hierarchies
+
+const H_GRID = 'RHN_REP.RHN_REP_H_GRID_AREA';
+const D_GRID = 'RHN_REP.RHN_REP_D_GRID_AREA';
+const T_NODES = 'RHN_REP.RHN_REP_T_PERMISSION_NODES';
+const DAC_REGION = 'RHN_REP.RHN_REP_DAC_REGION';
+const F_INV = 'RHN_REP.RHN_REP_F_INVOICES';
+const AM_INV = 'RHN_REP.RHN_REP_AM_INVOICES';
+const REGION = 'RHN_REP_D_GRID_AREA.REGION';
+
+/** Company → regions → grid areas. Region nodes get a prefix: their codes NORTH and SOUTH are also grid area codes. */
+const REF_HIERARCHY = `SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID
+  UNION ALL SELECT DISTINCT 'R_' || REGION, 'RHEINAU' FROM RHN_IN.GRID_AREAS
+  UNION ALL SELECT GRID_AREA, 'R_' || REGION FROM RHN_IN.GRID_AREAS`;
+const NO_PREFIX = `SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID
+  UNION ALL SELECT DISTINCT REGION, 'RHEINAU' FROM RHN_IN.GRID_AREAS
+  UNION ALL SELECT GRID_AREA, REGION FROM RHN_IN.GRID_AREAS`;
+const NODES: [string, string][] = [['PLINDNER', 'RHEINAU'], ['MBRANDT', 'R_NORTH'], ['ADEMIR', 'R_SOUTH']];
+
+function hierarchySemantics({ tenant }: RuleContext): string | null {
+  const d = findObject(tenant, H_GRID)?.deployed;
+  if (!d) return 'RHN_REP_H_GRID_AREA is not deployed yet.';
+  if (d.semanticUsage !== 'Hierarchy') return `RHN_REP_H_GRID_AREA is deployed as ${d.semanticUsage}. Set the semantic usage to Hierarchy and deploy.`;
+  const roles = d.columnRoles ?? {};
+  if (roles.PARENT_ID !== 'Parent') return 'PARENT_ID needs the role Parent in the deployed hierarchy.';
+  return roles.NODE_ID === 'Child' ? null : 'NODE_ID needs the role Child in the deployed hierarchy.';
+}
+
+function dimensionHasHierarchy({ tenant }: RuleContext): string | null {
+  const o = findObject(tenant, D_GRID);
+  const a = (o?.deployed?.associations ?? []).find((x) => x.target === H_GRID);
+  if (!a) {
+    return (o?.associations ?? []).some((x) => x.target === H_GRID)
+      ? 'The association to the hierarchy is only saved. Deploy RHN_REP_D_GRID_AREA.'
+      : 'RHN_REP_D_GRID_AREA has no association to RHN_REP_H_GRID_AREA yet: the dimension does not know its hierarchy.';
+  }
+  return a.mapping.some((m) => m.from === 'GRID_AREA' && m.to === 'NODE_ID') ? null : 'Map GRID_AREA of the dimension to NODE_ID of the hierarchy.';
+}
+
+function regionControl({ tenant }: RuleContext): string | null {
+  const o = findObject(tenant, DAC_REGION);
+  if (!o) return 'There is no data access control RHN_REP_DAC_REGION in RHN_REP yet.';
+  const d = o.deployed?.dac;
+  if (!d) return 'RHN_REP_DAC_REGION is saved, but not deployed.';
+  if (d.type !== 'Hierarchy') return 'RHN_REP_DAC_REGION has the criteria type Single Values. A region node only covers its grid areas with the type Hierarchy.';
+  if (d.entity !== T_NODES) return `RHN_REP_DAC_REGION reads ${d.entity.split('.')[1] ?? 'nothing'}. Its permissions entity is RHN_REP_T_PERMISSION_NODES.`;
+  if (d.identifier !== 'USER_ID' || d.criteria.join() !== 'NODE_ID') return 'Identifier USER_ID, criterion NODE_ID.';
+  return d.hierarchy === H_GRID ? null : 'Choose RHN_REP_H_GRID_AREA as the hierarchy.';
+}
+
+function invoicesByRegion({ tenant }: RuleContext): string | null {
+  const o = findObject(tenant, F_INV);
+  const dacs = o?.deployed?.dacs ?? [];
+  const a = dacs.find((x) => x.dac === DAC_REGION);
+  if (!a) return (o?.dacs ?? []).some((x) => x.dac === DAC_REGION) ? 'The new control is only saved on RHN_REP_F_INVOICES. Deploy it.' : 'Assign RHN_REP_DAC_REGION to RHN_REP_F_INVOICES.';
+  if (a.mapping.NODE_ID !== 'GRID_AREA') return 'Map the criterion NODE_ID to the column GRID_AREA of the fact: the leaves of the hierarchy are grid areas.';
+  return dacs.some((x) => x.dac === DAC_VALUES)
+    ? 'RHN_REP_DAC_GRID_AREA is still assigned as well. Two controls are combined with AND; remove the old one from the invoices so that the node table alone decides.'
+    : null;
 }
 
 // ---------------------------------------------------------------- missions
@@ -312,5 +377,109 @@ export const CHAPTER_12: Mission[] = [
       The semantic usage Analytical Dataset is deprecated; SAP recommends Fact.`,
     debrief: `<p>So the chart I want already exists in a newer form. Then please build me a new story on the invoice model, not a museum piece.</p>
       <p><i>Calin:</i> That was the last excursion. You have seen every app of the tenant now, and built most of them. Well done.</p>`,
+  },
+  {
+    id: 'c12-m05',
+    chapter: 12,
+    title: 'Regions as a hierarchy',
+    from: CALIN,
+    ticket: `<p>The board thinks in a tree: <b>Stadtwerke Rheinau</b> → <b>regions</b> North and South → <b>grid areas</b>. Today the region is
+      just a column. Build the tree as a parent-child <b>hierarchy</b> and attach it to the grid area dimension.</p>
+      <p>The view <code>RHN_REP_H_GRID_AREA</code> in <code>RHN_REP</code> has one row per node with <code>NODE_ID</code> and <code>PARENT_ID</code>:
+      the root <code>RHEINAU</code> without parent, one node per region, one node per grid area. Careful: the region codes NORTH and
+      SOUTH are also grid area codes, and a node ID may appear only once. Give the regions the IDs <code>R_NORTH</code> and <code>R_SOUTH</code>.</p>`,
+    tasks: [
+      'Create the SQL view <code>RHN_REP_H_GRID_AREA</code> with <code>NODE_ID</code> and <code>PARENT_ID</code> (and a name if you like) from the harmonized grid areas.',
+      'Set its semantic usage to <b>Hierarchy</b>: <code>PARENT_ID</code> is the Parent, <code>NODE_ID</code> the Child. Deploy.',
+      'Associate <code>RHN_REP_D_GRID_AREA</code> with the hierarchy (GRID_AREA → NODE_ID) and deploy the dimension.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder › RHN_REP › New SQL View. RHN_HARM.RHN_HA_V_GRID_AREAS has GRID_AREA, GRID_AREA_NAME and REGION.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Three groups of rows stacked with UNION ALL: the root, the regions (DISTINCT, prefixed with R_), the grid areas with their region node as parent.' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID UNION ALL SELECT DISTINCT 'R_' || REGION, ______ FROM ______ UNION ALL SELECT GRID_AREA, ______ FROM ______" },
+    ],
+    checks: [
+      {
+        type: 'result', label: 'The tree', object: H_GRID, columns: ['NODE_ID', 'PARENT_ID'], expected: REF_HIERARCHY,
+        diagnose: [{ sql: NO_PREFIX, message: 'NORTH and SOUTH appear twice: once as region, once as grid area. A node ID must be unique; prefix the regions (R_NORTH, R_SOUTH).' }],
+        counts: { 5: 'Five nodes: the root or the regions are missing. The tree has 1 root, 2 regions and 4 grid areas.', 6: 'Six nodes: one level is incomplete. The tree has 1 root, 2 regions and 4 grid areas.' },
+      },
+      { type: 'rule', label: 'A hierarchy', ok: 'Deployed as Hierarchy: PARENT_ID is the Parent, NODE_ID the Child.', test: hierarchySemantics },
+      { type: 'rule', label: 'Attached to the dimension', ok: 'RHN_REP_D_GRID_AREA is associated with the hierarchy.', test: dimensionHasHierarchy },
+      {
+        type: 'question', id: 'why-tree', label: 'Why a tree',
+        prompt: 'The dimension already has a REGION column. What does the hierarchy add?',
+        options: [
+          'Nothing; it is only a different display',
+          'Levels that can be drilled from company to region to grid area, and nodes that stand for everything below them, which access controls can use',
+          'It makes the fact faster',
+          'It replaces the dimension',
+        ],
+        answer: 1,
+        nudge: 'Not quite. What does a node R_NORTH stand for, compared with the text NORTH in a column?',
+      },
+    ],
+    xp: 50,
+    realTenant: `In a real tenant: a SQL or graphical view with semantic usage <b>Hierarchy</b> (Parent and Child columns), or <b>Hierarchy with
+      Directory</b> for several hierarchies in one entity; then an association from the dimension to the hierarchy. The analytic model and
+      SAP Analytics Cloud offer the hierarchy for drill-down. The game does not show the drill-down.`,
+    debrief: `<p>Seven nodes, one root. That is the tree the board draws on its slides.</p>
+      <p>And now something useful: the next ticket uses the nodes for access.</p>`,
+  },
+  {
+    id: 'c12-m06',
+    chapter: 12,
+    title: 'One row per region',
+    from: { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' },
+    ticket: `<p>Sabine Wolf. The permissions table has eight rows for three people, and next year a fifth grid area comes to the North.
+      Then someone has to remember to give Markus an extra row.</p>
+      <p><i>Calin adds:</i> Grant nodes instead of values. A local table <code>RHN_REP_T_PERMISSION_NODES</code> (<code>USER_ID</code>, <code>NODE_ID</code>)
+      with one row per person: Petra the whole company, Markus region North, Aylin region South. A data access control
+      <code>RHN_REP_DAC_REGION</code> of type <b>Hierarchy</b> on it, assigned to <code>RHN_REP_F_INVOICES</code> instead of the old control.
+      Same people, same numbers, three rows.</p>`,
+    tasks: [
+      'Create the table <code>RHN_REP_T_PERMISSION_NODES</code> with one row per user and node. Deploy it.',
+      'Create the data access control <code>RHN_REP_DAC_REGION</code>: type Hierarchy, hierarchy <code>RHN_REP_H_GRID_AREA</code>. Deploy it.',
+      'Assign it to <code>RHN_REP_F_INVOICES</code> in place of <code>RHN_REP_DAC_GRID_AREA</code> and deploy. Check the invoice model as MBRANDT.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'New Table and New Data Access Control on the start page of RHN_REP; the assignment is in the properties of the fact.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'A Hierarchy control resolves each node to itself and everything below it. The leaves are grid areas, so the criterion maps to GRID_AREA of the fact.' },
+      { label: 'Hint 3: the rows', cost: 25, text: 'PLINDNER × RHEINAU, MBRANDT × R_NORTH, ADEMIR × R_SOUTH. Control: identifier USER_ID, criterion NODE_ID, hierarchy RHN_REP_H_GRID_AREA.' },
+    ],
+    checks: [
+      { type: 'structure', label: 'The node table', space: 'RHN_REP', object: 'RHN_REP_T_PERMISSION_NODES', kind: 'Table', columns: ['USER_ID', 'NODE_ID'] },
+      {
+        type: 'result', label: 'One row per person', object: T_NODES, columns: ['USER_ID', 'NODE_ID'], expected: values(NODES).replace(/GRID_AREA/g, 'NODE_ID'),
+        diagnose: [{ sql: values([['PLINDNER', 'RHEINAU'], ['MBRANDT', 'NORTH'], ['ADEMIR', 'SOUTH']]).replace(/GRID_AREA/g, 'NODE_ID'), message: 'NORTH and SOUTH are grid area nodes. Markus and Aylin need the region nodes R_NORTH and R_SOUTH.' }],
+        counts: { 8: 'Eight rows: that is the old table with grid areas. One row per person, one node each.' },
+      },
+      { type: 'rule', label: 'The hierarchy control', ok: 'RHN_REP_DAC_REGION: Hierarchy on the node table.', test: regionControl },
+      { type: 'rule', label: 'The invoices use it', ok: 'RHN_REP_F_INVOICES is protected by the region control alone.', test: invoicesByRegion },
+      { type: 'model', label: 'Markus sees the North', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'MBRANDT', expected: netAs('MBRANDT'), ok: 'MBRANDT sees region NORTH only.' },
+      { type: 'model', label: 'Aylin sees the South', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'ADEMIR', expected: netAs('ADEMIR'), ok: 'ADEMIR sees region SOUTH only.' },
+      { type: 'model', label: 'Petra sees everything', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'PLINDNER', expected: netAs('PLINDNER'), ok: 'PLINDNER sees both regions.' },
+      { type: 'model', label: 'Nina sees nothing', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'NKRUEGER', expected: NOTHING, ok: 'NKRUEGER has no node and sees no rows.' },
+      {
+        type: 'question', id: 'new-area', label: 'A fifth grid area',
+        prompt: 'Next year grid area CENTRAL joins region North. What has to change so that Markus sees it?',
+        options: [
+          'A new row MBRANDT × CENTRAL in the node table',
+          'Only the hierarchy: CENTRAL gets R_NORTH as parent; Markus\'s entry R_NORTH covers it',
+          'A new data access control',
+          'Nothing at all, not even the hierarchy',
+        ],
+        answer: 1,
+        nudge: 'Not quite. What does the control resolve R_NORTH to?',
+      },
+    ],
+    xp: 55,
+    realTenant: `In a real tenant: Data Builder › New Data Access Control, criteria type <b>Hierarchy</b>, the permissions entity with user IDs and nodes,
+      the hierarchy view; assigned in the view's properties (Handbuch 9.9, Ablauf B). A user sees the rows of his nodes and all their descendants;
+      without an entry he sees nothing.`,
+    debrief: `<p>Three rows I can read in ten seconds, and next year nobody has to remember Markus. That is an audit finding closed.</p>
+      <p><i>Calin adds:</i> The consumption fact still uses the old control. Migrating it is the same three clicks, whenever Sabine retires the old table.</p>`,
   },
 ];

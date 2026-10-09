@@ -9,8 +9,9 @@ import { PEOPLE } from './content/people';
  * columns. It is assigned to a view by mapping each criterion to a view column. After deploying, a user sees only rows
  * whose values match one of his entries; a user without entries sees nothing.
  *
- * Simplified in the game (docs/DECISIONS.md): only the type "Single Values" works ("Operator and Values" is not verified
- * in the handbook, "Hierarchy" needs hierarchies the game does not model yet); several DACs on one view are combined
+ * Simplified in the game (docs/DECISIONS.md): "Single Values" and, from the excursions on, "Hierarchy" work ("Operator and Values"
+ * is not verified in the handbook); a Hierarchy control has exactly one criterion, the node column, and resolves the nodes of a
+ * user to themselves and all descendants along the Parent/Child columns of the hierarchy view; several DACs on one view are combined
  * with AND; the filter applies where the game reads an object for a user: Data Preview "View as", analytic models and
  * mission checks. Views built on top of a protected view are not filtered (the real tenant does that).
  */
@@ -18,7 +19,10 @@ import { PEOPLE } from './content/people';
 export type DacType = 'Single Values' | 'Operator and Values' | 'Hierarchy';
 
 export interface DacDef {
-  type: 'Single Values';
+  /** Single Values (chapter 8) or Hierarchy (excursions, Handbuch 9.3.4): an entry names a node, the user sees it and all below. */
+  type: 'Single Values' | 'Hierarchy';
+  /** Hierarchy only: SPACE.NAME of the deployed view with semantic usage Hierarchy (Parent and Child columns). */
+  hierarchy?: string;
   /** SPACE.NAME of the permissions entity. */
   entity: string;
   /** Column holding the user ID. */
@@ -63,8 +67,31 @@ export function dacError(def: DacDef, t: TenantState, space: string, columns: st
   if (!def.criteria.length) return 'Choose at least one criterion: the column with the values a user may see.';
   if (def.criteria.includes(def.identifier)) return 'The identifier column cannot also be a criterion.';
   const missing = def.criteria.filter((c) => !columns.includes(c));
-  return missing.length ? `${e.name} has no column ${missing.join(', ')}.` : null;
+  if (missing.length) return `${e.name} has no column ${missing.join(', ')}.`;
+  if (def.type === 'Hierarchy') {
+    if (def.criteria.length !== 1) return 'A hierarchy control has exactly one criterion: the column with the hierarchy node.';
+    if (!def.hierarchy) return 'Choose the hierarchy: a deployed view with semantic usage Hierarchy.';
+    const h = findObject(t, def.hierarchy);
+    if (!h?.deployed) return `${def.hierarchy.split('.')[1] ?? def.hierarchy} is not deployed.`;
+    if (h.space !== space && !isShared(t, def.hierarchy, space)) return `${def.hierarchy} is not shared with ${space}.`;
+    if (!hierarchyColumns(t, def.hierarchy)) return `${h.name} is not deployed as a Hierarchy with a Parent and a Child column.`;
+  }
+  return null;
 }
+
+/** Parent and Child columns of a deployed hierarchy view, or null. */
+export function hierarchyColumns(t: TenantState, key: string): { parent: string; child: string } | null {
+  const h = findObject(t, key)?.deployed;
+  if (!h || h.semanticUsage !== 'Hierarchy') return null;
+  const roles = Object.entries(h.columnRoles ?? {});
+  const parent = roles.find(([, r]) => r === 'Parent')?.[0];
+  const child = roles.find(([, r]) => r === 'Child')?.[0];
+  return parent && child ? { parent, child } : null;
+}
+
+/** Deployed hierarchy views a DAC in this space may use. */
+export const hierarchyCandidates = (t: TenantState, space: string) =>
+  t.objects.filter((o) => o.kind === 'SQL View' && o.deployed?.semanticUsage === 'Hierarchy' && (o.space === space || isShared(t, objectKey(o), space)));
 
 /** Problems of the DAC assignments of a view, given the view's columns. Null if fine. */
 export function assignmentError(assignments: DacAssignment[], t: TenantState, columns: string[]): string | null {
@@ -92,6 +119,16 @@ export function securedFrom(t: TenantState, key: string, user?: string): string 
   const conds = assignments.map((a) => {
     const def = findObject(t, a.dac)?.deployed?.dac;
     if (!def) return 'FALSE';
+    if (def.type === 'Hierarchy') {
+      const hc = def.hierarchy ? hierarchyColumns(t, def.hierarchy) : null;
+      const c = def.criteria[0];
+      if (!hc || !c) return 'FALSE';
+      // The user's nodes and every node below them.
+      return `x.${qi(a.mapping[c] ?? c)} IN (WITH RECURSIVE sub(n) AS (
+          SELECT p.${qi(c)} FROM ${qk(def.entity)} p WHERE p.${qi(def.identifier)} = ${lit(user)}
+          UNION SELECT h.${qi(hc.child)} FROM ${qk(def.hierarchy!)} h JOIN sub ON h.${qi(hc.parent)} = sub.n)
+        SELECT n FROM sub)`;
+    }
     const match = def.criteria.map((c) => `p.${qi(c)} = x.${qi(a.mapping[c] ?? c)}`).join(' AND ');
     return `EXISTS (SELECT 1 FROM ${qk(def.entity)} p WHERE p.${qi(def.identifier)} = ${lit(user)} AND ${match})`;
   });
@@ -109,6 +146,10 @@ export function sanitizeDac(d: unknown): DacDef | undefined {
   const entity = typeof x.entity === 'string' && KEY.test(x.entity) ? x.entity : '';
   const identifier = typeof x.identifier === 'string' && COL.test(x.identifier) ? x.identifier : '';
   const criteria = (Array.isArray(x.criteria) ? x.criteria : []).filter((c): c is string => typeof c === 'string' && COL.test(c)).slice(0, 10);
+  if (x.type === 'Hierarchy') {
+    const hierarchy = typeof x.hierarchy === 'string' && KEY.test(x.hierarchy) ? x.hierarchy : '';
+    return { type: 'Hierarchy', entity, identifier, criteria: criteria.slice(0, 1), hierarchy };
+  }
   return { type: 'Single Values', entity, identifier, criteria };
 }
 
