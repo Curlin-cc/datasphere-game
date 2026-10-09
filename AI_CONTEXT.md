@@ -56,6 +56,7 @@ docs/DECISIONS.md    ← Architektur-Entscheidungen
 docs/DATA.md         ← Testdaten: Tabellen, eingebaute Fehler, Zahlen, Quellsysteme
 docs/design/         ← verbindliches Design: README (Regeln, Farben, Seitentypen, Abgleich), screenshots/ (21 Bilder), BILDBESCHREIBUNGEN.md, quelle/ (docx)
 docs/handbuch/       ← Curlins SAP-Datasphere-Handbuch: docx + Markdown je Kapitel (fachliche Quelle, README = Inhaltsverzeichnis)
+docs/FRAGEN_AN_CURLIN.md ← offene Fragen an Curlin (Screenshots, Prüfpunkte am echten Tenant); am Ende jeder Session danach fragen
 docs/HANDBUCH_ABGLEICH.md ← Abgleich mit Curlins SAP-Datasphere-Handbuch: was abgedeckt ist, was dort „nicht verifiziert“ ist
 src/main.ts          ← Shell (Tenant-Banner, Shellbar, Seitennavigation mit Gruppen), Routing, Zurück-Verlauf, Home, App-Infoseiten, Glossar, Missions-Panel, Boot
 src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
@@ -164,11 +165,6 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Curlin spielt die Exkurse am Artifact durch; offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` (Punkte 6, 7) am echten Tenant prüfen,
-   v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
-2. Design: Abschnitt 4 der Design-Richtlinie ist bis auf fehlende Vorlagen erledigt. Curlin: Screenshots von Connections und Security › Users/Roles/
-   Activities aus dem echten Tenant liefern, dann abgleichen
-3. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
-   und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
-   erneutes Deploy die persistierten Daten entfernt; Kapitel 10: ob Task Chains Objekte anderer Spaces nur über geteilte Ketten erreichen
-4. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)
+1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
+   Am Ende jeder Session danach fragen; Antworten einarbeiten
+2. Mögliche Erweiterungen der Exkurse: Versionshistorie (Handbuch 11.4.9), OData-Freigabe mit OAuth-Client (12.7), Semantic Onboarding mit Content Network (8.6)

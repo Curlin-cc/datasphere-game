@@ -12,3 +12,5 @@
 4. Spieltexte Englisch, Projektdoku Deutsch. Vor jedem Commit die Playtests in `tests/playtest/` laufen lassen.
 5. Am Ende der Session `docs/STATUS.md`, `AI_CONTEXT.md` („Nächster Schritt“) und ggf. `docs/DECISIONS.md` aktualisieren,
    dann direkt auf `main` committen und pushen.
+6. **Offene Fragen an Curlin** stehen in `docs/FRAGEN_AN_CURLIN.md`. Neue offene Punkte dort eintragen, weiterbauen und
+   **am Ende jeder Session Curlin nach den offenen Punkten dieser Liste fragen**; Antworten mit Datum abhaken.
