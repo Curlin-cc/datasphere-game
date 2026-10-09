@@ -5667,6 +5667,10 @@ Die Beschreibung benennt nur den sichtbaren Zustand dieses Screenshots. Aus Symb
 
 ![Bild 12](screenshots/12-connections.png)
 
+> **Hinweis (09.10.2026):** Der Screenshot zeigt in der Shellbar „Translation“ und den Titel „Welcome to the Translation Dashboard“, also die
+> App *Translation*, nicht *Connections*. Aufbau (Seitentyp A) gilt trotzdem; der Leerzustandstext „It looks like you haven't selected a space.“
+> stammt aus Translation. Ein echter Connections-Screenshot fehlt noch.
+
 Bildformat: 1916 × 919 Pixel. Die folgenden Positionen beziehen sich auf dieses vollständige Bild.
 
 ## 1. Gesamtaufbau und sichtbarer Zustand

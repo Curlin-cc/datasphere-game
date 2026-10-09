@@ -22,6 +22,14 @@ def nexts(pg, n=1):
         pg.click('.tour-card [data-act="next"]'); pg.wait_for_timeout(200)
 
 
+def cards(pg):
+    """Monitor and Connections start with the space cards once per visit: take the current space."""
+    pg.wait_for_timeout(200)
+    for grid in ['#mon-spaces', '#conn-spaces']:
+        if pg.locator(grid).count():
+            pg.click(f'{grid} [aria-current="true"]')
+
+
 def answer_all(g, answers):
     for q, v in answers.items():
         g.answer(q, v)
@@ -39,7 +47,7 @@ with sync_playwright() as p:
         expect(pg, f'Open {label}')
         if not pg.locator(f'.nav [data-view="{app}"]').count():
             pg.click('.nav [data-group="monitoring"]')
-        pg.click(f'.nav [data-view="{app}"]')
+        pg.click(f'.nav [data-view="{app}"]'); cards(pg)
     expect(pg, 'Your map'); g.shot('g-c00-map'); nexts(pg)
     expect(pg, 'Your answers')
     answer_all(g, {'space': 1, 'view': 0, 'load': 2, 'role': 3, 'source': 4})
@@ -102,7 +110,7 @@ with sync_playwright() as p:
     g = Game(p, S); pg = g.pg
     g.start(save_before(3, 'c03-m01', {"spaces": SPACES, "shares": [], "activeSpace": "RHN_HARM"}))
     expect(pg, 'Chapter 3: Data integration'); nexts(pg, 2)
-    expect(pg, 'Open Connections'); pg.click('.nav [data-view="connections"]')
+    expect(pg, 'Open Connections'); pg.click('.nav [data-view="connections"]'); cards(pg)
     expect(pg, 'Select the space'); pg.select_option('#conn-space', 'RHN_IN')
     expect(pg, 'Create'); pg.click('#conn-create')
     expect(pg, 'Pick the type'); g.shot('g-c03-types'); pg.click('[data-type="S4HANA_CLOUD"]')

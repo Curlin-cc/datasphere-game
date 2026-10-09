@@ -10,51 +10,55 @@ import { THRESHOLDS, simulateStories } from '../perf';
  * the other areas explain what they are for.
  */
 
-type Tab = 'tenant' | 'workload' | 'audit' | 'tasklogs' | 'monitoring' | 'security' | 'integration' | 'ip';
-let tab: Tab = 'tenant';
+type Tab = 'integration' | 'security' | 'audit' | 'monitoring' | 'ip' | 'tasklogs' | 'dbaccess' | 'tenant' | 'workload';
+let tab: Tab = 'integration';
 let area: 'configuration' | 'about' = 'configuration';
 
+/** Configuration tabs in the order of the real tenant (Bild 15). */
 const TABS: { id: Tab; label: string; text: string }[] = [
+  { id: 'integration', label: 'Data Integration', text: 'Cloud Connectors and Data Provisioning Agents that reach systems in the company network.' },
+  { id: 'security', label: 'Security', text: 'Trusted certificates for TLS connections to source systems.' },
+  { id: 'audit', label: 'Audit', text: 'Which space keeps the audit logs and how long they are kept.' },
+  { id: 'monitoring', label: 'Monitoring', text: 'What the monitoring apps record, for example expensive statements: SQL statements that exceed a threshold of runtime or memory.' },
+  { id: 'ip', label: 'IP Allowlist', text: 'Which public IPv4 ranges may connect to the database of the tenant directly, for example a Data Provisioning Agent or a BI tool.' },
+  { id: 'tasklogs', label: 'Tasks', text: 'How long the logs of loads, flows and task chains are kept before they are deleted.' },
+  { id: 'dbaccess', label: 'Database Access', text: 'Database analysis users and other tenant-wide database users for support and analysis. Database users for tools are created per space in Space Management.' },
   { id: 'tenant', label: 'Tenant Configuration', text: 'How much disk, memory and compute the tenant has, and how it is split up. Changes here change what the tenant costs.' },
   { id: 'workload', label: 'Workload Management', text: 'Priorities and statement limits, per space or per group of processes (for example analytic consumption versus modeling).' },
-  { id: 'audit', label: 'Audit', text: 'Which space keeps the audit logs and how long they are kept.' },
-  { id: 'tasklogs', label: 'Task Logs', text: 'How long the logs of loads, flows and task chains are kept before they are deleted.' },
-  { id: 'monitoring', label: 'Monitoring', text: 'What the monitoring apps record, for example expensive statements: SQL statements that exceed a threshold of runtime or memory.' },
-  { id: 'security', label: 'Security', text: 'Trusted certificates for TLS connections to source systems.' },
-  { id: 'integration', label: 'Data Integration', text: 'Cloud Connectors and Data Provisioning Agents that reach systems in the company network.' },
-  { id: 'ip', label: 'IP Allowlist', text: 'Which public IPv4 ranges may connect to the database of the tenant directly, for example a Data Provisioning Agent or a BI tool.' },
 ];
 
 export function renderSystem(main: HTMLElement) {
   const t = ctx.tenant();
   const used = assigned(t);
+  const info = TABS.find((x) => x.id === tab)!;
+  main.classList.add('bleed');
   main.innerHTML = `
-    <h1 class="view-title">System</h1>
-    <p class="view-lead">Tenant-wide settings. Only administrators work here. What you set applies to all spaces.</p>
-    <div class="tabs" role="tablist" id="system-areas">
-      <button type="button" role="tab" data-area="configuration" aria-selected="${area === 'configuration'}">Configuration</button>
-      <button type="button" role="tab" data-area="about" aria-selected="${area === 'about'}">About</button>
-    </div>
-    ${area === 'about' ? `<section class="panel app-info-card">
-        <h3>About this tenant</h3>
-        <dl class="props-list wide-dl"><dt>Tenant</dt><dd>Stadtwerke Rheinau, training tenant</dd>
-          <dt>Capacity</dt><dd>${CAPACITY.diskGB} GB disk, ${CAPACITY.memoryGB} GB in-memory</dd>
-          <dt>Version</dt><dd>Datasphere Game, simulated</dd></dl>
-        <p class="muted">In a real tenant, About shows the version, the tenant URL and the license figures.</p></section>`
-    : `<div class="system-layout">
-      <nav class="sub-nav" aria-label="Configuration areas">${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}</nav>
-      <section class="panel system-body" id="system-body">${body(tab, used)}</section>
-    </div>`}`;
+    <div class="sys-page">
+      <nav class="sys-tabs sub-nav" aria-label="Configuration areas">
+        ${TABS.map((x) => `<button type="button" data-tab="${x.id}" ${area === 'configuration' && x.id === tab ? 'aria-current="page"' : ''}>${esc(x.label)}</button>`).join('')}
+        <span class="spacer"></span>
+        <button type="button" class="sys-more" data-area="${area === 'about' ? 'configuration' : 'about'}" ${area === 'about' ? 'aria-current="page"' : ''}>About</button>
+      </nav>
+      ${area === 'about' ? `<section class="sys-section"><h2>About</h2><div class="sys-content panel">
+          <dl class="props-list wide-dl"><dt>Tenant</dt><dd>Stadtwerke Rheinau, training tenant</dd>
+            <dt>Capacity</dt><dd>${CAPACITY.diskGB} GB disk, ${CAPACITY.memoryGB} GB in-memory</dd>
+            <dt>Version</dt><dd>Datasphere Game, simulated</dd></dl>
+          <p class="muted">In a real tenant, About shows the version, the tenant URL and the license figures.</p></div></section>`
+      : `<section class="sys-section"><h2>${esc(info.label)}</h2>
+          <div class="sys-content system-body" id="system-body">${body(tab, used)}</div></section>`}
+    </div>`;
 
   main.querySelectorAll<HTMLButtonElement>('[data-area]').forEach((b) =>
     b.addEventListener('click', () => {
       area = b.dataset.area as typeof area;
+      ctx.track(`system:${area}`);
       renderSystem(main);
     }),
   );
   main.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
     b.addEventListener('click', () => {
       tab = b.dataset.tab as Tab;
+      area = 'configuration';
       ctx.track(`system:${tab}`);
       renderSystem(main);
     }),
@@ -94,7 +98,7 @@ export function systemTo(target: Tab) {
 function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
   const t = ctx.tenant();
   const info = TABS.find((x) => x.id === id)!;
-  const head = `<h3>${esc(info.label)}</h3><p class="muted">${esc(info.text)}</p>`;
+  const head = `<p class="sys-lead">${esc(info.text)}</p>`;
   if (id === 'security') {
     return `${head}
       <div class="table-head"><h4>Trusted certificates</h4><button class="btn small primary" type="button" id="cert-upload">Upload Certificate</button></div>
@@ -133,6 +137,9 @@ function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
       </form>
       <p class="muted">Statements that run longer than the threshold appear in <b>Monitoring › Expensive Statement Logs</b>, with duration,
         peak memory and CPU time. Without tracing, the logs stay empty and peak memory is missing. A real tenant also offers thresholds for memory and CPU time.</p>`;
+  }
+  if (id === 'dbaccess') {
+    return `${head}<p class="muted">Not simulated in this game. ${ctx.currentChapter() >= 12 ? 'You create database users for Power BI and other tools in Space Management › Database Access.' : 'Database users for external tools come in the excursions (chapter 12).'}</p>`;
   }
   if (id === 'ip') {
     return `${head}<p class="muted">No entries. Two directions to keep apart: the allowlist here controls who may reach the tenant's database.

@@ -73,6 +73,11 @@ class Game:
                 self.pg.click(f'.nav [data-group="{grp}"]')
         self.pg.click(f'.nav [data-view="{app}"]')
         self.pg.wait_for_timeout(250)
+        # Monitor and Connections start with the space cards once per visit: take the current space.
+        for grid in ['#mon-spaces', '#conn-spaces']:
+            if self.pg.locator(grid).count():
+                self.pg.click(f'{grid} [aria-current="true"]')
+                self.pg.wait_for_timeout(200)
 
     def answer(self, qid, i):
         self.pg.check(f'input[name="q-{qid}"][value="{i}"]')

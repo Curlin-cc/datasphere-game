@@ -163,8 +163,8 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. Curlin spielt die Exkurse am Artifact durch; offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` (Punkte 6, 7) am echten Tenant prüfen,
    v. a. Transport › Packages/Export (nur Import und Monitor als Screenshot vorhanden) und Position von *Expose for Consumption*
-2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
-   + Space-Karten, Task Logs optisch wie Bild 1, System-Reiter wie Bild 15. IDs/`data-*` beibehalten, danach `look.py` + alle Playtests
+2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Security-Listen im Tabellenstil, System-Unterpunkte,
+   Import-Kacheln, Settings-Dialog. Echten Screenshot der Connections-App besorgen (Bild 12 zeigt Translation)
 3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
 4. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
 5. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy

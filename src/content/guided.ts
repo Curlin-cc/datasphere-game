@@ -30,15 +30,19 @@ const answered = () => {
 /** Apps inside the expandable Monitoring entry: the tour first points at Monitoring, then the entry opens. */
 const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces', statements: 'Expensive Statement Logs', tasklogs: 'Task Logs' };
 
+/** Apps that start with the space cards (page type A) until a space is chosen in this visit. */
+const SPACE_CARDS: Record<string, string> = { monitor: '#mon-spaces', connections: '#conn-spaces' };
+
 const nav = (id: string, label: string, body: string): TourStep => ({
   title: `Open ${label}`,
   target: IN_MONITORING[id] ? `.nav [data-view="${id}"] || .nav [data-group="monitoring"]` : `.nav [data-view="${id}"]`,
   body,
   action: {
-    do: IN_MONITORING[id]
+    do: (IN_MONITORING[id]
       ? `Click <b>Monitoring</b> in the side navigation, then <b>${IN_MONITORING[id]}</b>.`
-      : `Click <b>${label}</b> in the side navigation.`,
-    check: () => appOpen(id),
+      : `Click <b>${label}</b> in the side navigation.`)
+      + (SPACE_CARDS[id] ? ' If it shows the space cards, click the space of the ticket.' : ''),
+    check: () => appOpen(id) && !(SPACE_CARDS[id] && $(SPACE_CARDS[id])),
   },
 });
 

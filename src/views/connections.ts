@@ -4,6 +4,7 @@ import {
   CONN_TYPES, FEATURES, connType, validateConnection, dependents, findConnection, type Connection, type ConnType,
 } from '../integration';
 import { esc, spaceChip, openDialog, toast, fmtDate } from '../ui';
+import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 
 /**
  * Connections app: one list per space. Create from a connection type, Edit, Validate, Delete.
@@ -11,6 +12,8 @@ import { esc, spaceChip, openDialog, toast, fmtDate } from '../ui';
  */
 
 let selected = '';
+/** The space cards show once per visit (page type A, docs/design/README.md). */
+let spaceChosen = false;
 
 export function spaceSelect(id: string, current: string) {
   const t = ctx.tenant();
@@ -23,6 +26,26 @@ export const featureList = (features: string[]) =>
 
 export function renderConnections(main: HTMLElement) {
   const t = ctx.tenant();
+  main.classList.toggle('bleed', !spaceChosen);
+  if (!spaceChosen) {
+    main.innerHTML = welcomeSpacesHtml({
+      title: 'Welcome to Connections',
+      text: 'Create and manage connections to source and target systems. Each connection belongs to one space.',
+      emptyTitle: 'Select a space',
+      emptyText: 'Connections are created and used inside a space. Only its members can use them in remote tables, flows and imports.',
+      cardAttrs: (id) => `data-conn-card="${esc(id)}" ${id === t.activeSpace ? 'aria-current="true"' : ''}`,
+      gridId: 'conn-spaces',
+    });
+    bindSpaceSearch(main);
+    main.querySelectorAll<HTMLButtonElement>('[data-conn-card]').forEach((b) => b.addEventListener('click', () => {
+      t.activeSpace = b.dataset.connCard!;
+      spaceChosen = true;
+      ctx.track(`space:connections:${t.activeSpace}`);
+      ctx.save();
+      renderConnections(main);
+    }));
+    return;
+  }
   const space = t.activeSpace;
   const list = t.connections.filter((c) => c.space === space);
   if (!list.some((c) => c.name === selected)) selected = '';

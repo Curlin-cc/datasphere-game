@@ -190,10 +190,18 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
       *Expose for Consumption* als OFF/ON-Pille im Properties-Panel (Bild 21). Packages, Export und die Katalog-Suchseite sind ohne Vorlage gebaut
       (kein Screenshot) im Stil von Typ D
 
+- [x] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A, Bild 7), einmal je Besuch; danach Space-Wechsel per Dropdown
+      oben rechts. Hinweis: `screenshots/12-connections.png` zeigt in Wahrheit das **Translation Dashboard** („Welcome to the Translation Dashboard“);
+      Kopftext der Connections-Willkommensseite daher nicht belegt
+- [x] Task Logs wie Bild 1 (D): weißer Kopf mit Filterzeile (Date and Time Range · Spaces · Statuses · Space Storage Type), Einklapp-Chevron,
+      Tabelle „Task Logs (n)“ mit Cancel Task (deaktiviert) · Refresh · Zahnrad, Objekttyp und Aktivität in Großbuchstaben (REPLICATION_FLOWS, RUN_CHAIN),
+      Status als farbiger Großbuchstaben-Text, Dauer hh:mm:ss, Datum „Oct 2, 2026, 11:55:56“
+- [x] System › Configuration wie Bild 15: Reiterleiste oben (Data Integration · Security · Audit · Monitoring · IP Allowlist · Tasks · Database Access ·
+      Tenant Configuration · Workload Management), Abschnitte links Titel, rechts Inhalt auf grauem Grund; „About“ als Pille rechts
+
 Noch offen:
-- [ ] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A); heute Space-Auswahl per Dropdown
-- [ ] Monitoring-Listen wie D (Task Logs als echte Seite mit Filterzeile, Status als farbiger Großbuchstaben-Text)
-- [ ] System mit Reiterleiste wie Bild 15, Security-Listen im Tabellenstil
+- [ ] Security-Listen (Roles, Users) im Tabellenstil wie D
+- [ ] System: Unterpunkte Configuration · Administration in der Navigation (heute ein Eintrag mit Reiterleiste und „About“ rechts)
 - [ ] Import-Kacheln: im Original im Import-Menü der Werkzeugleiste (Bild 19); im Spiel als Kacheln rechts vom Trenner, damit die Tutorials sie zeigen können
 - [ ] Settings-Dialog (Bild 20) statt einzelner Shell-Buttons
 

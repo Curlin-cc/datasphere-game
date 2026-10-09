@@ -6,6 +6,7 @@ import {
 } from '../integration';
 import { spaceSelect } from './connections';
 import { esc, openDialog, toast, fmtDate } from '../ui';
+import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { runChain } from '../taskchain';
 import { persistView, unpersistView, persistError, analyze, sizeMB, fmtSize, fmtMs, type PerfNode } from '../perf';
 
@@ -22,6 +23,8 @@ let selectedRun = '';
 let selectedView = '';
 let selectedChain = '';
 let analyzed = '';
+/** The space cards show once per visit, like in the real monitor (Bild 7). */
+let spaceChosen = false;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'remote', label: 'Remote Tables' },
@@ -35,6 +38,7 @@ const TABS: { id: Tab; label: string }[] = [
 /** For tutorials and links from other apps. */
 export function monitorTo(target: Tab, flow?: string) {
   tab = target;
+  spaceChosen = true;
   if (flow) {
     selectedFlow = flow;
     selectedView = flow;
@@ -49,6 +53,8 @@ const runChip = (r?: Pick<Run, 'status'>) =>
 
 export function renderMonitor(main: HTMLElement) {
   const t = ctx.tenant();
+  main.classList.toggle('bleed', !spaceChosen);
+  if (!spaceChosen) return renderWelcome(main);
   const space = t.activeSpace;
   main.innerHTML = `
     <div class="view-head">
@@ -94,6 +100,27 @@ export function renderMonitor(main: HTMLElement) {
   else host.innerHTML = `<section class="panel"><p class="muted">${tab === 'views'
     ? 'Views you persist show up here: run or schedule the persistence, remove it, and analyze views with the View Analyzer. You decide what to persist in chapter 9.'
     : 'Task chains run several loads in a fixed order and show each step with its log. You build your first one in chapter 10.'}</p></section>`;
+}
+
+/** Page type A (Bild 7): "Welcome to the Data Integration Monitor" with the space cards. */
+function renderWelcome(main: HTMLElement) {
+  const t = ctx.tenant();
+  main.innerHTML = welcomeSpacesHtml({
+    title: 'Welcome to the Data Integration Monitor',
+    text: 'Welcome to the Data Integration Monitor! Here you can view, edit and create data integrations.',
+    emptyTitle: 'Select a space',
+    emptyText: 'The monitor always shows the remote tables, views, flows and task chains of one space. You only see the spaces you are a member of.',
+    cardAttrs: (id) => `data-mon-card="${esc(id)}" ${id === t.activeSpace ? 'aria-current="true"' : ''}`,
+    gridId: 'mon-spaces',
+  });
+  bindSpaceSearch(main);
+  main.querySelectorAll<HTMLButtonElement>('[data-mon-card]').forEach((b) => b.addEventListener('click', () => {
+    t.activeSpace = b.dataset.monCard!;
+    spaceChosen = true;
+    ctx.track(`space:monitor:${t.activeSpace}`);
+    ctx.save();
+    renderMonitor(main);
+  }));
 }
 
 // ---------------------------------------------------------------- remote tables
