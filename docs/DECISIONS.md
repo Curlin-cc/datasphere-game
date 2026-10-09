@@ -4,6 +4,7 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | MSC-Emblem: **offener Ring aus drei spitz zulaufenden Bögen** (Lila oben rechts, Orange unten, Weinrot links) statt Auge mit Triquetra; Geometrie berechnet (Radius 10, Bogen 134°, max. Breite 3) | Neue Logo-Vorlage von Curlin, als Vektor für jede Auflösung neu gebaut |
 | 2026-10-09 | MSC-Emblem: **angedeutetes Auge (schmal, mit Iriskreis) und moderner Triquetra als Pupille** (zuvor Triquetra im Ring) (Vorlage von Curlin, weiterentwickelt: drei klare Bögen in Lila, Weinrot, Orange) statt Balken bzw. Glühbirne | Wunsch von Curlin: business-mäßig; Triquetra ist ein freies, historisches Symbol |
 | 2026-10-09 | Kacheln einheitlich groß, Rand 1,5 px statt 1 px und dunkler (`--tile-border`, `--tile-w`); bewusste Abweichung von den feineren Horizon-Rändern | Wunsch von Curlin: besser sichtbare Kacheln |
 | 2026-10-09 | Berechtigungstabelle als **lokale Tabelle mit Data Editor** statt SQL-View mit Literalen | Handbuch 9.3.1: Fachbereich pflegt die Berechtigungsentität; Tabelle ist realistisch und ohne SQL-Tricks |
