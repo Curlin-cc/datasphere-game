@@ -14,7 +14,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 4 Inbound Layer | 6.4, 6.11 | ja (Data Preview, lokale Tabellen) | SQL-Grundlagen kommen nicht aus dem Handbuch |
 | 5 Harmonization | 6.5.2, 6.11.2, 6.11.4 | ja, gebaut am 09.10.2026: SQL Views, Sharing, Impact and Lineage (vereinfacht) | Lineage-Diagramm im Handbuch ohne Details; Spiel zeigt nur Liste im Properties-Panel |
 | 6 Semantics | 6.4.1, 6.5.3, 6.5.4, 6.6 | ja, gebaut am 09.10.2026: Semantic Usage inkl. Hierarchy, Key/Attribute/Measure, Associations mit Key-Mapping | Hierarchy with Directory, Analytical Dataset, semantische Spaltentypen (Betrag mit Währung …), E/R-Modell und Kardinalitäten nicht simuliert |
-| 7 Analytic Model | 6.10 | ja: Kennzahlarten (calculated, restricted, count distinct …), Variablen | – |
+| 7 Analytic Model | 6.10, 6.12.5 | ja, gebaut am 09.10.2026: genau ein Fact, Dimensionen aus Associations, Fact Source / Calculated / Restricted / Count Distinct Measures, Filter Variable (Single Value, Interval, Pflicht/optional), Data Preview mit Zeilen, Measures, Variablenwerten | Fixed Value, Währungs-/Einheitenumrechnung, Ausnahmeaggregation, Skalierung, Sichtbarkeit, globaler Filter, mehrstufige Dimensionen, Standard-/Restricted-Measure-/Stichtagsvariable nur erklärt (teils „nicht verifiziert“) |
 | 8 Data Access Controls | 9.3 | ja: Single Values, Operator and Values, Hierarchy, Zuweisung | – |
 | 9 Persistence | 6.5.6, 10.3.4 | ja: Persistenz, Partitionierung, View Analyzer | – |
 | 10 Operations | 6.7.3, 6.8, 10 | ja: Transformation Flow, Task Chains, Monitor, Benachrichtigungen | – |

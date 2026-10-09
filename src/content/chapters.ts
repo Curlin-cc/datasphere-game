@@ -242,4 +242,29 @@ export const GLOSSARY: GlossaryTerm[] = [
     text: 'Facts in the middle, shared dimensions around them, connected by keys. Each dimension exists once and serves every fact.',
     realTenant: 'Facts and dimensions with associations in the reporting space; analytic models on top.',
   },
+  {
+    term: 'Analytic model',
+    text: 'The object SAP Analytics Cloud consumes. Built on exactly one fact; its dimensions come from the fact\'s associations. Defines the visible measures, attributes and variables.',
+    realTenant: 'Data Builder > New Analytic Model; consumed as a data source in SAP Analytics Cloud stories.',
+  },
+  {
+    term: 'Calculated measure',
+    text: 'A formula over other measures of an analytic model, evaluated after aggregation, e.g. gross = net + tax. Defined once, the same in every report.',
+    realTenant: 'Analytic model > Measures > Calculated Measure.',
+  },
+  {
+    term: 'Restricted measure',
+    text: 'A measure restricted to some values of an attribute, e.g. gross of open and overdue invoices. Unlike a filter it leaves the other measures of the report alone.',
+    realTenant: 'Analytic model > Measures > Restricted Measure; a restricted measure variable lets users choose the values.',
+  },
+  {
+    term: 'Count distinct',
+    text: 'Counts the different values of an attribute, e.g. customers. Not additive: the rows of a breakdown can add up to more than the total.',
+    realTenant: 'Analytic model > Measures > Count Distinct.',
+  },
+  {
+    term: 'Variable',
+    text: 'Asks the consumer for a value when a report opens. A filter variable filters the model by an attribute: single value or interval, optional or mandatory.',
+    realTenant: 'Analytic model > click the canvas background > Add Variable. Shown as a prompt in SAP Analytics Cloud.',
+  },
 ];

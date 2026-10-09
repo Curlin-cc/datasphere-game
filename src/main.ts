@@ -213,13 +213,13 @@ function toggleTheme() {
 function tourHooks(onFinish: () => void) {
   return {
     /**
-     * Views for tutorials: an app ID, or builder:landing|new-view|new-flow|spaces[:SPACE],
+     * Views for tutorials: an app ID, or builder:landing|new-view|new-flow|new-model|spaces[:SPACE],
      * monitor:remote|flows|… and system:security|integration|….
      */
     setView: (v: string) => {
       const [view, target, space] = v.split(':');
       if (view === 'builder' && target) {
-        builderTo(target as 'landing' | 'new-view' | 'spaces' | 'new-flow', space);
+        builderTo(target as Parameters<typeof builderTo>[0], space);
         setView('builder', true);
       } else if (view === 'monitor' && target) {
         monitorTo(target as Parameters<typeof monitorTo>[0]);

@@ -204,3 +204,32 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c07-m01: analytic model on the invoice fact while the tour waits
+from chapter7_data import TENANT7  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(7, 'c07-m01', TENANT7))
+    expect(pg, 'Chapter 7: Analytic Model'); nexts(pg, 2)
+    if title(pg) == 'Space RHN_REP':
+        pg.click('#space-switch, [data-space="RHN_REP"]'); pg.click('[data-space="RHN_REP"]') if pg.locator('[data-space="RHN_REP"]').count() else None
+    expect(pg, 'New Analytic Model'); pg.click('[data-new="analytic"]')
+    expect(pg, 'The fact source'); g.shot('g-c07-picker'); pg.click('[data-fact="RHN_REP.RHN_REP_F_INVOICES"]')
+    expect(pg, 'The fact'); pg.click('[data-node="fact"]')
+    expect(pg, 'Measures of the fact'); nexts(pg)
+    expect(pg, 'Dimensions from associations')
+    pg.click('[data-add-dim="RHN_REP.RHN_REP_D_GRID_AREA"]'); pg.click('[data-add-dim="RHN_REP.RHN_REP_D_TARIFF"]')
+    expect(pg, 'Attributes of a dimension'); g.shot('g-c07-dims'); nexts(pg)
+    expect(pg, 'The whole model'); pg.click('.am-canvas-hint')
+    expect(pg, 'Names'); pg.fill('#prop-business', 'Invoices Model'); pg.fill('#prop-technical', 'RHN_REP_AM_INVOICES')
+    expect(pg, 'Save'); pg.click('#ed-save')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Data Preview')
+    for i in pg.locator('[data-pmeas]').all():
+        i.set_checked(i.get_attribute('data-pmeas') == 'NET_AMOUNT')
+    pg.check('[data-prow="RHN_REP_D_TARIFF.TARIFF_NAME"]'); pg.click('#run')
+    expect(pg, 'Your answers'); g.answer('tariff', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

@@ -1,7 +1,7 @@
 import type { TourStep } from '../tutorial';
 
 /**
- * Strongly guided, hands-on tutorials for chapters 0 to 3, 5 and 6.
+ * Strongly guided, hands-on tutorials for chapters 0 to 3 and 5 to 7.
  *
  * GUIDED_INTROS: the concepts of a mission (read, then Next).
  * GUIDED_TOURS: one list of steps per task of the mission (index = task). Steps with `action` wait until the player
@@ -131,6 +131,79 @@ const assocStep = (fact: string, dim: string): TourStep[] => [
     action: { do: `Choose <code>${dim.split('.')[1]}</code>, check the mapping and press <b>Add</b>.`, event: `assoc:${fact}->${dim}` },
   },
 ];
+
+// ---------------------------------------------------------------- chapter 7 helpers
+
+const AM_INV = 'RHN_REP.RHN_REP_AM_INVOICES';
+
+/** Chapter 7: the New Analytic Model tile and the fact picker. */
+const newModel = (fact: string, body: string): TourStep[] => [
+  {
+    title: 'New Analytic Model',
+    target: '[data-new="analytic"]',
+    body,
+    action: { do: 'Click <b>New Analytic Model</b>.', appear: '#am-fact-picker' },
+  },
+  {
+    title: 'The fact source',
+    target: '#am-fact-picker',
+    body: `<p>Only deployed entities with semantic usage <b>Fact</b> are offered: an analytic model is built on exactly one fact.</p>`,
+    action: { do: `Choose <code>${fact.split('.')[1]}</code>.`, event: `am-fact:${fact}` },
+  },
+];
+
+/** Chapter 7: add dimensions from the fact's associations. */
+const addDims = (dims: string[], body: string): TourStep => ({
+  title: 'Dimensions from associations',
+  target: '#am-canvas',
+  body,
+  action: {
+    do: `Add ${dims.map((d) => `<b>${d}</b>`).join(' and ')} to the model.`,
+    check: () => dims.every((d) => !!$(`[data-node="RHN_REP.RHN_REP_D_${d.toUpperCase().replace(' ', '_')}"]`)),
+  },
+});
+
+/** Chapter 7: select the whole model to see its measures and variables. */
+const modelBg: TourStep = {
+  title: 'The whole model',
+  target: '#am-canvas',
+  body: `<p>Click an empty spot of the canvas, for example the grey hint below the nodes. The properties then show the whole model:
+    its measures and variables.</p>`,
+  action: { do: 'Click the canvas background.', appear: '#am-measures' },
+};
+
+/** Chapter 7: open an existing model in RHN_REP. */
+const openModel = (name: string): TourStep => ({
+  title: `Open ${name}`,
+  view: 'builder:landing:RHN_REP',
+  target: '#object-list',
+  body: `<p>Analytic models are listed with the other objects of the space (tab <b>Models</b>).</p>`,
+  action: { do: `Open <b>${name}</b>.`, check: () => editorOf(`RHN_REP.${name}`) },
+});
+
+/** Chapter 7: a measure dialog. */
+const addMeasure = (type: string, label: string, name: string, body: string): TourStep[] => [
+  {
+    title: `+ ${label}`,
+    target: '#am-add-measure',
+    body: `<p>The Measures section of the model offers the measure types.</p>`,
+    action: { do: `Click <b>+ ${label}</b>.`, appear: '#am-m-name' },
+  },
+  {
+    title: type,
+    target: '.dialog',
+    body,
+    action: { do: `Fill it in for <code>${name}</code> and press <b>Add</b>.`, event: `am-measure:${type}:${name}` },
+  },
+];
+
+/** Chapter 7: the Data Preview of a model with certain rows. */
+const amPreview = (key: string, row: string, body: string): TourStep => ({
+  title: 'Data Preview',
+  target: '#am-pivot',
+  body,
+  action: { do: `Tick <b>${row}</b> in the rows, choose the measures and press <b>Data Preview</b>.`, event: `^am-rows:${key.replace('.', '\\.')}:.*${row.split(' ').pop()}` },
+});
 
 // ---------------------------------------------------------------- intros
 
@@ -429,6 +502,53 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Reuse the dimensions',
       body: `<p>The second fact uses the same three dimensions. That is the point of keeping them separate: one grid area dimension,
         one tariff dimension, one customer dimension for every fact. This shape is called a <b>star schema</b>.</p>`,
+    },
+  ],
+  'c07-m01': [
+    {
+      title: 'Chapter 7: Analytic Model',
+      body: `<p>Facts and dimensions describe the data. The <b>analytic model</b> decides what consumers such as SAP Analytics Cloud
+        <b>see</b> of it: which measures, which dimensions and attributes, which variables.</p>
+        <ul><li>It is built on exactly <b>one fact</b>.</li>
+        <li>Its dimensions come from the fact's <b>associations</b>: no joins to write.</li>
+        <li>Its <b>Data Preview</b> shows it the way a story in SAP Analytics Cloud would.</li></ul>`,
+    },
+    {
+      title: 'The editor',
+      body: `<p>The canvas shows the fact in the middle and its associated dimensions next to it. Dashed ones are associated but not in the model yet.
+        Click a node for its measures and attributes, click the background for the whole model. Save and Deploy as always.</p>`,
+    },
+  ],
+  'c07-m02': [
+    {
+      title: 'Measure types',
+      body: `<p>Besides the measures of the fact (<b>fact source measures</b>), a model can define its own:</p>
+        <ul><li><b>Calculated</b>: a formula over other measures, e.g. gross = net + tax.</li>
+        <li><b>Restricted</b>: a measure for some values only, e.g. open invoices.</li>
+        <li><b>Count Distinct</b>: how many different values, e.g. customers.</li></ul>
+        <p>Calculated measures are evaluated after aggregation, so the formula works on totals in every drill-down.</p>`,
+    },
+  ],
+  'c07-m03': [
+    {
+      title: 'Restrict, do not filter',
+      body: `<p>A filter applies to the whole report. A <b>restricted measure</b> applies only to itself: the report can show total gross and
+        unpaid gross side by side.</p>`,
+    },
+  ],
+  'c07-m04': [
+    {
+      title: 'Variables',
+      body: `<p>A <b>filter variable</b> asks the consumer for a value when the report opens and filters the model by it: a single value or an interval,
+        optional or mandatory. Other types (standard, restricted measure, reference date) exist in a real tenant.</p>
+        <p>A <b>count distinct</b> is not additive: a customer with power and gas counts once in the total, but once per commodity in the rows.</p>`,
+    },
+  ],
+  'c07-m05': [
+    {
+      title: 'One model per use case',
+      body: `<p>Each fact gets its own model, and a model is built for one group of consumers: only the measures, dimensions and variables they need.
+        Lean models are easier to understand and expose less data.</p>`,
     },
   ],
 };
@@ -1630,6 +1750,144 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:draft' },
       },
       ...questions('Region NORTH has two grid areas. Sum NET_AMOUNT.'),
+    ],
+  ],
+  // ================================================================ chapter 7
+  'c07-m01': [
+    [
+      toSpace('RHN_REP', `<p>Analytic models live in the reporting space, next to the facts they are built on.</p>`),
+      ...newModel('RHN_REP.RHN_REP_F_INVOICES', `<p>The tile in the <b>Model</b> group.</p>`),
+    ],
+    [
+      {
+        title: 'The fact',
+        target: '[data-node="fact"]',
+        body: `<p>Click the fact: the properties show the measures it brings (role <i>Measure</i> in chapter 6) with their aggregation, and its attributes.</p>`,
+        action: { do: 'Click the fact node.', event: 'am-node:fact' },
+      },
+      {
+        title: 'Measures of the fact',
+        target: '#am-fact-measures',
+        body: `<p>Ticked measures are in the model. Amounts add up, so <b>SUM</b> is right here.</p>`,
+      },
+      addDims(['Grid Area', 'Tariff'], `<p>The dashed nodes are the dimensions the fact is associated with. Add the ones the ticket needs.
+        Whatever you add, every report user can see.</p>`),
+      {
+        title: 'Attributes of a dimension',
+        target: '[data-node="RHN_REP.RHN_REP_D_GRID_AREA"]',
+        body: `<p>Click a dimension to choose which of its attributes are visible. Its key is not listed: it comes from the fact.</p>`,
+      },
+    ],
+    [
+      modelBg,
+      {
+        title: 'Names',
+        target: '#properties',
+        body: `<p>A business name for people, and the technical name from the ticket. <code>AM</code> marks analytic models.</p>`,
+        action: {
+          do: 'Enter a business name and the technical name <code>RHN_REP_AM_INVOICES</code>.',
+          check: () => val('#prop-technical') === 'RHN_REP_AM_INVOICES' && val('#prop-business').length > 2,
+        },
+      },
+      { title: 'Save', target: '#ed-save', body: `<p>Creates the model in the repository: <b>Not Deployed</b>.</p>`, action: { do: 'Press <b>Save</b>.', event: `save:${AM_INV}` } },
+      deployStep(AM_INV, `<p>Only a deployed model can be consumed. The checks query what is deployed.</p>`),
+    ],
+    [
+      amPreview(AM_INV, 'Tariff › TARIFF_NAME', `<p>Rows, measures and variable values for the preview. Only visible attributes are offered.</p>`),
+      ...questions('Compare NET_AMOUNT by tariff name. It is close.'),
+    ],
+  ],
+  'c07-m02': [
+    [
+      openModel('RHN_REP_AM_INVOICES'),
+      modelBg,
+      ...addMeasure('Calculated Measure', 'Calculated', 'GROSS_AMOUNT', `<p>The formula uses <b>measure names</b> of the model. The buttons below the formula insert them.</p>`),
+    ],
+    [deployStep(AM_INV, `<p>Deploy saves the new measure and makes it active.</p>`)],
+    [
+      amPreview(AM_INV, 'STATUS', `<p>STATUS in the rows, GROSS_AMOUNT in the measures: the same figures as in your first CFO ticket.</p>`),
+      ...questions('Think about a ratio such as tax / net, summed over many rows.'),
+    ],
+  ],
+  'c07-m03': [
+    [
+      openModel('RHN_REP_AM_INVOICES'),
+      modelBg,
+      ...addMeasure('Restricted Measure', 'Restricted', 'UNPAID_GROSS', `<p>Choose the measure to restrict, then the attribute and its values.
+        The values are read from the data.</p>`),
+    ],
+    [
+      deployStep(AM_INV, `<p>Make the new measure active.</p>`),
+      amPreview(AM_INV, 'Grid Area › REGION', `<p>REGION in the rows, GROSS_AMOUNT and UNPAID_GROSS side by side.</p>`),
+    ],
+    questions('What would a filter on the report do to the total gross?'),
+  ],
+  'c07-m04': [
+    [
+      openModel('RHN_REP_AM_INVOICES'),
+      modelBg,
+      {
+        title: 'Add Variable',
+        target: '#am-add-var',
+        body: `<p>Variables belong to the whole model.</p>`,
+        action: { do: 'Click <b>+ Add Variable</b>.', appear: '#am-v-name' },
+      },
+      {
+        title: 'Filter variable',
+        target: '.dialog',
+        body: `<p>Which attribute, a single value or an interval, optional or mandatory: decide from the ticket.</p>`,
+        action: { do: 'Fill it in for <code>V_INVOICE_DATE</code> and press <b>Add</b>.', event: 'am-variable:V_INVOICE_DATE' },
+      },
+    ],
+    [
+      ...addMeasure('Count Distinct', 'Count Distinct', 'CUSTOMERS', `<p>Which attribute identifies a customer?</p>`),
+      deployStep(AM_INV, `<p>Deploy the variable and the measure.</p>`),
+    ],
+    [
+      {
+        title: 'Variable values',
+        target: '#am-pivot',
+        body: `<p>The variable now appears below the measures. A mandatory variable must have a value before the preview runs.
+          Then try CUSTOMERS with commodity in the rows, and with no rows at all.</p>`,
+        action: { do: 'Set the variable and press <b>Data Preview</b>.', event: `am-preview:${AM_INV}` },
+      },
+      ...questions('Remove all rows to count customers over everything at once.'),
+    ],
+  ],
+  'c07-m05': [
+    [
+      toSpace('RHN_REP', `<p>A second model, on the other fact.</p>`),
+      ...newModel('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Same tile, different fact.</p>`),
+      addDims(['Grid Area', 'Tariff'], `<p>Which dimensions does Markus need, and which not?</p>`),
+    ],
+    [
+      modelBg,
+      {
+        title: 'Add Variable',
+        target: '#am-add-var',
+        body: `<p>This time optional: without a value the model shows all dates.</p>`,
+        action: { do: 'Click <b>+ Add Variable</b>.', appear: '#am-v-name' },
+      },
+      {
+        title: 'Filter variable',
+        target: '.dialog',
+        body: `<p>The reading date, as an interval.</p>`,
+        action: { do: 'Fill it in for <code>V_READING_DATE</code> and press <b>Add</b>.', event: 'am-variable:V_READING_DATE' },
+      },
+      {
+        title: 'Names',
+        target: '#properties',
+        body: `<p>Business name and the technical name from the ticket.</p>`,
+        action: {
+          do: 'Enter a business name and the technical name <code>RHN_REP_AM_CONSUMPTION</code>.',
+          check: () => val('#prop-technical') === 'RHN_REP_AM_CONSUMPTION' && val('#prop-business').length > 2,
+        },
+      },
+      deployStep('RHN_REP.RHN_REP_AM_CONSUMPTION', `<p>Deploy saves and activates the model in one step.</p>`),
+    ],
+    [
+      amPreview('RHN_REP.RHN_REP_AM_CONSUMPTION', 'Tariff › COMMODITY', `<p>Set the variable to 2025, REGION and COMMODITY in the rows.</p>`),
+      ...questions('How many fact sources does an analytic model have?'),
     ],
   ],
 };

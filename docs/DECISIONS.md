@@ -4,6 +4,12 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Analytic Model als eigener Objekttyp ohne DB-Objekt: Data Preview und Prüfungen erzeugen daraus eine SQL-Abfrage (`modelSql`), die eine Dimension nur joint, wenn die Abfrage sie braucht | Handbuch 6.10: Modell definiert, was Konsumenten sehen; zeigt nebenbei, wann aus einer Association ein Join wird |
+| 2026-10-09 | Neuer Prüftyp `model`: fragt das deployte Modell wie SAC ab (Zeilen + Measures), vergleicht nach Spaltennamen, Variablen werden dabei nicht angewendet | Prüft die fachlichen Zahlen unabhängig davon, wie der Spieler die Measures gebaut hat |
+| 2026-10-09 | Restricted Measures schränken innerhalb der Aggregation ein (CASE WHEN), Basis darf jede andere Kennzahl sein (auch calculated); Werte nur „in Liste“ | Handbuch nennt keine Details; funktioniert in jedem Drill-down. Vereinfacht gekennzeichnet |
+| 2026-10-09 | Variablen nur als Filter Variable (Single Value/Interval, Pflicht/optional); Standard-, Restricted-Measure- und Stichtagsvariable nur im Dialog erklärt | Handbuch 6.10.5; Stichtag „nicht verifiziert“, Eingabeparameter gibt es im Spiel noch nicht |
+| 2026-10-09 | Fact eines Modells muss im eigenen Space liegen und deployt sein; Dimensionen werden in ihrer deployten Version gelesen | Wie bei allen Prüfungen ab Kapitel 5: Konsumenten sehen nur Deploytes |
+| 2026-10-09 | Neue Dimension im Modell: alle Nicht-Key-Attribute sichtbar; Key kommt vom Fact | Einfacher Einstieg; Sichtbarkeit pro Attribut bleibt änderbar |
 | 2026-10-09 | Semantik (Usage, Spaltenrollen, Associations) ist Design-Zeit-Eigenschaft wie SQL: Save → *Changes to Deploy*, Prüfungen lesen die deployte Version | Wie im echten Editor; ein Lernziel weniger zum Umdenken |
 | 2026-10-09 | Spaltenrollen je Usage: Fact = Measure/Attribute, Dimension/Text = Key/Attribute, Hierarchy = Parent/Child/Attribute | Handbuch 6.4.1: Spalten von Fact/Dimension sind Kennzahl oder Attribut, dazu Key-Kennzeichen |
 | 2026-10-09 | Associations mit fester Kardinalität n:1, Ziele nur deployte Dimension/Text/Hierarchy mit Key | Handbuch 6.5.4 nennt Kardinalität ohne Details; vereinfacht und im Dialog gekennzeichnet |

@@ -1,6 +1,7 @@
 import { exec } from './db';
 import type { TenantState } from './tenant';
 import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom } from './integration';
+import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -11,8 +12,8 @@ import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadF
  *  - Deployed: what is saved is what runs
  */
 
-export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow';
-export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow'];
+export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model';
+export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
 export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text' | 'Hierarchy';
 
@@ -63,11 +64,13 @@ export interface RepoObject {
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string; flow?: FlowDef } & Partial<Semantics>;
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef } & Partial<Semantics>;
   /** Remote tables: connection, source object, data access. */
   remote?: RemoteInfo;
   /** Replication flows: the saved definition. */
   flow?: FlowDef;
+  /** Analytic models (chapter 7): the saved definition. */
+  model?: AnalyticModelDef;
   /** Local tables created by a flow: where the data comes from, reloaded after a reload. */
   loadFrom?: LoadFrom;
   status: DeployStatus;
@@ -122,6 +125,7 @@ export function statusAfterSave(o: RepoObject): DeployStatus {
   if (!o.deployed) return 'not_deployed';
   const same = o.deployed.businessName === o.businessName && (o.kind !== 'SQL View' || o.deployed.sql === o.sql)
     && (o.kind !== 'Replication Flow' || JSON.stringify(o.deployed.flow) === JSON.stringify(o.flow))
+    && (o.kind !== 'Analytic Model' || JSON.stringify(o.deployed.model) === JSON.stringify(o.model))
     && JSON.stringify(semanticsOf(o.deployed)) === JSON.stringify(semanticsOf(o));
   return same ? 'deployed' : 'changes';
 }
@@ -151,7 +155,10 @@ export async function deploy(o: RepoObject): Promise<string | null> {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
-  o.deployed = { businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined, ...structuredClone(semanticsOf(o)) };
+  o.deployed = {
+    businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined,
+    model: o.model ? structuredClone(o.model) : undefined, ...structuredClone(semanticsOf(o)),
+  };
   o.status = 'deployed';
   o.changedAt = now();
   return null;
@@ -167,6 +174,7 @@ export async function dropObject(o: RepoObject) {
  * and which views read an object (impact). Looks at the saved SQL of views, SPACE.NAME references only.
  */
 export function readsFrom(o: RepoObject, t: TenantState): string[] {
+  if (o.kind === 'Analytic Model' && o.model) return modelReads(o.model).filter((k) => findObject(t, k));
   if (o.kind !== 'SQL View' || !o.sql) return [];
   const code = o.sql.replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/'(?:[^']|'')*'/g, "''");
   const keys = new Set<string>();
@@ -236,11 +244,13 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
             businessName: String(o.deployed.businessName ?? o.businessName),
             sql: typeof o.deployed.sql === 'string' ? o.deployed.sql : undefined,
             flow: sanitizeFlow(o.deployed.flow),
+            model: o.kind === 'Analytic Model' ? sanitizeModel(o.deployed.model) : undefined,
             ...sanitizeSemantics(o.deployed),
           }
         : undefined,
       remote: o.kind === 'Remote Table' ? sanitizeRemote(o.remote) : undefined,
       flow: o.kind === 'Replication Flow' ? sanitizeFlow(o.flow) : undefined,
+      model: o.kind === 'Analytic Model' ? sanitizeModel(o.model) : undefined,
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,

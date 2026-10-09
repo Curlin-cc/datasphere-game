@@ -1,8 +1,9 @@
 import { runSql, listObjects, describeColumns, type QueryResult } from '../db';
 import { review, type ReviewNote } from './review';
-import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, RuleContext, MetricCheck } from './types';
+import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, RuleContext, MetricCheck, ModelCheck } from './types';
 import { accessError, type TenantState } from '../tenant';
 import { findObject } from '../repo';
+import { attributeCatalog, modelSources, modelSql } from '../analytic';
 
 /**
  * Check engine: result check (result set vs. reference solution, independent of writing style),
@@ -72,6 +73,8 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
       outcomes.push(checkRule(check, { tenant: input.tenant, events: new Set(input.events) }));
     } else if (check.type === 'metric') {
       outcomes.push(await checkMetric(check));
+    } else if (check.type === 'model') {
+      outcomes.push(await checkModel(check, input.tenant));
     } else {
       outcomes.push(checkQuestion(check, input.answers[check.id]));
     }
@@ -274,6 +277,48 @@ async function checkMetric(check: MetricCheck): Promise<CheckOutcome> {
   }
   const problem = check.test(value);
   return problem ? { label: check.label, ok: false, message: problem } : { label: check.label, ok: true, message: check.ok ?? 'Done.' };
+}
+
+// ---------------------------------------------------------------- analytic model
+
+async function checkModel(check: ModelCheck, tenant: TenantState): Promise<CheckOutcome> {
+  const fail = (message: string) => ({ label: check.label, ok: false, message });
+  const [space, name] = check.object.split('.');
+  const o = findObject(tenant, check.object);
+  if (!o || o.kind !== 'Analytic Model') {
+    const elsewhere = tenant.objects.find((x) => x.name === name);
+    if (elsewhere && elsewhere.kind !== 'Analytic Model') return fail(`${name} is a ${elsewhere.kind}. The ticket needs an analytic model with this name.`);
+    return fail(elsewhere ? `${name} is in ${elsewhere.space}; it belongs in ${space}.` : `There is no analytic model ${name} in ${space} yet.`);
+  }
+  const def = o.deployed?.model;
+  if (!def) return fail(`${name} is saved, but not deployed. SAP Analytics Cloud only sees deployed models: press Deploy.`);
+  if (o.status === 'changes') return fail(`${name} has saved changes that are not deployed yet. Deploy them.`);
+  const src = modelSources(tenant, def.fact);
+  if (typeof src === 'string') return fail(src);
+  const catalog = attributeCatalog(def, src);
+  for (const r of check.rows) {
+    if (!catalog.some((a) => a.id === r)) {
+      const dim = r.includes('.') ? r.split('.')[0] : '';
+      return fail(dim ? `The model does not offer ${r.split('.')[1]}: add the dimension ${dim} to the model.` : `The model does not offer the attribute ${r}.`);
+    }
+  }
+  const missing = check.measures.filter((m) => !def.measures.some((x) => x.name === m));
+  if (missing.length) return fail(`${name} has no measure ${missing.join(', ')}. Name the measures exactly as the ticket says.`);
+  let player: QueryResult;
+  try {
+    player = await runSql(modelSql(def, src, { rows: check.rows, measures: check.measures }));
+  } catch (err) {
+    return fail(`${name} does not run: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const what = `${check.measures.join(', ')}${check.rows.length ? ` by ${check.rows.map((r) => r.split('.').pop()).join(', ')}` : ''}`;
+  const tol = 0.01;
+  if (compare(player, await runSql(check.expected), false, tol, true, 'The model').match) {
+    return { label: check.label, ok: true, message: check.ok ?? `${what} is right.` };
+  }
+  for (const d of check.diagnose ?? []) {
+    if (compare(player, await runSql(d.sql), false, tol, true, 'The model').match) return fail(d.message);
+  }
+  return fail(`${what} does not give the expected figures. Compare it in the Data Preview with what the ticket asks for.`);
 }
 
 // ---------------------------------------------------------------- question

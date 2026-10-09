@@ -98,7 +98,27 @@ export interface MetricCheck {
   test: (value: number) => string | null;
 }
 
-export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck | MetricCheck;
+/**
+ * Queries a deployed analytic model (chapter 7) like a consumer would: rows (attribute IDs) and measures (names),
+ * and compares the result with a reference query, by column name. Variables are not applied.
+ */
+export interface ModelCheck {
+  type: 'model';
+  label: string;
+  /** SPACE.NAME of the analytic model. */
+  object: string;
+  /** Attribute IDs in the rows, e.g. 'RHN_REP_D_GRID_AREA.REGION' or 'STATUS'. */
+  rows: string[];
+  /** Measure names, e.g. ['GROSS_AMOUNT']. */
+  measures: string[];
+  /** Reference query returning the row attributes (by their column name) and the measures, in this order. */
+  expected: string;
+  /** Known wrong results with a targeted message. */
+  diagnose?: { sql: string; message: string }[];
+  ok?: string;
+}
+
+export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck | MetricCheck | ModelCheck;
 
 /** Rule IDs of the senior architect's review, see review.ts. */
 export type ReviewRule = 'no_select_star' | 'alias_aggregates' | 'explicit_join' | 'no_logic_in_inbound' | 'case_else';

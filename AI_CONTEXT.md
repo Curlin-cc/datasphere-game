@@ -57,6 +57,8 @@ src/main.ts          ← Shell (Shellbar, Seitennavigation), Routing, Home, App-
 src/ctx.ts           ← gemeinsamer Zustand + Callbacks für die Views (vermeidet Import-Zyklen)
 src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebnistabelle
 src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
+src/analytic.ts      ← Kapitel 7: Analytic Model – Definition (Measures, Variablen), Quellen aus dem deployten Fact, `modelError`, `modelSql` (Abfrage wie SAC), Persistenz
+src/views/analytic.ts ← Kapitel 7: Editor des Analytic Model (Fact-Auswahl, Canvas, Properties, Measure-/Variablen-Dialoge, Data Preview)
 src/views/semantics.ts ← Kapitel 6+: Spaltenrollen (Key/Attribute/Measure/Parent/Child) und Associations im Properties-Panel, `viewColumns`
 src/views/builder.ts ← Data Builder: Space-Auswahl → Startseite (New-Kacheln, Objektliste, geteilte Objekte) → Editoren (Tabelle, SQL View)
 src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces, öffnet Objekte im Data Builder
@@ -73,8 +75,8 @@ src/editor.ts        ← CodeMirror-SQL-Editor, Strg+Enter, Schema-Autocomplete,
 src/data/generator.ts ← Datengenerator (fester Seed, eingebaute Fehler) + datasetToSql, lädt RHN_IN beim Start
 src/content/chapters.ts ← Kapitel, Ränge, Glossar
 src/content/tutorials.ts ← TUTORIALS (Einstieg je Mission) + TASK_TOURS (Show-me je Aufgabenschritt) – jede neue Mission braucht beides!
-src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c06.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
-src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric), Review-Regeln, XP
+src/content/missions/ ← Missionen je Kapitel (`c00.ts` … `c07.ts`), Reihenfolge in `index.ts`; Missionen können ein `setup` haben (einmalige Startsituation)
+src/missions/types.ts ← Missions-Format: Ticket, Tasks, Hints, Checks (result – Editor oder deployte View mit `object`/`columns`/`counts` –, structure, question, rule, metric, model), Review-Regeln, XP
 src/missions/engine.ts ← Prüf-Engine: Ergebnis (SQL im SQL-View-Editor vs. Musterlösung, `diagnose`), Struktur, Fragen, Regeln auf Tenant + Ereignissen
 src/missions/review.ts ← Review-Regeln von Calin (no_select_star, alias_aggregates, explicit_join, no_logic_in_inbound, case_else); bei View-Missionen auf dem deployten SQL
 src/progress.ts      ← Spielstand v4 (je Mission inkl. Ereignisse + Tenant), Migration v2/v3, Ränge, Export/Import, `unlockedChapter`
@@ -83,7 +85,7 @@ src/security.ts      ← Rollenmodell: GLOBAL_ADMIN, Vorlagen (TEMPLATES), Scope
 src/content/people.ts ← Personas für Kapitel 2 (Jonas, Calin, Lena, Tim, Sabine, Petra, Markus, Aylin, Nina)
 tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vor jedem Commit laufen lassen
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
-src/content/guided.ts ← Geführte Tutorials Kapitel 0–3, 5 und 6: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
+src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–7: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Design-Tokens (Shell navy, Akzent teal, Layer-Farben IN/HARM/REP), Hell/Dunkel
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
 ```
@@ -101,24 +103,26 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (31 Missionen):
+Spielbar (36 Missionen):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
 - Kapitel 4 Inbound Layer: SQL-Profiling im Scratch-SQL-View
 - Kapitel 5 Harmonization: deployte SQL Views in `RHN_HARM` (`RHN_HA_V_CONTRACTS`, `RHN_HA_V_CUSTOMERS`, `RHN_HA_V_METER_READINGS`), Sharing nach `RHN_REP`
 - Kapitel 6 Semantics: Dimensionen `RHN_REP_D_GRID_AREA/_TARIFF/_CUSTOMER`, Facts `RHN_REP_F_CONSUMPTION/_INVOICES` mit Spaltenrollen und Associations; 1:1-Views `RHN_HA_V_GRID_AREAS/_TARIFFS/_INVOICES`
+- Kapitel 7 Analytic Model: `RHN_REP_AM_INVOICES` (NET/TAX, GROSS_AMOUNT calculated, UNPAID_GROSS restricted, CUSTOMERS count distinct, Variable V_INVOICE_DATE) und `RHN_REP_AM_CONSUMPTION`, beide ohne Kundendimension
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
 und gekennzeichnet bauen. Abgleich und offene Punkte: `docs/HANDBUCH_ABGLEICH.md`.
 
 Ab Kapitel 5 prüfen Missionen die **deployte View** (`ResultCheck.object` + `columns`), nicht den Editor; `metric`-Prüfungen liefern fachliche Kennzahlen.
+Ab Kapitel 7 fragen `model`-Prüfungen das **deployte Analytic Model** ab (Zeilen = Attribut-IDs wie `RHN_REP_D_GRID_AREA.REGION`, Measures nach Namen).
 
 Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,
 Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-remote:…`, `snapshot:…`, `schedule:…`, `run:<Flow>:<Status>`,
-`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
+`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
@@ -127,11 +131,11 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 7 (Analytic Model): neue App-Kachel „Analytic Model“ im Data Builder (`NEW_TILES` id `analytic`), Editor mit genau einem Fact
-   (`RHN_REP_F_INVOICES`), Dimensionen aus dessen Associations, Measures auswählen, **Calculated Measure** `GROSS_AMOUNT = NET + TAX`
-   (Versprechen aus c04-m02), **Restricted Measure** (z. B. offene Forderungen), Variable (Jahr), Data Preview wie SAC. Quelle: Handbuch 6.10
+1. Kapitel 8 (Data Access Controls, Handbuch 9.3): Kachel „Data Access Control“ (`NEW_TILES` id `dac`), DAC mit Kriterium `REGION`
+   (Single Values bzw. Operator and Values) und Berechtigungstabelle (Benutzer → Region); Zuweisung an `RHN_REP_D_GRID_AREA` bzw. die Facts;
+   Data Preview „als Benutzer“ (Markus sieht nur NORTH, Aylin nur SOUTH, Petra alles). Offener Punkt im Handbuch: DAC-Navigation (Abgleich Nr. 1)
 2. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
 3. Glossar-Begriffe beim ersten Kontakt freischalten, erste Badges
 4. Hierarchy-Mission (Netzgebiet → Region) nachziehen, sobald klar ist, ob Ebenen-Hierarchie oder Eltern-Kind mit eigenen Knoten-IDs
 5. Lokale Tabellen anlegen (CSV-Upload, Handbuch 6.4.1/6.11.3), dann c05-m01 optional mit Mapping-Tabelle statt CASE
-6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin)
+6. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen

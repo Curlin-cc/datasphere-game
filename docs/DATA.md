@@ -71,3 +71,15 @@ Fallen, die die Prüfungen gezielt erkennen:
 Netto 2025 (Rechnungsdatum) je Region: NORTH 871.074,11 EUR, SOUTH 746.381,41 EUR. Fallen: nur Netzgebiet NORTH 530.628 EUR;
 Rohdaten ohne Legacy-Mapping 785.429 EUR; brutto 1,04 Mio. EUR.
 
+## Analytic Models (Kapitel 7, geprüft mit DuckDB am 09.10.2026)
+
+| Objekt in `RHN_REP` | Fact | Dimensionen | Measures / Variablen |
+| --- | --- | --- | --- |
+| `RHN_REP_AM_INVOICES` | `RHN_REP_F_INVOICES` | Grid Area, Tariff (kein Customer) | NET_AMOUNT, TAX_AMOUNT, GROSS_AMOUNT (calculated), UNPAID_GROSS (restricted OPEN+OVERDUE), CUSTOMERS (count distinct); V_INVOICE_DATE (Interval, Pflicht) |
+| `RHN_REP_AM_CONSUMPTION` | `RHN_REP_F_CONSUMPTION` | Grid Area, Tariff (kein Customer) | CONSUMPTION_KWH; V_READING_DATE (Interval, optional) |
+
+Zahlen: Netto je Region gesamt NORTH 2.189.963,23 / SOUTH 1.861.721,70 EUR; Netto je Tarif: Strom Basis 1.260.887 knapp vor Gas Komfort 1.250.288 EUR.
+Brutto je Status: OPEN 1.069.961,59 · OVERDUE 81.724,52 · PAID 3.669.819,03 EUR. Unbezahlt brutto: NORTH 630.901,23 · SOUTH 520.784,88 EUR
+(nur OPEN bzw. nur OVERDUE als Fallen). Brutto 2025: NORTH 1.036.578,18 · SOUTH 888.193,85 EUR.
+Kunden (count distinct): gesamt 848, Gas 361 + Strom 817 = 1.178 (330 Kunden mit beidem), NORTH 467 · SOUTH 381.
+Verbrauch 2025: NORTH Gas 2,63 / Strom 1,48 GWh, SOUTH Gas 2,42 / Strom 1,20 GWh.

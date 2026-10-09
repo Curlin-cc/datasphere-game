@@ -10,6 +10,7 @@ import { accessError, isShared } from '../tenant';
 import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
 import { openImportRemote, renderFlowEditor } from './flow';
 import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
+import { renderModelEditor, newModelDraft } from './analytic';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
 import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable, fmtDate } from '../ui';
@@ -20,18 +21,18 @@ import { esc, spaceChip, layerName, icon, ICONS, openDialog, toast, resultTable,
  * Editors have Save (design time), Deploy (runtime), Share and Data Preview, and a properties panel.
  */
 
-type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' };
-type ListTab = 'all' | 'tables' | 'views' | 'flows';
+type Page = { kind: 'spaces' } | { kind: 'landing' } | { kind: 'object'; key: string } | { kind: 'new-view' } | { kind: 'new-flow' } | { kind: 'new-model' };
+type ListTab = 'all' | 'tables' | 'views' | 'models' | 'flows';
 
 /** "New" tiles that work in this build of the game, from their chapter on. */
-const BUILT_TILES = new Set(['sqlview', 'remote', 'replication']);
+const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic']);
 
 let page: Page = { kind: 'spaces' };
 /** The space picker shows once per visit, like choosing a space when you open the Data Builder. */
 let spaceChosen = false;
 let listTab: ListTab = 'all';
 const inTab = (o: RepoObject, tab: ListTab) =>
-  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'flows' && o.kind === 'Replication Flow');
+  tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'flows' && o.kind === 'Replication Flow');
 
 export const NEW_VIEW_SQL = `-- Write a SELECT statement. Ctrl+Enter shows the Data Preview.\nSELECT\n  \nFROM `;
 
@@ -50,7 +51,7 @@ export function openObjectInBuilder(key: string) {
 }
 
 /** For tutorials: open the start page or a new SQL view, choosing a space if none is chosen yet. */
-export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow', space?: string) {
+export function builderTo(target: 'landing' | 'new-view' | 'spaces' | 'new-flow' | 'new-model', space?: string) {
   const t = ctx.tenant();
   if (space && t.spaces.some((s) => s.id === space)) {
     t.activeSpace = space;
@@ -73,18 +74,20 @@ export function rememberEditor() {
 export async function renderBuilder(main: HTMLElement) {
   rememberEditor();
   ctx.editor = null;
-  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow');
+  main.classList.toggle('flush', page.kind === 'object' || page.kind === 'new-view' || page.kind === 'new-flow' || page.kind === 'new-model');
   if (page.kind === 'spaces') return renderSpacePicker(main);
   if (page.kind === 'landing') return renderLanding(main);
   if (page.kind === 'new-view') return renderEditor(main, null);
   const flowNav = { back: () => go({ kind: 'landing' }), opened: (key: string) => (page = { kind: 'object', key }) };
   if (page.kind === 'new-flow') return renderFlowEditor(main, null, flowNav);
+  if (page.kind === 'new-model') return renderModelEditor(main, null, flowNav);
   const o = findObject(ctx.tenant(), page.key);
   if (!o) {
     page = { kind: 'landing' };
     return renderLanding(main);
   }
   if (o.kind === 'Replication Flow') return renderFlowEditor(main, o, flowNav);
+  if (o.kind === 'Analytic Model') return renderModelEditor(main, o, flowNav);
   return renderEditor(main, o);
 }
 
@@ -154,7 +157,7 @@ function renderLanding(main: HTMLElement) {
       <div class="table-head">
         <h3>Objects in ${esc(space)}</h3>
         <div class="tabs small" role="tablist">
-          ${(['all', 'tables', 'views', 'flows'] as const).map((k) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)} <small>${own.filter((o) => inTab(o, k)).length}</small></button>`).join('')}
+          ${(['all', 'tables', 'views', 'models', 'flows'] as const).map((k) => `<button type="button" role="tab" data-list="${k}" aria-selected="${listTab === k}">${k === 'all' ? 'All' : k[0].toUpperCase() + k.slice(1)} <small>${own.filter((o) => inTab(o, k)).length}</small></button>`).join('')}
         </div>
       </div>
       <div class="table-scroll"><table class="grid" id="object-list">
@@ -184,6 +187,10 @@ function renderLanding(main: HTMLElement) {
       if (b.classList.contains('off')) return tileInfo(tile);
       if (tile.id === 'remote') return openImportRemote(() => renderLanding(main));
       if (tile.id === 'replication') return go({ kind: 'new-flow' });
+      if (tile.id === 'analytic') {
+        newModelDraft();
+        return go({ kind: 'new-model' });
+      }
       ctx.sqlOwner = 'draft';
       go({ kind: 'new-view' });
     }),
@@ -209,7 +216,8 @@ function renderLanding(main: HTMLElement) {
 }
 
 export const typeIcon = (o: Pick<RepoObject, 'kind'>) =>
-  icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow : ICONS.table, 'type-ic');
+  icon(o.kind === 'SQL View' ? ICONS.view : o.kind === 'Remote Table' ? ICONS.remote : o.kind === 'Replication Flow' ? ICONS.flow
+    : o.kind === 'Analytic Model' ? ICONS.cube : ICONS.table, 'type-ic');
 
 function statusChip(o: Pick<RepoObject, 'status'>) {
   return `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span>`;
@@ -220,7 +228,7 @@ function objectRow(o: RepoObject, canShare: boolean) {
   return `<tr>
     <td><button type="button" class="link-btn" data-open="${esc(key)}">${esc(o.businessName)}</button></td>
     <td class="mono">${esc(o.name)}</td>
-    <td>${typeIcon(o)}${o.kind}</td><td>${o.semanticUsage}</td><td>${statusChip(o)}</td>
+    <td>${typeIcon(o)}${o.kind}</td><td>${o.kind === 'Analytic Model' ? '<span class="muted">–</span>' : o.semanticUsage}</td><td>${statusChip(o)}</td>
     <td class="muted">${fmtDate(o.changedAt)}</td>
     <td class="row-actions">
       ${canShare ? `<button type="button" class="share-btn" data-share="${esc(key)}" title="Share ${esc(o.name)} with other spaces" aria-label="Share ${esc(o.name)}">

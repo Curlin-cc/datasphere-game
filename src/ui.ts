@@ -35,6 +35,7 @@ export const ICONS = {
   remote: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5h11M8 8.5v3M6.5 10l1.5 1.5 1.5-1.5"/>',
   flow: '<circle cx="3.5" cy="8" r="1.6"/><circle cx="12.5" cy="8" r="1.6"/><path d="M5.1 8h5.8M9 6l2 2-2 2"/>',
   info: '<circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v4M8 5v.2"/>',
+  cube: '<path d="M8 2l5.5 3v6L8 14l-5.5-3V5zM2.5 5L8 8l5.5-3M8 8v6"/>',
 };
 
 /** Modal form used by all dialogs. */

@@ -6,9 +6,10 @@ import { CHAPTER_3 } from './c03';
 import { CHAPTER_4 } from './c04';
 import { CHAPTER_5 } from './c05';
 import { CHAPTER_6 } from './c06';
+import { CHAPTER_7 } from './c07';
 
 /** All playable missions in play order. Add a chapter by importing its file here. */
-export const MISSIONS: Mission[] = [...CHAPTER_0, ...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6];
+export const MISSIONS: Mission[] = [...CHAPTER_0, ...CHAPTER_1, ...CHAPTER_2, ...CHAPTER_3, ...CHAPTER_4, ...CHAPTER_5, ...CHAPTER_6, ...CHAPTER_7];
 
 export const missionById = (id: string) => MISSIONS.find((m) => m.id === id);
 
