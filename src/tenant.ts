@@ -10,6 +10,9 @@ import { DEFAULT_TRACING, sanitizeTracing, sanitizeStatements, type Tracing, typ
  *  - Objects of a space cannot be used in another space unless they are shared with it
  */
 
+import { sanitizePackages, sanitizeJobs, type Package, type TransportJob } from './transport';
+import { sanitizeDbUsers, type DbUser } from './consumption';
+import { defaultCatalog, sanitizeCatalog, type CatalogState } from './catalog';
 import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
 import { sanitizeObjects, type RepoObject } from './repo';
 import {
@@ -58,6 +61,11 @@ export interface TenantState {
   statements: Statement[];
   /** Mission set-ups already applied, e.g. c03-m06. */
   scenarios: string[];
+  /** Excursions: database users (consumption), transport packages and export jobs, catalog metadata. */
+  dbUsers: DbUser[];
+  packages: Package[];
+  transportJobs: TransportJob[];
+  catalog: CatalogState;
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
@@ -79,6 +87,10 @@ export function defaultTenant(): TenantState {
     tracing: { ...DEFAULT_TRACING },
     statements: [],
     scenarios: [],
+    dbUsers: [],
+    packages: [],
+    transportJobs: [],
+    catalog: defaultCatalog(),
   };
 }
 
@@ -189,6 +201,10 @@ export function sanitizeTenant(data: unknown): TenantState {
   t.tracing = sanitizeTracing(d.tracing);
   t.statements = sanitizeStatements(d.statements);
   t.scenarios = (Array.isArray(d.scenarios) ? d.scenarios : []).map(String).slice(0, 50);
+  t.dbUsers = sanitizeDbUsers(d.dbUsers, ids);
+  t.packages = sanitizePackages(d.packages, ids);
+  t.transportJobs = sanitizeJobs(d.transportJobs);
+  t.catalog = sanitizeCatalog(d.catalog);
   return t;
 }
 

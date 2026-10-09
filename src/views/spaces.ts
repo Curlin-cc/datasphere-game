@@ -3,6 +3,8 @@ import { exec, listObjects } from '../db';
 import { CAPACITY, NEW_SPACE_DEFAULTS, assigned, spaceIdError, storageError, sharedWith, round1, type Space } from '../tenant';
 import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, icon, ICONS } from '../ui';
 import { usedMB, fmtSize } from './welcome';
+import { EXCURSIONS } from '../content/chapters';
+import { dbUserError, dbUserName, readableByDbUser, DB_HOST, DB_PORT } from '../consumption';
 
 /** Space Management: one tile per space with storage and priority, create, edit and delete. */
 
@@ -68,6 +70,7 @@ export async function renderSpaces(main: HTMLElement) {
               <div class="st-foot"><span class="chip">Datasphere Game</span><span class="spacer"></span>
                 ${canCreate ? `${sp.system ? '' : `<button class="btn small link" type="button" data-delete="${esc(sp.id)}">Delete</button>`}
                 ${sp.locked ? `<button class="btn small primary" type="button" data-unlock="${esc(sp.id)}">Unlock</button>` : ''}
+                ${ctx.currentChapter() >= EXCURSIONS ? `<button class="btn small" type="button" data-dbaccess="${esc(sp.id)}">Database Access</button>` : ''}
                 <button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>` : ''}</div>
             </article>`;
           }).join('')}
@@ -78,6 +81,7 @@ export async function renderSpaces(main: HTMLElement) {
   main.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>
     b.addEventListener('click', () => openSpaceDialog(t.spaces.find((x) => x.id === b.dataset.edit))),
   );
+  main.querySelectorAll<HTMLButtonElement>('[data-dbaccess]').forEach((b) => b.addEventListener('click', () => openDbAccess(b.dataset.dbaccess!)));
   main.querySelectorAll<HTMLButtonElement>('[data-unlock]').forEach((b) =>
     b.addEventListener('click', () => {
       const sp = t.spaces.find((x) => x.id === b.dataset.unlock)!;
@@ -179,4 +183,65 @@ async function deleteSpace(id: string, objectCount: number) {
   if (t.activeSpace === id) t.activeSpace = 'RHN_IN';
   ctx.save();
   ctx.renderView();
+}
+
+/**
+ * Database Access of a space (excursions, Handbuch 12.6): database users for external tools.
+ * Read access reads the exposed views of the space; write access adds an Open SQL schema the tool can write to.
+ */
+function openDbAccess(space: string) {
+  const t = ctx.tenant();
+  ctx.track(`dbaccess:${space}`);
+  const users = t.dbUsers.filter((u) => u.space === space);
+  const readable = readableByDbUser(t, space);
+  const { form, close } = openDialog(`Database Access · ${space}`, `
+    <p class="guide-lead">Database users let tools outside SAP, such as Power BI or Excel via ODBC, log on to the database of this space.
+      They read only the views of ${esc(space)} that are <b>exposed for consumption</b> and deployed${readable.length ? `: ${readable.map((o) => `<code>${esc(o.name)}</code>`).join(', ')}` : ' (none yet)'}.</p>
+    <h3>Database Users (${users.length})</h3>
+    ${users.length ? `<table class="grid compact" id="db-users"><thead><tr><th>Database User Name</th><th>Read Access</th><th>Write Access</th><th></th></tr></thead><tbody>
+      ${users.map((u) => `<tr><td class="mono">${esc(dbUserName(u))}</td><td>${u.read ? 'Yes' : 'No'}</td><td>${u.write ? 'Yes' : 'No'}</td>
+        <td><button class="btn small link" type="button" data-dbdel="${esc(u.suffix)}">Delete</button></td></tr>`).join('')}</tbody></table>
+      <p class="muted">Connection details for the tool: host <code>${DB_HOST}</code>, port <code>${DB_PORT}</code>, the user name above and its password
+        (shown once after creation; simulated here). Many tenants also need the tool's IP address in the IP allowlist.</p>`
+    : '<p class="muted">No database users yet.</p>'}
+    <h3>Create Database User</h3>
+    <div class="form-grid">
+      <label>Database User Name Suffix <small>A–Z, 0–9, _; the user is called ${esc(space)}#SUFFIX</small>
+        <input name="suffix" maxlength="30" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <div class="db-opts">
+      <label class="check-line"><input type="checkbox" name="read"><span><b>Enable Read Access (SQL)</b><small>reads the exposed views of the space</small></span></label>
+      <label class="check-line"><input type="checkbox" name="write"><span><b>Enable Write Access (SQL, DDL, DML)</b><small>creates and fills tables in its own Open SQL schema</small></span></label>
+    </div>
+    <p class="form-error" role="alert"></p>
+    <div class="guide-actions">
+      <button class="btn link" type="button" data-act="cancel">Close</button>
+      <button class="btn primary" type="submit" id="db-create">Create</button>
+    </div>`);
+  const suffix = form.querySelector<HTMLInputElement>('[name="suffix"]')!;
+  suffix.addEventListener('input', () => (suffix.value = suffix.value.toUpperCase()));
+  form.querySelectorAll<HTMLButtonElement>('[data-dbdel]').forEach((b) => b.addEventListener('click', () => {
+    t.dbUsers = t.dbUsers.filter((u) => !(u.space === space && u.suffix === b.dataset.dbdel));
+    ctx.track(`dbuser-delete:${space}#${b.dataset.dbdel}`);
+    ctx.save();
+    close();
+    openDbAccess(space);
+  }));
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sfx = suffix.value.trim();
+    const read = form.querySelector<HTMLInputElement>('[name="read"]')!.checked;
+    const write = form.querySelector<HTMLInputElement>('[name="write"]')!.checked;
+    const err = dbUserError(space, sfx, t) ?? (read || write ? null : 'Give the user read access, write access or both; without either it can do nothing.');
+    if (err) {
+      form.querySelector('.form-error')!.textContent = err;
+      return;
+    }
+    t.dbUsers.push({ space, suffix: sfx, read, write, createdAt: new Date().toISOString() });
+    ctx.track(`dbuser:${space}#${sfx}:${read ? 'r' : ''}${write ? 'w' : ''}`);
+    ctx.save();
+    toast(`Database user ${space}#${sfx} created`);
+    close();
+    openDbAccess(space);
+  });
 }

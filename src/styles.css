@@ -1305,3 +1305,84 @@ table.grid.object-table .status { white-space: nowrap; }
 .hint-btn, .hint-open { min-height: 44px; border-width: var(--tile-w); }
 .check-list li { border-width: var(--tile-w); }
 .mission-link { min-height: 30px; }
+
+/* ---------------------------------------------------------------- Excursions: consumption, transport, catalog, Business Builder */
+
+/* Toggle "OFF"/"ON" pill (Bild 21: Expose for Consumption) */
+.switch-line { display: grid; gap: 3px; }
+.switch input { appearance: none; -webkit-appearance: none; width: 54px; height: 24px; margin: 0; border-radius: 999px; border: 1px solid var(--field-line);
+  background: var(--surface); position: relative; cursor: pointer; }
+.switch input::after { content: 'OFF'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+.switch input:checked { background: var(--brand); border-color: var(--brand); }
+.switch input:checked::after { content: 'ON'; color: var(--brand-ink); }
+.switch input:disabled { opacity: .55; cursor: default; }
+.props .switch input { padding: 0; }
+.crumb-sep { color: var(--ink-faint); margin: 0 6px; }
+.note { background: var(--accent-soft); border-radius: var(--radius-s); padding: 10px 12px; color: var(--ink); max-width: 90ch; }
+
+.tr-page, .cat-page { display: grid; gap: 14px; max-width: 1280px; }
+.tr-page .view-lead, .cat-page .view-lead { margin-bottom: 4px; }
+.tr-panel { padding: 0 0 4px; overflow: hidden; }
+.tr-panel > h3, .tr-panel > dl, .tr-panel > p, .tr-panel > ul, .tr-panel > label, .tr-panel > div:not(.tr-toolbar):not(.tr-sechead) { margin-left: 16px; margin-right: 16px; }
+.tr-panel > h3 { margin-top: 14px; }
+.tr-panel table.grid { width: 100%; }
+.tr-toolbar, .tr-sechead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.tr-sechead h3 { margin: 0; font-size: 15px; }
+.tr-search { display: inline-flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--field-line); padding: 2px 4px; min-width: 220px; }
+.tr-search input { border: 0; background: none; font: inherit; color: var(--ink); outline: none; width: 100%; }
+.tr-status { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.tr-status.ok { color: var(--ok); } .tr-status.bad { color: var(--critical); } .tr-status.warn { color: var(--warning); } .tr-status.muted { color: var(--ink-faint); }
+.tr-edhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tr-edhead .view-title { margin: 0; }
+.tr-editor { display: grid; grid-template-columns: minmax(240px, 300px) 1fr; gap: 14px; align-items: start; }
+.tr-props { padding: 14px 16px; display: grid; gap: 10px; }
+.tr-props label, .cat-desc { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+.tr-props label small, .cat-desc small { color: var(--ink-faint); font-weight: 400; }
+.tr-props input, .tr-props select, .tr-props textarea, .cat-desc textarea, .dialog textarea {
+  font: inherit; font-weight: 400; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); }
+.tr-props input[readonly], .tr-props textarea[readonly] { background: transparent; color: var(--ink-soft); }
+.tr-sections { display: grid; gap: 14px; min-width: 0; }
+.tr-req { list-style: none; padding: 0; display: grid; gap: 6px; }
+.tr-req li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tr-problems { padding-left: 18px; display: grid; gap: 4px; }
+.tr-problems li { line-height: 1.45; }
+.tr-problems .ic { color: var(--warning); vertical-align: -2px; }
+.tr-ok { color: var(--ok); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.tr-notes { color: var(--ink-soft); font-size: 13px; }
+.pick-list { display: grid; gap: 6px; max-height: 340px; overflow: auto; padding: 4px 2px; margin-bottom: 12px; }
+.pick-list .check-line { flex-wrap: wrap; }
+.pick-list small { flex-basis: 100%; padding-left: 26px; }
+.dialog h3 { margin: 16px 0 8px; font-size: 15px; }
+.dialog .grid.compact { width: 100%; margin-bottom: 8px; }
+
+.cat-head { display: grid; gap: 6px; }
+.cat-search { display: flex; align-items: center; gap: 8px; max-width: 720px; padding: 8px 12px; border: 1.5px solid var(--tile-border); border-radius: var(--radius-s); background: var(--surface); }
+.cat-search input { border: 0; background: none; font: inherit; width: 100%; outline: none; color: var(--ink); }
+.cat-body { display: grid; grid-template-columns: 230px 1fr; gap: 16px; align-items: start; }
+.cat-facets { background: var(--surface); border: 1px solid var(--tile-border); border-radius: var(--radius-m); padding: 6px 0 14px; display: grid; gap: 4px; }
+.cat-facets h3 { margin: 12px 16px 4px; font-size: 13px; color: var(--ink-soft); }
+.cat-facets select, .cat-facets .btn, .cat-facets p { margin: 0 16px; }
+.cat-facets select { font: inherit; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); }
+.cat-results { display: grid; gap: 10px; min-width: 0; }
+.cat-results > p { margin: 0; }
+.cat-card { background: var(--surface); border: var(--tile-w) solid var(--tile-border); border-radius: var(--radius-m); padding: 12px 16px; display: grid; gap: 4px; }
+.cat-card p { margin: 0; }
+.cat-card-head { display: flex; align-items: center; gap: 8px; }
+.cat-card-head .tr-status { margin-left: auto; font-size: 13px; }
+.cat-detail { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 14px; align-items: start; }
+.cat-detail .tr-panel { padding-bottom: 14px; }
+.cat-desc { margin-top: 12px; }
+#asset-terms, #asset-tags { display: grid; gap: 6px; }
+#asset-tags p { margin: 6px 0 0; }
+@media (max-width: 1100px) { .tr-editor, .cat-detail, .cat-body { grid-template-columns: 1fr; } }
+.tr-toolbar .spacer, .tr-edhead .spacer, .tr-sechead .spacer, .cat-card-head .spacer { flex: 1; }
+#pkg-objects { table-layout: fixed; }
+#pkg-objects td { white-space: normal; word-break: break-word; }
+#pkg-objects th:nth-child(4), #pkg-objects td:nth-child(4) { width: 34%; }
+#pkg-objects th:last-child, #pkg-objects td:last-child { width: 86px; }
+#pkg-objects code { font-size: 11.5px; }
+.db-opts { display: grid; gap: 10px; margin: 12px 0; }
+.db-opts .check-line { display: flex; align-items: flex-start; gap: 10px; }
+.db-opts .check-line input { margin-top: 3px; }
+.db-opts .check-line span { display: grid; gap: 2px; font-weight: 400; }
+.db-opts small { color: var(--ink-faint); }

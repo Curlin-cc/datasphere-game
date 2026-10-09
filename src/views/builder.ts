@@ -20,6 +20,8 @@ import { missionProgress } from '../progress';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
+import { EXCURSIONS } from '../content/chapters';
+import { packageOf } from '../transport';
 
 /**
  * Data Builder, modelled on SAP Datasphere:
@@ -423,6 +425,8 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
           <label>Semantic Usage <small>${chapter >= 6 ? 'what kind of data this is' : 'you set it in chapter 6'}</small>
             <select id="prop-semantic" ${chapter >= 6 && !readOnly ? '' : 'disabled'}>
               ${SEMANTIC_USAGES.map((u) => `<option ${u === (o?.semanticUsage ?? 'Relational Dataset') ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+          ${isView ? `<label class="switch-line">Expose for Consumption <small>${chapter >= EXCURSIONS ? 'external tools (ODBC, OData) may read the deployed view' : 'you use it in the excursions'}</small>
+            <span class="switch"><input type="checkbox" id="prop-expose" ${o?.exposed ? 'checked' : ''} ${chapter >= EXCURSIONS && o && !readOnly ? '' : 'disabled'}></span></label>` : ''}
           <dl class="props-list">
             <dt>Type</dt><dd>${o ? o.kind : 'SQL View'}</dd>
             <dt>Space</dt><dd>${spaceChip(space)}</dd>
@@ -431,6 +435,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
             ${remote ? `<dt>Connection</dt><dd class="mono">${esc(remote.connection)}</dd><dt>Source Object</dt><dd class="mono">${esc(remote.source)}</dd>
               <dt>Data Access</dt><dd>${esc(remote.access)}<p class="muted">${remote.access === 'Remote' ? 'Each query reads the source live.' : 'Reads the copy stored in this space.'} Change it in the Data Integration Monitor.</p></dd>` : ''}
             ${o?.loadFrom ? `<dt>Filled by</dt><dd>Replication from ${esc(o.loadFrom.connection)}</dd>` : ''}
+            ${o && packageOf(t, objectKey(o)) ? `<dt>Package</dt><dd class="mono">${esc(packageOf(t, objectKey(o))!.name)}</dd>` : ''}
           </dl>
           ${isView && chapter >= 6 ? `<section class="sem" id="semantics">${o ? '' : '<h3>Attributes</h3><p class="muted">Save the view to give its columns a role.</p>'}</section>` : ''}
           ${o ? lineageHtml(o) : ''}
@@ -558,6 +563,11 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
       o.columnRoles = sem.roles();
       o.associations = sem.associations();
       o.dacs = sem.dacs();
+    }
+    const expose = main.querySelector<HTMLInputElement>('#prop-expose');
+    if (expose && !expose.disabled) {
+      if (expose.checked !== !!o.exposed) ctx.track(`expose:${objectKey(o)}:${expose.checked ? 'on' : 'off'}`);
+      o.exposed = expose.checked || undefined;
     }
     touch(o);
     ctx.sql = sql;

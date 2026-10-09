@@ -36,7 +36,11 @@ export const CHAPTERS: Chapter[] = [
   { nr: 9, title: 'Persistence and performance', summary: 'Decide what to persist and why', guidance: 'paid' },
   { nr: 10, title: 'Operations', summary: 'Task chains, monitoring and failed loads', guidance: 'paid' },
   { nr: 11, title: 'Board request', summary: 'An end-to-end change, no hints', guidance: 'none' },
+  { nr: 12, title: 'Excursions', summary: 'Power BI and database users, transport, catalog, and the old Business Builder', guidance: 'light' },
 ];
+
+/** Chapter of the excursions after the main game (Handbuch 7, 8, 11, 12). */
+export const EXCURSIONS = 12;
 
 export const RANKS = ['Junior Data Architect', 'Data Architect', 'Senior Data Architect', 'Lead Data Architect'];
 
@@ -276,5 +280,40 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Variable',
     text: 'Asks the consumer for a value when a report opens. A filter variable filters the model by an attribute: single value or interval, optional or mandatory.',
     realTenant: 'Analytic model > click the canvas background > Add Variable. Shown as a prompt in SAP Analytics Cloud.',
+  },
+  {
+    term: 'Expose for Consumption',
+    text: 'A switch on a view: only exposed, deployed views can be read by external tools through a database user (ODBC/JDBC) or the OData API. Analytic models are read by SAP Analytics Cloud and the Excel add-in.',
+    realTenant: 'Data Builder > open the view > properties > Expose for Consumption, then Deploy.',
+  },
+  {
+    term: 'Database user',
+    text: 'A technical user of one space, named SPACE#SUFFIX, for tools such as Power BI. With read access it reads the exposed views of its space; write access lets it create tables in its own Open SQL schema.',
+    realTenant: 'Space Management > Edit space > Database Access > Database Users > Create.',
+  },
+  {
+    term: 'Package',
+    text: 'Bundles objects for the move to another tenant (development > test > production). Validated, exported to the Content Network for chosen target tenants, imported there.',
+    realTenant: 'Transport > Packages; exported in Transport > Export, imported in the target tenant under Transport > Import.',
+  },
+  {
+    term: 'Required package',
+    text: 'A package another package depends on, e.g. the harmonization views below a reporting model. It must be in the target tenant first, or be imported together.',
+    realTenant: 'Package editor > Required Packages.',
+  },
+  {
+    term: 'Catalog asset',
+    text: 'The catalog entry of an object: metadata only (names, description, glossary terms, tags), no data. Catalog users find it after it is published; who may read the data is still decided by spaces and data access controls.',
+    realTenant: 'Catalog & Marketplace > Search; the asset details page.',
+  },
+  {
+    term: 'Glossary term',
+    text: 'A business term with one agreed definition, linked to the assets that implement it. Published separately from the assets.',
+    realTenant: 'Catalog & Marketplace > Search > Glossaries.',
+  },
+  {
+    term: 'Business Builder',
+    text: 'The older business layer: business entities (dimension or fact) on Data Builder objects, fact models, consumption models with perspectives for SAP Analytics Cloud. Current tenants label it Deprecated; new models are analytic models.',
+    realTenant: 'Side navigation > Business Builder (Deprecated).',
   },
 ];

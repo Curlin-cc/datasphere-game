@@ -4,6 +4,12 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | **Exkurse als Kapitel 12** (4 Missionen, Tipp-Stufe `light`): Verbrauch, Transport, Katalog, Business Builder; Apps Transport, Catalog & Marketplace › Search und Business Builder werden ab Kapitel 12 interaktiv | Neue Apps nach dem Spiel ohne Hinweise: wieder etwas Hilfe; Reihenfolge nach Nähe zum Gebauten (erst Daten nach außen, dann Produktion, Katalog, Altbestand) |
+| 2026-10-09 | *Expose for Consumption* als Teil der Semantik (`Semantics.exposed`), also Save/Deploy wie Spaltenrollen; Datenbankbenutzer im Tenant (`dbUsers`), Dialog „Database Access“ auf der Space-Karte | Freigabe wirkt erst nach Deploy (Handbuch 12.3); Datenbankbenutzer legt der Space-Administrator an (12.6) |
+| 2026-10-09 | **Transport vereinfacht:** ein Paket = Objekte eines Spaces, andere Spaces über erforderliche Pakete; Abhängigkeiten automatisch ermittelt (gelesene Objekte, Associations, DACs, Berechtigungsentität, Kettenschritte); Export simuliert; Import nur als erklärender Dialog; Kollegen-Pakete per `setup` | Handbuch 11.4.1/11.4.2 lassen Details offen; Lernziel ist Paketschnitt nach Schichten und Abhängigkeiten zuerst (11.7) |
+| 2026-10-09 | Transport in der Navigation mit Unterpunkten Packages · Export · Import · Monitor (Bild 13/16), anfangs zugeklappt | Entspricht dem echten Tenant |
+| 2026-10-09 | **Katalog:** einziges Quellsystem ist der eigene Tenant (schon angebunden), Assets = deployte SQL Views und Analytic Models; Spieler handelt als Katalogadministrator; feste Tag-Hierarchien Subject Area/Layer; ein Glossar mit Startbegriff „Grid area“ | Handbuch 8.2 beschreibt Anreichern und Veröffentlichen; Anbinden weiterer Systeme bringt fürs Lernziel nichts |
+| 2026-10-09 | **Business Builder nur lesend** mit Altobjekten von 2023 in RHN_REP (fest im Code, `src/views/business.ts`); Neu-Buttons deaktiviert | Tenant zeigt „(Deprecated)“ (Bild 8); Lernziel ist Lesen und Ablösen, nicht Neubau |
 | 2026-10-09 | **Task Chains vereinfacht:** Schrittliste statt Canvas, nur sequenziell (ALL/ANY nur erklärt); Schritte = Objekte des eigenen Spaces + geteilte Ketten anderer Spaces (globale Task Chains seit 11/2024, Quelle valantic); Replication Flows nur mit *Initial Only*; fehlgeschlagener Schritt stoppt die Kette; E-Mail als Meldung im Lauf | Handbuch 6.8 belegt Schritttypen, Benachrichtigung, Einplanung; Canvas und Parallelität bringen für das Lernziel wenig |
 | 2026-10-09 | Neues Mission-Feld `setupAsync` (läuft nach `setup`, wenn die Datenbank bereit ist), z. B. für den geplanten Lauf in c10-m03 | Ein realer Fehlerlauf braucht DuckDB; `setup` ist synchron |
 | 2026-10-09 | c10-m03: Tims Änderung `CAST(CUSTOMER_ID AS INTEGER)` lässt sich deployen und scheitert erst beim Lauf | Zeigt den Unterschied zwischen Deploy (Struktur) und Laufzeit (Daten) |
@@ -99,4 +105,4 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 | 2026-10-08 | Business-Simulation mit Karriere und Badges | Arbeitsgefühl statt Quiz |
 | 2026-10-08 | Business Case Stadtwerke Rheinau (Energieversorger) | Nah am Arbeitsumfeld (Energie, Abrechnung) |
 | 2026-10-08 | SQL statt Drag & Drop | Weniger Aufwand, mehr Lerneffekt |
-| 2026-10-08 | Fact-Views + Analytic Model als Standard, Business Builder nur Exkurs | SAP-Empfehlung, Analytical Dataset und Business-Builder-Objekte abgelöst |
+| 2026-10-08 | Fact-Views + Analytic Model als Standard, Business Builder nur Exkurs | SAP-Empfehlung, Analytical Dataset und Business-Builder-Objekte abgelöst (Business Builder im Tenant als „Deprecated“ betitelt, Bild 8) |

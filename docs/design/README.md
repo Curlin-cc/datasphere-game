@@ -185,6 +185,11 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
       **keine seitlichen Scrollbalken** in Navigation, Seitenpanels, Reitern und Objektlisten (Umbruch statt Scrollen, lange Namen mit „…“ und Tooltip);
       SQL-Editor bricht lange Zeilen um; schmale Bildschirme bis 1366 px (Spalten schmaler, Werkzeugleiste nur Icons). Nur die Datenvorschau scrollt seitlich (Daten)
 
+- [x] Exkurse (Kapitel 12): Transport in der Navigation mit Packages · Export · Import · Monitor, Import- und Monitor-Tabelle mit den Spalten aus
+      Bild 13/16 (Status mit Icon und farbigem Text), Business Builder mit Willkommensseite „(Deprecated)“ und Space-Karten (Bild 8, Typ A),
+      *Expose for Consumption* als OFF/ON-Pille im Properties-Panel (Bild 21). Packages, Export und die Katalog-Suchseite sind ohne Vorlage gebaut
+      (kein Screenshot) im Stil von Typ D
+
 Noch offen:
 - [ ] Data Integration Monitor und Connections mit Willkommensseite + Space-Karten (A); heute Space-Auswahl per Dropdown
 - [ ] Monitoring-Listen wie D (Task Logs als echte Seite mit Filterzeile, Status als farbiger Großbuchstaben-Text)

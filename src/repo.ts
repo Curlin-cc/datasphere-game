@@ -55,6 +55,8 @@ export interface Semantics {
   associations?: Association[];
   /** Data access controls assigned to a view (chapter 8). */
   dacs?: DacAssignment[];
+  /** Expose for Consumption (excursions, Handbuch 12.3): external tools (ODBC, OData) may read the deployed view. */
+  exposed?: boolean;
 }
 
 export interface RepoObject {
@@ -68,6 +70,7 @@ export interface RepoObject {
   columnRoles?: Record<string, ColumnRole>;
   associations?: Association[];
   dacs?: DacAssignment[];
+  exposed?: boolean;
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
@@ -165,6 +168,7 @@ export function semanticsOf(o: Partial<Semantics>): Semantics {
     columnRoles: o.columnRoles && Object.keys(o.columnRoles).length ? o.columnRoles : undefined,
     associations: o.associations?.length ? o.associations : undefined,
     dacs: o.dacs?.length ? o.dacs : undefined,
+    exposed: o.exposed ? true : undefined,
   };
 }
 
@@ -339,5 +343,5 @@ function sanitizeSemantics(d: Record<string, unknown>): Semantics {
       .slice(0, 10);
     if (mapping.length) assoc.push({ target: a.target, mapping });
   }
-  return semanticsOf({ semanticUsage: usage, columnRoles: roles, associations: assoc, dacs: sanitizeAssignments(d.dacs) });
+  return semanticsOf({ semanticUsage: usage, columnRoles: roles, associations: assoc, dacs: sanitizeAssignments(d.dacs), exposed: d.exposed === true });
 }

@@ -19,7 +19,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 9 Persistence | 6.5.6, 10.3.4, 10.4, 9.3.7 | ja, gebaut am 09.10.2026: Expensive Statement Tracing (System › Configuration › Monitoring), Expensive Statement Logs, Views-Monitor (Start Data Persistence, Remove Persisted Data, Schedule, Läufe mit Meldungen), View Analyzer (vereinfacht), Grenze „liest View mit DAC“ | Partitionierung und Spalten des Views-Monitors „nicht verifiziert“ (Partitionierung nur erklärt); Laufzeiten simuliert; ob ein View mit eigener DAC persistierbar ist, nicht belegt (Spiel: ja) |
 | 10 Operations | 6.7.3, 6.8, 10.3.6, 10.3.8, 10.5, 10.6 | ja, gebaut am 09.10.2026: Task Chains (Replication Flow nur Initial Only, View-Persistenz, Remote-Table-Snapshot, verschachtelte Ketten, geteilte Ketten anderer Spaces), E-Mail-Benachrichtigung, Run/Schedule im Editor und im Monitor, Task-Chains-Monitor mit Schritten und Sprung in den Detailmonitor (Ablauf C), Task Logs über alle Spaces | Parallele Zweige (ALL/ANY) nur erklärt; Transformation Flow, Pause/Fortsetzen, Cron, Cloud ALM nicht simuliert; geteilte (globale) Task Chains laut valantic-Jahresrückblick 2024, nicht im Handbuch |
 | 11 Board request | alle bisherigen | ja, gebaut am 09.10.2026: Änderung eines deployten Facts mit Impact auf das Modell, DAC-Vererbung, Persistenz und Nachtkette im Zusammenspiel | Zeitdimension (Space Management) nur erwähnt |
-| Exkurse | 7, 8, 11, 12 | ja: Business Builder, Catalog & Marketplace, Transport, Verbrauch | noch nicht gebaut |
+| 12 Exkurse | 12, 11, 8, 7 | ja, gebaut am 09.10.2026: Expose for Consumption + Datenbankbenutzer (12.3, 12.6), Pakete mit erforderlichen Paketen, Export, Import-Optionen, Monitor (11.4, 11.5 A), Katalog mit Assets, Beschreibung, Tags, Glossarbegriffen, Veröffentlichen (8.2), Business Builder lesend (7.4, 7.7) | OData, Excel-Add-in, Premium Outbound, Databricks, Marketplace, Data Sharing Cockpit, KPIs, CLI, Cloud Transport Management nur erklärt (meist ⚠ Lizenz); Details siehe unten |
 
 ## Widersprüche und offene Punkte (am echten Tenant prüfen)
 
@@ -28,6 +28,36 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 3. **Reihenfolge der Seitennavigation:** laut 2.3.2 nicht verifiziert; ändert sich je Release. **Stand 09.10.2026** siehe `docs/design/README.md`, Abschnitt 1.
 4. **Standardrollen:** nur DW Administrator, DW Viewer und Catalog User sind belegt.
 5. **Feature-Matrix der Verbindungstypen (5.4.2):** komplett nicht verifiziert; das Spiel nutzt eine vereinfachte Matrix.
+6. **Business Builder abgekündigt?** 7.7 findet keine offizielle Aussage; der echte Tenant titelt „Welcome to the Business Builder (Deprecated)“ (Bild 8).
+   Spiel folgt dem Tenant. Handbuch 7.7 könnte um diesen Beleg ergänzt werden.
+7. **Exkurse am echten Tenant prüfen (Curlin):** Schaltertext und Position von *Expose for Consumption* (Bild 21 zeigt ihn im Properties-Panel);
+   ob Pakete Objekte mehrerer Spaces enthalten dürfen; wie Transport › Packages und Export im Detail aussehen (Bild 13/16 zeigen nur Import und Monitor);
+   ob DACs für Datenbankbenutzer wirken.
+
+## Was Kapitel 12 (Exkurse) aus dem Handbuch umsetzt
+
+- **Verbrauch (12):** Schalter *Expose for Consumption* im Properties-Panel von SQL Views, Teil von Save/Deploy (12.3); Datenbankbenutzer je Space
+  in Space Management › Database Access mit *Enable Read Access (SQL)* und *Enable Write Access (SQL, DDL, DML)* (12.6.2, Dialogtext laut KBA);
+  Regel „ODBC liest freigegebene Views, Analytic Models gehen über SAC/Excel/OData“ (12.10)
+- **Transport (11):** Navigation *Transport › Packages · Export · Import · Monitor* nach Bild 13/16; Paket mit Objekten und erforderlichen Paketen,
+  Validierung, Export an Zielmandanten (Test, Production) ins Content Network, Exportzusammenfassung, Jobs im Monitor; Import-Optionen
+  *Overwrite objects and data* inkl. Zeitpläne (Hinweis 3609213) und Delta Capture (Hinweis 3700359) als Erklärung (11.4.1–11.4.4, Ablauf A);
+  Feld *Package* im Properties-Panel
+- **Katalog (8.2):** Katalog-Suchseite mit Suche und Filtern (Typ, Veröffentlichungsstatus, Tags), Asset-Detailseite (extrahierte Metadaten,
+  Beschreibung, Glossarbegriffe, Tags aus Tag-Hierarchien), Glossarbegriffe anlegen und getrennt veröffentlichen; „Metadaten, keine Daten“ (8.2.5)
+- **Business Builder (7):** Willkommensseite „(Deprecated)“ nach Bild 8, Objektkette Geschäftsentität → Faktenmodell → Verbrauchsmodell mit
+  Perspektiven, Berechtigungsszenario, Status *Ready to Use*, Analytical Dataset veraltet → Fact (7.4, 7.7); nur lesend
+
+Vereinfacht und gekennzeichnet: Ein Paket enthält Objekte genau eines Spaces (11.4.1 „nicht verifiziert“), andere Spaces über erforderliche Pakete;
+Validierung = alle Abhängigkeiten (gelesene Objekte, Associations, DACs, Berechtigungsentität, Kettenschritte) sind im Paket oder in einem
+erforderlichen Paket (11.4.2 „nicht verifiziert“); Export gelingt immer, wenn valide; der Import selbst wird nicht gespielt (Trainingsmandant =
+Entwicklung). Der Katalog kennt nur den eigenen Mandanten als Quellsystem (bereits angebunden); jeder deployte View und jedes Analytic Model
+ist ein Asset. Analytic Models gelten als konsumierbar ohne Schalter (12.3: „nicht verifiziert“). Wirkung von DACs bei Datenbankbenutzern wird
+bewusst nicht gespielt (12.3: „nicht verifiziert“); die Mission gibt nur eine Dimension ohne DAC frei. Name des Datenbankbenutzers
+`SPACE#SUFFIX` und IP-Allowlist kommen aus der SAP-Doku bzw. Praxis, nicht aus dem Handbuch (IP-Allowlist dort „nicht verifiziert“).
+Business Builder: Die Bezeichnung „Deprecated“ ist durch Curlins Screenshot (Bild 8) belegt; das Handbuch fand dazu keine offizielle Aussage (7.7).
+Nur erklärt: OData-API und OAuth-Clients, Excel-Add-in, Premium Outbound, Databricks/BDC, Marketplace, Data Sharing Cockpit, KPIs,
+CLI, SAP Cloud Transport Management, Versionshistorie.
 
 ## Was Kapitel 3 aus dem Handbuch umsetzt
 

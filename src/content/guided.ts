@@ -638,6 +638,44 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>In the game, runtimes are simulated for production volume: the training tenant only holds a sample.</p>`,
     },
   ],
+  'c12-m01': [
+    {
+      title: 'Chapter 12: Excursions',
+      body: `<p>The main game is done. Four short side trips show the apps around it: how data leaves Datasphere, how content moves to
+        production, how people find it in the catalog, and the old Business Builder you will meet in existing projects.</p>
+        <p>Light hints again: the first is free, the rest cost XP.</p>`,
+    },
+    {
+      title: 'Four ways out',
+      body: `<p>SAP Analytics Cloud and its Excel add-in read <b>analytic models</b> live. Tools such as Power BI read <b>views</b> over SQL
+        (ODBC/JDBC) through a <b>database user</b> of the space. Other clients use the OData API. Replication flows can push data out
+        (licence-dependent).</p>
+        <p>Whatever goes out over SQL must be <b>exposed for consumption</b> first: a switch on the view, active after Deploy.</p>`,
+    },
+  ],
+  'c12-m02': [
+    {
+      title: 'Development, test, production',
+      body: `<p>You model in development. Test and production get your work as a <b>package</b>: objects of one space plus what they need.
+        What lives in another space comes from a <b>required package</b>. A valid package is exported to the Content Network for the
+        target tenants, and imported there.</p>`,
+    },
+  ],
+  'c12-m03': [
+    {
+      title: 'The catalog',
+      body: `<p>The catalog extracts the objects of connected systems as <b>assets</b>: names, columns, lineage, never the data. You add what
+        people need to trust an asset: a description, tags and <b>glossary terms</b>. Only published entries are visible to catalog users.</p>`,
+    },
+  ],
+  'c12-m04': [
+    {
+      title: 'The Business Builder',
+      body: `<p>Before the analytic model, business layers were built in the Business Builder: <b>business entities</b> on Data Builder
+        views, <b>fact models</b> combining them, <b>consumption models</b> with <b>perspectives</b> for SAP Analytics Cloud. Current tenants
+        label the app <b>Deprecated</b>; you meet it in existing projects.</p>`,
+    },
+  ],
   'c11-m01': [
     {
       title: 'Chapter 11: The board request',
@@ -2285,6 +2323,182 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('What does the view read, and what does that object have?'),
+  ],
+  // ================================================================ chapter 12 (excursions)
+  'c12-m01': [
+    [
+      {
+        title: 'The tariff dimension',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Open the tariff dimension of the reporting space.</p>`,
+        action: { do: 'Open <b>RHN_REP_D_TARIFF</b>.', event: '^open:RHN_REP\\.RHN_REP_D_TARIFF$' },
+      },
+      {
+        title: 'Expose for Consumption',
+        target: '#prop-expose',
+        body: `<p>Off by default: nothing leaves the space by accident. Switch it on, then Deploy; tools read the deployed version.</p>`,
+        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_D_TARIFF$' },
+      },
+    ],
+    [
+      nav('spaces', 'Space Management', `<p>Database users belong to a space and are managed with it.</p>`),
+      {
+        title: 'Database Access',
+        target: '[data-dbaccess="RHN_REP"]',
+        body: `<p>Each space card has <b>Database Access</b> from this chapter on.</p>`,
+        action: { do: 'Click <b>Database Access</b> on the RHN_REP card.', event: 'dbaccess:RHN_REP' },
+      },
+      {
+        title: 'Create the user',
+        target: '.dialog',
+        body: `<p>The suffix names the user: <code>RHN_REP#</code> plus your suffix. Decide which access the pricing team needs.</p>`,
+        action: { do: 'Create the database user for Power BI.', event: '^dbuser:RHN_REP#' },
+      },
+    ],
+    questions('Which objects can a database user read at all?'),
+  ],
+  'c12-m02': [
+    [
+      {
+        title: 'Transport › Packages',
+        view: 'transport:packages',
+        target: '#pkg-create',
+        body: `<p>Transport has four pages in the navigation: Packages, Export, Import, Monitor.</p>`,
+        action: { do: 'Click <b>Create</b>.', appear: '#pkg-name' },
+      },
+      {
+        title: 'Name and space',
+        target: '.tr-props',
+        body: `<p>A business name, a technical name such as <code>RHN_REP_PKG_BOARD</code>, and the space <b>RHN_REP</b>. The space cannot change once objects are in.</p>`,
+      },
+      {
+        title: 'Add the model',
+        target: '#pkg-add',
+        body: `<p>The list shows the deployed objects of the space. Start with the model; the table then shows what it needs.</p>`,
+        action: { do: 'Add <b>RHN_REP_AM_CONSUMPTION</b>.', event: '^package-add:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+      },
+    ],
+    [
+      {
+        title: 'Validation',
+        target: '#pkg-validation',
+        body: `<p>Each line names a missing object and who needs it. Objects of RHN_REP go into the package; objects of other spaces come from a required package.</p>`,
+      },
+      {
+        title: 'Required package',
+        target: '#pkg-req',
+        body: `<p>Calin's and Jonas' packages are exported already.</p>`,
+        action: { do: 'Add the required package your objects need.', event: '^package-require:' },
+      },
+      {
+        title: 'Until it is clean',
+        target: '#pkg-validate',
+        body: `<p>Add objects, validate again, until the Validation panel is green. Then Save.</p>`,
+        action: { do: 'Make the package valid and press <b>Save</b>.', event: '^package-save:' },
+      },
+    ],
+    [
+      {
+        title: 'Export',
+        view: 'transport:export',
+        target: '#export-list',
+        body: `<p>Select your package, press Export and choose the target tenants.</p>`,
+        action: { do: 'Export the package.', event: '^export:.*:Success$' },
+      },
+    ],
+    [
+      {
+        title: 'Import',
+        view: 'transport:import',
+        target: '#import-list',
+        body: `<p>What the target tenants see. Select a package and press the import icon to read the import options.</p>`,
+      },
+      ...questions('The import options answer the first question; the required packages the second.'),
+    ],
+  ],
+  'c12-m03': [
+    [
+      {
+        title: 'Catalog & Marketplace › Search',
+        view: 'catalog',
+        target: '#cat-q',
+        body: `<p>Search for <code>consumption</code> and press Enter.</p>`,
+      },
+      {
+        title: 'Open the asset',
+        target: '#cat-results',
+        body: `<p>The analytic model is one of the assets extracted from this tenant.</p>`,
+        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', event: '^catalog-open:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+      },
+      {
+        title: 'Describe and tag',
+        target: '#asset-desc',
+        body: `<p>What is it, who owns it, when to use it. Then tick the tag <b>Consumption</b> under Subject Area and Save.</p>`,
+        action: { do: 'Write the description, tick the tag, <b>Save</b>.', event: '^asset-tag:RHN_REP\\.RHN_REP_AM_CONSUMPTION:Subject Area/Consumption' },
+      },
+    ],
+    [
+      {
+        title: 'A glossary term',
+        target: '#asset-term-new',
+        body: `<p>One term, one definition everybody can rely on: what is counted, in which unit, from which source.</p>`,
+        action: { do: 'Create the glossary term.', event: '^term-create:' },
+      },
+      {
+        title: 'Link it',
+        target: '#asset-terms',
+        body: `<p>Tick your new term and Save.</p>`,
+        action: { do: 'Link the term to the asset and <b>Save</b>.', event: '^asset-term:RHN_REP\\.RHN_REP_AM_CONSUMPTION:' },
+      },
+    ],
+    [
+      {
+        title: 'Publish the asset',
+        target: '#asset-publish',
+        body: `<p>Until now only you, the catalog administrator, see it.</p>`,
+        action: { do: 'Press <b>Publish</b>.', event: '^asset-publish:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+      },
+      {
+        title: 'Publish the term',
+        view: 'catalog',
+        target: '#cat-results',
+        body: `<p>Terms are published on their own: open your term from the results and publish it.</p>`,
+        action: { do: 'Publish your glossary term.', event: '^term-publish:' },
+      },
+    ],
+    questions('What does the catalog extract from a tenant?'),
+  ],
+  'c12-m04': [
+    [
+      nav('business', 'Business Builder', `<p>Look at the title of the welcome page.</p>`),
+      {
+        title: 'Space RHN_REP',
+        target: '#bb-spaces',
+        body: `<p>The Business Builder works per space, like the Data Builder.</p>`,
+        action: { do: 'Select <b>RHN_REP</b>.', event: 'bb-space:RHN_REP' },
+      },
+      {
+        title: 'The consumption model',
+        target: '#bb-list',
+        body: `<p>The column Type tells you which object SAP Analytics Cloud stories were built on.</p>`,
+        action: { do: 'Open the <b>consumption model</b>.', event: '^bb-open:RHN_REP\\.RHN_CM_REVENUE$' },
+      },
+    ],
+    [
+      {
+        title: 'Perspectives',
+        target: '#bb-tabs',
+        body: `<p>The perspective is what the story read.</p>`,
+        action: { do: 'Open the tab <b>Perspectives</b>.', event: '^bb-tab:RHN_CM_REVENUE:Perspectives$' },
+      },
+      {
+        title: 'Follow the sources',
+        target: '#bb-tab-body',
+        body: `<p>Go back to the list and open the fact model and the invoice entity: each General tab names its source.</p>`,
+      },
+    ],
+    questions('What did you build in chapter 7 for net and tax by region?'),
   ],
   // ================================================================ chapter 10
   'c10-m01': [

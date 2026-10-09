@@ -56,7 +56,7 @@ export const APPS: AppInfo[] = [
     who: 'Modelers, integrators, anyone looking for data',
   },
   {
-    id: 'catalog', label: 'Catalog & Marketplace', section: 'catalog', navLabel: 'Search', chapter: 11,
+    id: 'catalog', label: 'Catalog & Marketplace', section: 'catalog', navLabel: 'Search', interactive: 12, chapter: 12,
     icon: '<path d="M3 3.5h4.5v9H3zM8.5 3.5H13v9H8.5z"/>',
     summary: 'Find, describe and govern data assets; get data products.',
     does: ['Catalog: business descriptions, glossary terms, tags and KPIs for data assets, also from other systems', 'Shows lineage: where data comes from and where it is used', 'Marketplace: install data products from SAP and partners'],
@@ -70,12 +70,12 @@ export const APPS: AppInfo[] = [
     who: 'Modelers, integrators',
   },
   {
-    id: 'business', label: 'Business Builder', section: 'apps',
+    id: 'business', label: 'Business Builder', section: 'apps', interactive: 12, chapter: 12,
     icon: '<rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M5 6.5h6M5 9.5h4"/>',
-    summary: 'Former business layer. Replaced by the Analytic Model.',
-    does: ['Business entities, fact models and consumption models on top of Data Builder objects', 'Perspectives for SAP Analytics Cloud'],
-    who: 'Only in older tenants',
-    note: 'SAP recommends the Analytic Model in the Data Builder for new work. You meet the Business Builder in existing projects, not in new ones.',
+    summary: 'The older business layer, labeled Deprecated in current tenants. New models are analytic models.',
+    does: ['Business entities (dimension or fact) on top of Data Builder objects', 'Fact models and consumption models with perspectives for SAP Analytics Cloud', 'Authorization scenarios based on data access controls'],
+    who: 'Existing projects; new work goes into analytic models',
+    note: 'Current tenants title it "Welcome to the Business Builder (Deprecated)". Build new models as analytic models in the Data Builder; you meet the Business Builder in existing projects.',
   },
   {
     id: 'builder', label: 'Data Builder', section: 'apps', interactive: 0, chapter: 0,
@@ -120,10 +120,10 @@ export const APPS: AppInfo[] = [
     who: 'Administrators',
   },
   {
-    id: 'transport', label: 'Transport', section: 'utilities', chapter: 10,
+    id: 'transport', label: 'Transport', section: 'utilities', interactive: 12, chapter: 12,
     icon: '<path d="M2.5 5.5h9l-2.5-2.5M13.5 10.5h-9l2.5 2.5"/>',
     summary: 'Move content between tenants: development, test, production.',
-    does: ['Exports packages of objects', 'Imports them into another tenant', 'Keeps dependencies together'],
+    does: ['Packages: bundle the objects of a space, with required packages for what they need from other spaces', 'Export: share a valid package with target tenants through the Content Network', 'Import: bring a package into this tenant, optionally overwriting objects, data and schedules', 'Monitor: every export and import job with its messages'],
     who: 'Administrators, lead modelers',
   },
   {

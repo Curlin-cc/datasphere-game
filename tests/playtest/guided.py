@@ -304,3 +304,34 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c12-m02: package with dependencies, export, while the tour waits
+from chapter12_data import TENANT12  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    s12 = save_before(12, 'c12-m02', TENANT12)
+    s12["missions"]["c12-m01"] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
+    g.start(s12)
+    expect(pg, 'Development, test, production'); nexts(pg)
+    expect(pg, 'Transport › Packages'); pg.click('#pkg-create')
+    expect(pg, 'Name and space'); pg.fill('#pkg-business', 'Board package'); pg.fill('#pkg-name', 'RHN_REP_PKG_BOARD'); nexts(pg)
+
+    def pick(btn, values):
+        pg.click(btn)
+        for v in values:
+            pg.check(f'.dialog input[value="{v}"]')
+        pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
+    expect(pg, 'Add the model'); pick('#pkg-add', ['RHN_REP.RHN_REP_AM_CONSUMPTION'])
+    expect(pg, 'Validation'); g.shot('g-c12-validation'); nexts(pg)
+    expect(pg, 'Required package'); pick('#pkg-req', ['RHN_HARM_PKG_HARMONIZED'])
+    expect(pg, 'Until it is clean')
+    pick('#pkg-add', [f'RHN_REP.{n}' for n in ['RHN_REP_F_CONSUMPTION', 'RHN_REP_D_GRID_AREA', 'RHN_REP_D_TARIFF', 'RHN_REP_D_CUSTOMER', 'RHN_REP_DAC_GRID_AREA', 'RHN_REP_T_PERMISSIONS']])
+    pg.click('#pkg-save')
+    expect(pg, 'Export'); pg.check('input[name="exp"][value="RHN_REP_PKG_BOARD"]'); pg.click('#exp-open')
+    pg.check('.dialog input[value="RHN-TEST"]'); pg.check('.dialog input[value="RHN-PROD"]'); pg.click('.dialog button[type="submit"]')
+    expect(pg, 'Import'); nexts(pg)
+    expect(pg, 'Your answers'); g.answer('overwrite', 1); g.answer('order', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

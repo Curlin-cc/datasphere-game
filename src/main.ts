@@ -28,6 +28,10 @@ import { renderSystem, systemTo } from './views/system';
 import { renderStatements } from './views/statements';
 import { renderTaskLogs } from './views/tasklogs';
 import { restoreIntegration } from './integration';
+import { renderTransport, transportTo, transportPage, TRANSPORT_PAGES, type TransportPage } from './views/transport';
+import { renderCatalog, catalogReset } from './views/catalog';
+import { renderBusiness, businessReset } from './views/business';
+import { EXCURSIONS } from './content/chapters';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
 const SOURCE_BUSINESS_NAMES: Record<string, string> = {
@@ -46,7 +50,7 @@ const state = {
   solved: null as { xp: number; bonus: boolean; promotedTo?: string } | null,
   navCollapsed: readPref('dsg-nav') === 'collapsed',
   /** Closed navigation groups. Monitoring and Catalog start closed, Apps and Utilities open, as in the tenant (Bild 3, 17). */
-  closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog').split(',').filter(Boolean)),
+  closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog,transport').split(',').filter(Boolean)),
   /** Views visited before, for the Back button in the shellbar. */
   history: [] as ViewId[],
 };
@@ -157,6 +161,15 @@ function navHtml() {
       ${infoOnly ? `<span class="info-only" aria-label="Info page only">${icon(ICONS.info)}</span>` : a.section === 'bottom' ? `<span class="chev">${icon(ICONS.right)}</span>` : ''}
     </button>`;
   };
+  /** Transport opens its pages in the navigation (Bild 13, 16): Packages, Export, Import, Monitor. */
+  const transportItem = () => {
+    const open = !state.closedGroups.has('transport') || ctx.view === 'transport';
+    const a = appById('transport')!;
+    return `<button type="button" class="group-head nav-sub-head ${open ? 'open' : ''}" data-group="transport" aria-expanded="${open}" title="${esc(a.label)}: ${esc(a.summary)}">
+        ${icon(a.icon)}<span class="label">${esc(a.label)}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
+      ${open ? `<div class="nav-children">${TRANSPORT_PAGES.map((p) => `<button type="button" class="child" data-view="transport" data-tsub="${p.id}"
+        ${ctx.view === 'transport' && transportPage() === p.id ? 'aria-current="page"' : ''}><span class="label">${p.label}</span></button>`).join('')}</div>` : ''}`;
+  };
   const section = (sec: NavSection) => {
     const ids = NAV_ORDER[sec];
     const exp = EXPANDABLE[sec];
@@ -170,7 +183,7 @@ function navHtml() {
     if (title) {
       const open = !state.closedGroups.has(sec) || ids.includes(ctx.view as AppId);
       return `<button type="button" class="nav-title" data-group="${sec}" aria-expanded="${open}"><span class="label">${title}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
-        ${open ? ids.map((id) => item(id)).join('') : ''}`;
+        ${open ? ids.map((id) => (id === 'transport' && currentChapter() >= EXCURSIONS ? transportItem() : item(id))).join('') : ''}`;
     }
     return ids.map((id) => item(id)).join('');
   };
@@ -182,6 +195,9 @@ function bindNav() {
   app.querySelectorAll<HTMLButtonElement>('.nav button[data-view]').forEach((b) =>
     b.addEventListener('click', () => {
       if (b.dataset.view === 'builder') enterBuilder();
+      if (b.dataset.tsub) transportTo(b.dataset.tsub as TransportPage);
+      if (b.dataset.view === 'catalog') catalogReset();
+      if (b.dataset.view === 'business') businessReset();
       setView(b.dataset.view as ViewId, true);
     }),
   );
@@ -253,6 +269,12 @@ function renderView() {
       return currentChapter() >= 9 ? renderStatements(main) : renderAppInfo(main, a!);
     case 'tasklogs':
       return currentChapter() >= 10 ? renderTaskLogs(main) : renderAppInfo(main, a!);
+    case 'transport':
+      return currentChapter() >= EXCURSIONS ? renderTransport(main) : renderAppInfo(main, a!);
+    case 'catalog':
+      return currentChapter() >= EXCURSIONS ? renderCatalog(main) : renderAppInfo(main, a!);
+    case 'business':
+      return currentChapter() >= EXCURSIONS ? renderBusiness(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }
@@ -296,6 +318,13 @@ function tourHooks(onFinish: () => void) {
         monitorTo(target as Parameters<typeof monitorTo>[0]);
         if (space && ctx.tenant().spaces.some((s) => s.id === space)) ctx.tenant().activeSpace = space;
         setView('monitor', true);
+      } else if (view === 'transport' && target) {
+        transportTo(target as TransportPage);
+        setView('transport', true);
+      } else if (view === 'catalog' || view === 'business') {
+        if (view === 'catalog') catalogReset();
+        else businessReset();
+        setView(view, true);
       } else if (view === 'system' && target) {
         systemTo(target as Parameters<typeof systemTo>[0]);
         setView('system', true);
@@ -549,7 +578,7 @@ async function afterProgressReplaced() {
 function renderAppInfo(main: HTMLElement, a: AppInfo) {
   const chapter = currentChapter();
   const status = a.note
-    ? '<span class="chip warn">Being phased out</span>'
+    ? '<span class="chip warn">Deprecated</span>'
     : a.interactive !== undefined && a.interactive > chapter
       ? `<span class="chip">You work here from chapter ${a.interactive}</span>`
       : a.chapter !== undefined && a.chapter > chapter
