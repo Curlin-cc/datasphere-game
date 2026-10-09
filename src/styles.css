@@ -12,6 +12,7 @@
   --shell-line: #e5e5e5;
   --shell-ink: #1d2d3e;
   --shell-ink-strong: #1d2d3e;
+  --msc-ink: #18263a; --msc-wine: #6b0f2d; --msc-purple: #47245c; --msc-red: #b7203c; --msc-orange: #fb842f;
   --shell-active: #ebf8ff;
   --nav-title: #475d75;
 
@@ -68,6 +69,7 @@
     --shell-line: #333c45;
     --shell-ink: #eaecee;
     --shell-ink-strong: #ffffff;
+    --msc-ink: #fafafa; --msc-wine: #7c0d3a; --msc-purple: #5f3484; --msc-red: #bd0e3b; --msc-orange: #fb811b;
     --shell-active: #1c2f45;
     --nav-title: #a9b4be;
     --bg: #12171c;
@@ -115,6 +117,7 @@
   --shell-line: #333c45;
   --shell-ink: #eaecee;
   --shell-ink-strong: #ffffff;
+  --msc-ink: #fafafa; --msc-wine: #7c0d3a; --msc-purple: #5f3484; --msc-red: #bd0e3b; --msc-orange: #fb811b;
   --shell-active: #1c2f45;
   --nav-title: #a9b4be;
   --bg: #12171c;
@@ -211,9 +214,6 @@ button { font: inherit; color: inherit; }
 .shell-icon .ic { width: 18px; height: 18px; }
 .brand { display: flex; align-items: center; background: none; border: 0; padding: 4px 10px 4px 8px; cursor: pointer; border-radius: 8px; }
 .brand:hover { background: var(--surface-sunk); }
-.msc-logo { display: inline-flex; align-items: center; gap: 8px; line-height: 1; }
-.msc-word { font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.045em; color: var(--shell-ink-strong); }
-.msc-mark { width: 22px; height: 22px; flex: none; }
 .shell-app { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--shell-ink-strong); padding-left: 8px; white-space: nowrap; }
 .shell-app .ic { width: 16px; height: 16px; }
 .shell-crumb { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -1109,10 +1109,13 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .hc-body { padding: 0 16px 14px; flex: 1; }
 .hc-foot { border-top: 1px solid var(--line); padding: 10px 16px; }
 .hc-foot button { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font: inherit; }
+/* MSC logo (src/brand.ts): colours from --msc-* (light/dark), height sets the size */
+.msc-logo { display: block; height: 26px; width: auto; }
+.msc-ring { display: block; height: 24px; width: auto; }
 .hc-hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: center; background: linear-gradient(120deg, #f2eaf8 0%, #fbeef2 55%, #fff2e5 100%); border-radius: var(--radius-m) var(--radius-m) 0 0; padding: 26px 24px; }
-.hc-hero .msc-logo .msc-word { font-size: 38px; color: #1d2d3e; }
-.hc-hero .msc-logo { gap: 14px; }
-.hc-hero .msc-mark { width: 38px; height: 38px; }
+/* hero card stays light in dark mode, so it keeps the light logo */
+.hc-hero { --msc-ink: #18263a; --msc-wine: #6b0f2d; --msc-purple: #47245c; --msc-red: #b7203c; --msc-orange: #fb842f; }
+.hc-hero .msc-logo { height: 44px; }
 .hc-hero p { margin: 0; font-size: 20px; font-weight: 300; color: #1d2d3e; line-height: 1.3; }
 .mini-list { list-style: none; margin: 0; padding: 0; }
 .mini-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
