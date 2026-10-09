@@ -16,7 +16,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 6 Semantics | 6.4.1, 6.5.3, 6.5.4, 6.6 | ja, gebaut am 09.10.2026: Semantic Usage inkl. Hierarchy, Key/Attribute/Measure, Associations mit Key-Mapping | Hierarchy with Directory, Analytical Dataset, semantische Spaltentypen (Betrag mit Währung …), E/R-Modell und Kardinalitäten nicht simuliert |
 | 7 Analytic Model | 6.10, 6.12.5 | ja, gebaut am 09.10.2026: genau ein Fact, Dimensionen aus Associations, Fact Source / Calculated / Restricted / Count Distinct Measures, Filter Variable (Single Value, Interval, Pflicht/optional), Data Preview mit Zeilen, Measures, Variablenwerten | Fixed Value, Währungs-/Einheitenumrechnung, Ausnahmeaggregation, Skalierung, Sichtbarkeit, globaler Filter, mehrstufige Dimensionen, Standard-/Restricted-Measure-/Stichtagsvariable nur erklärt (teils „nicht verifiziert“) |
 | 8 Data Access Controls | 9.3, 9.9, 6.5.7 | ja, gebaut am 09.10.2026: Berechtigungsentität (lokale Tabelle mit Data Editor), Single Values, Identifier/Criteria, Zuweisung mit Spalten-Mapping, Prüfen als Testbenutzer („View as“) | Operator and Values (nicht verifiziert) und Hierarchy nur erklärt; BW-Import, Custom Application Attributes nicht simuliert; Wirkung auf nachgelagerte Views vereinfacht |
-| 9 Persistence | 6.5.6, 10.3.4 | ja: Persistenz, Partitionierung, View Analyzer | – |
+| 9 Persistence | 6.5.6, 10.3.4, 10.4, 9.3.7 | ja, gebaut am 09.10.2026: Expensive Statement Tracing (System › Configuration › Monitoring), Expensive Statement Logs, Views-Monitor (Start Data Persistence, Remove Persisted Data, Schedule, Läufe mit Meldungen), View Analyzer (vereinfacht), Grenze „liest View mit DAC“ | Partitionierung und Spalten des Views-Monitors „nicht verifiziert“ (Partitionierung nur erklärt); Laufzeiten simuliert; ob ein View mit eigener DAC persistierbar ist, nicht belegt (Spiel: ja) |
 | 10 Operations | 6.7.3, 6.8, 10 | ja: Transformation Flow, Task Chains, Monitor, Benachrichtigungen | – |
 | 11 / Exkurse | 7, 8, 11, 12 | ja: Business Builder, Catalog & Marketplace, Transport, Verbrauch | – |
 
@@ -48,7 +48,20 @@ Nicht simuliert: Real-Time-Replikation, Data Provisioning Agent, Data Flows, Cus
 - Sharing: Inbound → Harmonization → Reporting, immer nur eine Schicht nach oben; geteilte Objekte read-only (6.11.4)
 - Bereitstellungsreihenfolge: Deploy einer View scheitert, solange eine Quelle nicht geteilt ist (6.13)
 
-Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (kommt in Kapitel 9), Intelligent Lookup (nur erwähnt).
+Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (Kapitel 9), Intelligent Lookup (nur erwähnt).
+
+## Was Kapitel 9 aus dem Handbuch umsetzt
+
+- Views sind standardmäßig virtuell; Persistenz speichert das Ergebnis als Snapshot: schneller, kostet Speicher (6.5.6)
+- Views-Monitor im Data Integration Monitor: Datenpersistenz starten, persistierte Daten entfernen, Zeitplan, Läufe mit Meldungen (10.3.4, 10.3.8)
+- View Analyzer: View mit abhängigen Views, Kennzahlen je Ebene, auf welcher Ebene Persistenz lohnt (10.3.4, vereinfacht)
+- Expensive Statement Tracing in der Monitoring-Konfiguration, Anweisungen mit Dauer, Spitzenspeicher, CPU-Zeit (10.4.3, 10.4.4); Ablauf D „Speicherengpass untersuchen“ (10.6)
+- Grenze: Ein View, der einen View mit Datenzugriffskontrolle verwendet, ist nicht persistierbar (9.3.7)
+- Zeitpläne laufen nur mit gültiger Zustimmung (10.7)
+
+Vereinfacht und gekennzeichnet: Laufzeiten, Speicher und CPU-Zeit simuliert für Produktionsvolumen (Kostenmodell `src/perf.ts`);
+Deploy eines persistierten Views entfernt den Snapshot; ein View mit eigener DAC darf persistiert werden. Nicht simuliert: Partitionierung,
+Explain Plan/PlanViz, Speicherprüfung des Spaces beim Persistieren, System Monitor-Dashboard.
 
 ## Was Kapitel 6 aus dem Handbuch umsetzt
 

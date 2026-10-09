@@ -83,3 +83,15 @@ Brutto je Status: OPEN 1.069.961,59 · OVERDUE 81.724,52 · PAID 3.669.819,03 EU
 (nur OPEN bzw. nur OVERDUE als Fallen). Brutto 2025: NORTH 1.036.578,18 · SOUTH 888.193,85 EUR.
 Kunden (count distinct): gesamt 848, Gas 361 + Strom 817 = 1.178 (330 Kunden mit beidem), NORTH 467 · SOUTH 381.
 Verbrauch 2025: NORTH Gas 2,63 / Strom 1,48 GWh, SOUTH Gas 2,42 / Strom 1,20 GWh.
+
+## Laufzeiten (Kapitel 9, simuliert mit `src/perf.ts`, geprüft am 09.10.2026)
+
+Produktionsvolumen ≈ 1000 × Trainingsdaten; Dauer je Story-Aufruf (± 8 % je Benutzer):
+
+| Objekt | virtuell | mit persistierter `RHN_HA_V_METER_READINGS` |
+| --- | --- | --- |
+| `RHN_REP_AM_CONSUMPTION` | ≈ 7 s | ≈ 1,5 s |
+| `RHN_REP_AM_INVOICES` | ≈ 1,7–2 s | unverändert |
+
+View Analyzer unter `RHN_REP_F_CONSUMPTION`: eigene Laufzeit `RHN_HA_V_METER_READINGS` ≈ 5,5 s (Dublettenentfernung auf 5.824 Ablesungen),
+Fact ≈ 0,7 s (Join), `RHN_HA_V_CONTRACTS` ≈ 0,3 s. Snapshot der Ablesungen: 5.726 Datensätze, ≈ 1,1 GB In-Memory (Produktionsvolumen).

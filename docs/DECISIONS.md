@@ -4,6 +4,10 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | **Kapitel 9: Laufzeiten simuliert** (Kostenmodell `src/perf.ts`: Zeilen × Arbeit im SQL entlang der Lineage, Produktionsvolumen ≈ 1000 × Trainingsdaten); Datensätze echt, Dauer/Speicher/CPU simuliert und so beschriftet | Echte DuckDB-Zeiten im Browser sind Millisekunden und sagen nichts über Persistenz |
+| 2026-10-09 | **View-Persistenz in DuckDB:** Snapshot als Tabelle im versteckten Schema `persistence`, der View liest dann den Snapshot (bleibt ein View für Prüfungen und Lineage); nach Reload neu aufgebaut; Deploy eines persistierten Views entfernt den Snapshot (vereinfacht) | Strukturprüfungen früherer Kapitel (Typ View) bleiben gültig |
+| 2026-10-09 | Persistierung gesperrt, wenn der View (auch indirekt) einen View mit DAC liest (Handbuch 9.3.7); ein View mit eigener DAC darf persistiert werden (nicht belegt, vereinfacht) | Handbuch belegt nur den ersten Fall |
+| 2026-10-09 | Expensive Statement Logs werden mit simulierten SAC-Story-Aufrufen gefüllt (beim Einschalten des Tracings, Button Refresh) und mit Data Previews von Analytic Models ab Kapitel 9 | Ohne echte Nutzer braucht das Log eine Last, die Persistenz sichtbar macht |
 | 2026-10-09 | **MSC-Logo = Curlins finale Vorlage**, vektorisiert (ersetzt den selbst berechneten Ring); Wortmarke als Pfad statt Text, damit sie überall gleich aussieht; Hell-/Dunkel-Version über `--msc-*` | Logo von Curlin in hell und dunkel geliefert |
 | 2026-10-09 | MSC-Emblem: **offener Ring aus drei spitz zulaufenden Bögen** (Lila oben rechts, Orange unten, Weinrot links) statt Auge mit Triquetra; Geometrie berechnet (Radius 10, Bogen 134°, max. Breite 3) | Neue Logo-Vorlage von Curlin, als Vektor für jede Auflösung neu gebaut |
 | 2026-10-09 | MSC-Emblem: **angedeutetes Auge (schmal, mit Iriskreis) und moderner Triquetra als Pupille** (zuvor Triquetra im Ring) (Vorlage von Curlin, weiterentwickelt: drei klare Bögen in Lila, Weinrot, Orange) statt Balken bzw. Glühbirne | Wunsch von Curlin: business-mäßig; Triquetra ist ein freies, historisches Symbol |

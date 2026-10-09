@@ -1,9 +1,10 @@
 import { exec } from './db';
 import type { TenantState } from './tenant';
-import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom } from './integration';
+import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom, type Frequency } from './integration';
 import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
 import { sanitizeTable, tableStatements, type TableDef } from './localtable';
 import { sanitizeDac, sanitizeAssignments, type DacDef, type DacAssignment } from './dac';
+import { sanitizePersist, type PersistInfo } from './perf';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -80,6 +81,10 @@ export interface RepoObject {
   table?: TableDef;
   /** Data access controls (chapter 8): the saved definition. */
   dac?: DacDef;
+  /** Chapter 9: the deployed view is persisted (its result stored as a snapshot). */
+  persisted?: PersistInfo;
+  /** Chapter 9: schedule of the view persistence (Data Integration Monitor › Views). */
+  persistSchedule?: Frequency;
   /** Local tables created by a flow: where the data comes from, reloaded after a reload. */
   loadFrom?: LoadFrom;
   status: DeployStatus;
@@ -162,6 +167,11 @@ export function semanticsOf(o: Partial<Semantics>): Semantics {
 export async function deploy(o: RepoObject): Promise<string | null> {
   if (o.kind === 'SQL View') {
     try {
+      // A new deployment replaces the persisted data (simplified): the view is read virtually until the next snapshot.
+      if (o.persisted) {
+        await exec(`DROP TABLE IF EXISTS "persistence"."${objectKey(o)}"`);
+        o.persisted = undefined;
+      }
       await exec(`CREATE OR REPLACE VIEW "${o.space}"."${o.name}" AS ${stripSemicolon(o.sql ?? '')}`);
     } catch (err) {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
@@ -185,6 +195,7 @@ export async function deploy(o: RepoObject): Promise<string | null> {
 }
 
 export async function dropObject(o: RepoObject) {
+  if (o.persisted) await exec(`DROP TABLE IF EXISTS "persistence"."${objectKey(o)}"`);
   if ((o.kind === 'SQL View' && o.deployed) || o.kind === 'Remote Table') await exec(`DROP VIEW IF EXISTS "${o.space}"."${o.name}"`);
   if (o.kind === 'Local Table' && (o.loadFrom || o.deployed?.table)) await exec(`DROP TABLE IF EXISTS "${o.space}"."${o.name}"`);
 }
@@ -290,6 +301,8 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,
+      persisted: o.kind === 'SQL View' && o.deployed?.sql ? sanitizePersist(o.persisted) : undefined,
+      persistSchedule: o.kind === 'SQL View' && ['Daily', 'Weekly', 'Monthly'].includes(o.persistSchedule) ? o.persistSchedule : undefined,
       status: ['deployed', 'not_deployed', 'changes'].includes(o.status) ? o.status : 'not_deployed',
       changedAt: typeof o.changedAt === 'string' ? o.changedAt : now(),
       source: !!o.source,

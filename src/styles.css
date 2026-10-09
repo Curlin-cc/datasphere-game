@@ -1109,6 +1109,15 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .hc-body { padding: 0 16px 14px; flex: 1; }
 .hc-foot { border-top: 1px solid var(--line); padding: 10px 16px; }
 .hc-foot button { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font: inherit; }
+/* Chapter 9: header actions (Expensive Statement Logs), View Analyzer */
+.head-actions { display: flex; align-items: center; gap: 10px; }
+.inline-select { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.tracing-form { display: grid; gap: 12px; margin: 8px 0 14px; max-width: 420px; }
+.tracing-form .field { display: grid; gap: 4px; font-size: 13px; }
+.check-line { display: flex; align-items: center; gap: 8px; }
+.inline-select select, .tracing-form select { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); }
+#statement-list td.small { max-width: 280px; white-space: normal; }
+
 /* MSC logo (src/brand.ts): colours from --msc-* (light/dark), height sets the size */
 .msc-logo { display: block; height: 26px; width: auto; }
 .msc-ring { display: block; height: 24px; width: auto; }

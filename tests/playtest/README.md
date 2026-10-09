@@ -19,3 +19,4 @@ Kapitel 6: `chapter6.py` (Startzustand mit den Kapitel-5-Views in `chapter6_data
 Design: `look.py <ordner> [dark]` macht Screenshots aller Hauptseiten zum Vergleich mit `docs/design/screenshots/` (keine Prüfung).
 Kapitel 7: `chapter7.py` (Startzustand mit Dimensionen und Facts in `chapter7_data.py`), baut beide Analytic Models mit typischen Fehlern; `guided.py` spielt c07-m01.
 Kapitel 8: `chapter8.py` (Startzustand mit beiden Analytic Models in `chapter8_data.py`): Berechtigungstabelle, DAC, Zuweisung, Prüfung als Benutzer; `guided.py` spielt c08-m01.
+Kapitel 9: `chapter9.py` (Startzustand nach Kapitel 8 mit DAC auf beiden Facts in `chapter9_data.py`): Tracing, Statement Logs, View Analyzer, Persistenz falsch (Fact) und richtig (Ablesungen), Zeitplan, Reload, DAC-Grenze, Rückbau `RHN_HA_V_TARIFFS`; `guided.py` spielt c09-m02.

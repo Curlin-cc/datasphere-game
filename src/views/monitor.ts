@@ -6,6 +6,7 @@ import {
 } from '../integration';
 import { spaceSelect } from './connections';
 import { esc, openDialog, toast, fmtDate } from '../ui';
+import { persistView, unpersistView, persistError, analyze, sizeMB, fmtSize, fmtMs, type PerfNode } from '../perf';
 
 /**
  * Data Integration Monitor: always one space. Monitors for remote tables, local tables, views, flows,
@@ -17,6 +18,8 @@ let tab: Tab = 'remote';
 let selectedRemote = '';
 let selectedFlow = '';
 let selectedRun = '';
+let selectedView = '';
+let analyzed = '';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'remote', label: 'Remote Tables' },
@@ -30,7 +33,10 @@ const TABS: { id: Tab; label: string }[] = [
 /** For tutorials and links from other apps. */
 export function monitorTo(target: Tab, flow?: string) {
   tab = target;
-  if (flow) selectedFlow = flow;
+  if (flow) {
+    selectedFlow = flow;
+    selectedView = flow;
+  }
 }
 
 const runChip = (r?: Pick<Run, 'status'>) =>
@@ -78,6 +84,7 @@ export function renderMonitor(main: HTMLElement) {
   else if (tab === 'flows') flowsTab(host, redraw);
   else if (tab === 'queries') queriesTab(host);
   else if (tab === 'local') localTab(host);
+  else if (tab === 'views' && ctx.currentChapter() >= 9) viewsTab(host, redraw);
   else host.innerHTML = `<section class="panel"><p class="muted">${tab === 'views'
     ? 'Views you persist show up here: run or schedule the persistence, remove it, and analyze views with the View Analyzer. You decide what to persist in chapter 9.'
     : 'Task chains run several loads in a fixed order and show each step with its log. You build your first one in chapter 10.'}</p></section>`;
@@ -184,6 +191,144 @@ function scheduleDialog(name: string, current: Frequency | undefined, apply: (f:
     close();
     redraw();
   });
+}
+
+// ---------------------------------------------------------------- views (chapter 9)
+
+function viewsTab(host: HTMLElement, redraw: () => void) {
+  const t = ctx.tenant();
+  const list = t.objects.filter((o) => o.space === t.activeSpace && o.kind === 'SQL View' && o.deployed?.sql);
+  if (!list.some((o) => o.name === selectedView)) selectedView = '';
+  const sel = list.find((o) => o.name === selectedView);
+  const runs = sel ? runsOf(t, objectKey(sel)) : [];
+  if (!runs.some((r) => r.id === selectedRun)) selectedRun = runs[0]?.id ?? '';
+  const run = runs.find((r) => r.id === selectedRun);
+  host.innerHTML = `
+    <section class="panel">
+      <div class="table-head"><h3>Views</h3>
+        <div class="toolbar">
+          <button class="btn small" type="button" id="vw-persist" ${sel ? '' : 'disabled'}>Start Data Persistence</button>
+          <button class="btn small" type="button" id="vw-remove" ${sel?.persisted ? '' : 'disabled'}>Remove Persisted Data</button>
+          <button class="btn small" type="button" id="vw-schedule" ${sel ? '' : 'disabled'}>Schedule</button>
+          <button class="btn small" type="button" id="vw-analyzer" ${sel ? '' : 'disabled'}>View Analyzer</button>
+        </div></div>
+      <div class="table-scroll"><table class="grid" id="view-list">
+        <thead><tr><th></th><th>Name</th><th>Data Access</th><th>Refresh Frequency</th><th>Status</th><th>Last Updated</th><th>Number of Records</th><th>In-Memory Size</th></tr></thead>
+        <tbody>${list.length ? list.map((o) => {
+          const r = lastRun(t, objectKey(o));
+          const p = o.persisted;
+          return `<tr class="${o.name === selectedView ? 'selected' : ''}" data-view-row="${esc(o.name)}">
+            <td><input type="radio" name="vw-sel" value="${esc(o.name)}" ${o.name === selectedView ? 'checked' : ''} aria-label="Select ${esc(o.name)}"></td>
+            <td><button type="button" class="link-btn mono" data-vw="${esc(o.name)}">${esc(o.name)}</button>${o.deployed?.dacs?.length ? ' <span class="chip" title="Has a data access control">DAC</span>' : ''}</td>
+            <td>${p ? 'Persisted' : 'Virtual'}</td>
+            <td>${o.persistSchedule ? `Scheduled, ${esc(o.persistSchedule.toLowerCase())}` : 'None'}</td>
+            <td>${r ? runChip(r) : '<span class="muted">–</span>'}</td>
+            <td class="muted">${p ? fmtDate(p.lastRefresh) : '–'}</td>
+            <td class="num">${p ? p.records.toLocaleString('en-US') : '–'}</td>
+            <td class="num">${p ? fmtSize(sizeMB(p.records, p.columns)) : '–'}</td></tr>`;
+        }).join('') : `<tr><td colspan="8" class="muted">No deployed views in this space.</td></tr>`}</tbody>
+      </table></div>
+      <p class="muted">Virtual: the view is computed when someone reads it. Persisted: its result is stored as a snapshot; reading is fast,
+        but the data is only as fresh as the last run, and the snapshot uses memory of the space. Sizes are for production volume (simulated).</p>
+    </section>
+    ${sel ? `<section class="panel flow-detail" id="view-detail">
+      <div class="table-head"><h3>${esc(sel.name)} <small class="muted">${esc(sel.businessName)}</small></h3></div>
+      <div class="runs-layout">
+        <table class="grid" id="run-list"><thead><tr><th>Runs</th><th>Status</th><th>Records</th></tr></thead>
+          <tbody>${runs.length ? runs.map((r) => `<tr class="${r.id === selectedRun ? 'selected' : ''}">
+            <td><button type="button" class="link-btn" data-run="${esc(r.id)}">${fmtDate(r.start)}</button></td><td>${runChip(r)}</td><td class="num">${r.records.toLocaleString('en-US')}</td></tr>`).join('')
+            : '<tr><td colspan="3" class="muted">No persistence runs yet.</td></tr>'}</tbody></table>
+        <div class="run-log" id="run-log">${run ? `<h4>Messages <small class="muted">${fmtDate(run.start)}</small></h4>
+          <ol>${run.messages.map((m) => `<li class="${/fail|cannot|stopped/i.test(m) ? 'err' : ''}">${esc(m)}</li>`).join('')}</ol>` : '<p class="muted">Select a run to see its messages.</p>'}</div>
+      </div></section>` : ''}
+    <section class="panel" id="analyzer-panel" ${analyzed && sel && analyzed === objectKey(sel) ? '' : 'hidden'}></section>`;
+  const pick = (name: string) => {
+    selectedView = name;
+    selectedRun = '';
+    ctx.track(`monitor-open:${t.activeSpace}.${name}`);
+    redraw();
+  };
+  host.querySelectorAll<HTMLInputElement>('[name="vw-sel"]').forEach((r) => r.addEventListener('change', () => pick(r.value)));
+  host.querySelectorAll<HTMLButtonElement>('[data-vw]').forEach((b) => b.addEventListener('click', () => pick(b.dataset.vw!)));
+  host.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((b) =>
+    b.addEventListener('click', () => {
+      selectedRun = b.dataset.run!;
+      redraw();
+    }),
+  );
+  if (!sel) return;
+  const key = objectKey(sel);
+  host.querySelector('#vw-persist')!.addEventListener('click', async () => {
+    const locked = lockError(t, sel.space);
+    if (locked) {
+      addRun(t, { object: key, kind: 'View', start: new Date().toISOString(), status: 'Failed', records: 0, messages: [locked] });
+      ctx.save();
+      toast(locked, 'error');
+      return redraw();
+    }
+    const res = await persistView(t, sel);
+    ctx.track(res.ok ? `persist:${key}` : `persist-fail:${key}`);
+    selectedRun = '';
+    ctx.save();
+    toast(res.ok ? res.message : `Persistence of ${sel.name} failed. Open the run to see why.`, res.ok ? 'ok' : 'error');
+    redraw();
+  });
+  host.querySelector('#vw-remove')!.addEventListener('click', async () => {
+    await unpersistView(sel);
+    ctx.track(`unpersist:${key}`);
+    ctx.save();
+    toast(`${sel.name} is read virtually again`);
+    redraw();
+  });
+  host.querySelector('#vw-schedule')!.addEventListener('click', () =>
+    scheduleDialog(sel.name, sel.persistSchedule, (f) => {
+      sel.persistSchedule = f;
+      if (f && !sel.persisted) {
+        const blocked = persistError(t, sel);
+        toast(blocked ?? 'The schedule persists the view at its next run. Start the first persistence now, or wait for the schedule.', blocked ? 'error' : 'info');
+      }
+      ctx.track(`schedule:${key}:${f ?? 'none'}`);
+    }, redraw),
+  );
+  host.querySelector('#vw-analyzer')!.addEventListener('click', () => {
+    analyzed = key;
+    ctx.track(`analyzer:${key}`);
+    redraw();
+  });
+  if (analyzed === key) void renderAnalyzer(host.querySelector<HTMLElement>('#analyzer-panel')!, key);
+}
+
+/** View Analyzer (simplified): the view with everything below it, what each level costs, and what is persisted. */
+async function renderAnalyzer(panel: HTMLElement, key: string) {
+  const t = ctx.tenant();
+  panel.innerHTML = '<p class="muted">Analyzing…</p>';
+  const root = await analyze(t, key);
+  if (!root) return;
+  const flat: { n: PerfNode; depth: number }[] = [];
+  const walk = (n: PerfNode, depth: number) => {
+    flat.push({ n, depth });
+    if (n.access !== 'Persisted') n.reads.forEach((r) => walk(r, depth + 1));
+  };
+  walk(root, 0);
+  const max = Math.max(...flat.map((x) => x.n.ownMs), 1);
+  panel.innerHTML = `
+    <div class="table-head"><h3>View Analyzer <small class="muted">${esc(key.split('.')[1])}</small></h3>
+      <span class="muted">Reading it now takes about <b>${fmtMs(root.totalMs)}</b> at production volume (simulated)</span></div>
+    <div class="table-scroll"><table class="grid analyzer" id="analyzer">
+      <thead><tr><th>Object</th><th>Space</th><th>Data Access</th><th>Records</th><th>Work in its SQL</th><th>Own runtime</th><th>Read by views</th></tr></thead>
+      <tbody>${flat.map(({ n, depth }) => `<tr data-an="${esc(n.key)}">
+        <td><span class="an-indent" style="padding-left:${depth * 18}px">${depth ? '└ ' : ''}</span><span class="mono">${esc(n.name)}</span>${n.dac ? ' <span class="chip">DAC</span>' : ''}</td>
+        <td class="mono">${esc(n.key.split('.')[0])}</td>
+        <td>${esc(n.access === 'Model' ? 'Analytic Model' : n.access === 'Table' ? 'Local table' : n.access)}</td>
+        <td class="num">${n.rows ? n.rows.toLocaleString('en-US') : '–'}</td>
+        <td>${n.work.length ? esc(n.work.join(', ')) : '<span class="muted">–</span>'}</td>
+        <td class="num">${fmtMs(n.ownMs)}<span class="bar"><i style="width:${Math.round((n.ownMs / max) * 100)}%"></i></span></td>
+        <td class="num">${n.usedBy}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <p class="muted">Own runtime: what the object's own SQL costs when it is computed. A persisted view stores its result, so nothing below it is
+      computed when it is read. Persist where the expensive work happens, as low in the stack as that work allows, and keep in mind
+      that a snapshot uses memory and is only as fresh as its last run.</p>`;
+  panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 // ---------------------------------------------------------------- flows

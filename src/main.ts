@@ -14,6 +14,7 @@ import {
   exportProgress, importProgress, freshProgress, CLEAN_BONUS,
 } from './progress';
 import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
+import { restorePersistence } from './perf';
 import { usedMB, fmtSize } from './views/welcome';
 import { ctx, type ViewId } from './ctx';
 import { esc, icon, ICONS, setCrumb } from './ui';
@@ -24,6 +25,7 @@ import { renderSecurity } from './views/security';
 import { renderConnections } from './views/connections';
 import { renderMonitor, monitorTo } from './views/monitor';
 import { renderSystem, systemTo } from './views/system';
+import { renderStatements } from './views/statements';
 import { restoreIntegration } from './integration';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
@@ -246,6 +248,8 @@ function renderView() {
       return currentChapter() >= 3 ? renderMonitor(main) : renderAppInfo(main, a!);
     case 'system':
       return currentChapter() >= 3 ? renderSystem(main) : renderAppInfo(main, a!);
+    case 'statements':
+      return currentChapter() >= 9 ? renderStatements(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }
@@ -278,7 +282,7 @@ function tourHooks(onFinish: () => void) {
   return {
     /**
      * Views for tutorials: an app ID, or builder:landing|new-view|new-flow|new-model|spaces[:SPACE],
-     * monitor:remote|flows|… and system:security|integration|….
+     * monitor:remote|flows|views|…[:SPACE] and system:security|integration|monitoring|….
      */
     setView: (v: string) => {
       const [view, target, space] = v.split(':');
@@ -287,6 +291,7 @@ function tourHooks(onFinish: () => void) {
         setView('builder', true);
       } else if (view === 'monitor' && target) {
         monitorTo(target as Parameters<typeof monitorTo>[0]);
+        if (space && ctx.tenant().spaces.some((s) => s.id === space)) ctx.tenant().activeSpace = space;
         setView('monitor', true);
       } else if (view === 'system' && target) {
         systemTo(target as Parameters<typeof systemTo>[0]);
@@ -763,6 +768,8 @@ function setupMission(id: string) {
   if (!m?.setup || t.scenarios.includes(m.id)) return;
   m.setup(t);
   t.scenarios.push(m.id);
+  // A set-up may add views or persisted data; create them in the database.
+  void restoreViews(t).then(() => restorePersistence(t)).then(() => renderView());
 }
 
 /** Creates the spaces and deployed views of the save game in the database. */
@@ -776,6 +783,7 @@ async function prepareTenant() {
   await restoreIntegration(t);
   await restoreTables(t);
   await restoreViews(t);
+  await restorePersistence(t);
 }
 
 async function boot() {

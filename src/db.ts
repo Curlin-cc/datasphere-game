@@ -82,7 +82,7 @@ export async function listObjects(): Promise<{ schema: string; name: string; typ
     FROM information_schema.tables t
     JOIN information_schema.columns c
       ON c.table_schema = t.table_schema AND c.table_name = t.table_name
-    WHERE t.table_schema NOT IN ('information_schema', 'pg_catalog', 'main')
+    WHERE t.table_schema NOT IN ('information_schema', 'pg_catalog', 'main', 'persistence')
     GROUP BY ALL
     ORDER BY 1, 2`);
   return res.rows.map(([schema, name, type, cols]) => ({

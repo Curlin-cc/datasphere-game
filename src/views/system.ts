@@ -2,6 +2,7 @@ import { ctx } from '../ctx';
 import { CAPACITY, assigned } from '../tenant';
 import { CLOUD_CONNECTORS, CERTIFICATE_FILES } from '../integration';
 import { esc, openDialog, toast } from '../ui';
+import { THRESHOLDS, simulateStories } from '../perf';
 
 /**
  * System app: Configuration (tenant-wide settings) and About. In the game, Configuration > Security
@@ -9,7 +10,7 @@ import { esc, openDialog, toast } from '../ui';
  * the other areas explain what they are for.
  */
 
-type Tab = 'tenant' | 'workload' | 'audit' | 'tasklogs' | 'security' | 'integration' | 'ip';
+type Tab = 'tenant' | 'workload' | 'audit' | 'tasklogs' | 'monitoring' | 'security' | 'integration' | 'ip';
 let tab: Tab = 'tenant';
 let area: 'configuration' | 'about' = 'configuration';
 
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string; text: string }[] = [
   { id: 'workload', label: 'Workload Management', text: 'Priorities and statement limits, per space or per group of processes (for example analytic consumption versus modeling).' },
   { id: 'audit', label: 'Audit', text: 'Which space keeps the audit logs and how long they are kept.' },
   { id: 'tasklogs', label: 'Task Logs', text: 'How long the logs of loads, flows and task chains are kept before they are deleted.' },
+  { id: 'monitoring', label: 'Monitoring', text: 'What the monitoring apps record, for example expensive statements: SQL statements that exceed a threshold of runtime or memory.' },
   { id: 'security', label: 'Security', text: 'Trusted certificates for TLS connections to source systems.' },
   { id: 'integration', label: 'Data Integration', text: 'Cloud Connectors and Data Provisioning Agents that reach systems in the company network.' },
   { id: 'ip', label: 'IP Allowlist', text: 'Which public IPv4 ranges may connect to the database of the tenant directly, for example a Data Provisioning Agent or a BI tool.' },
@@ -58,6 +60,21 @@ export function renderSystem(main: HTMLElement) {
     }),
   );
   main.querySelector('#cert-upload')?.addEventListener('click', () => uploadDialog(main));
+  main.querySelector<HTMLFormElement>('#tracing-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const was = t.tracing.enabled;
+    const changedThreshold = t.tracing.thresholdMs !== Number(main.querySelector<HTMLSelectElement>('#tracing-threshold')!.value);
+    t.tracing.enabled = main.querySelector<HTMLInputElement>('#tracing-on')!.checked;
+    t.tracing.thresholdMs = Number(main.querySelector<HTMLSelectElement>('#tracing-threshold')!.value);
+    ctx.track(`tracing:${t.tracing.enabled ? 'on' : 'off'}:${t.tracing.thresholdMs}`);
+    if (t.tracing.enabled && (!was || changedThreshold)) {
+      // The month-end close starts: the controllers open their stories.
+      await simulateStories(t);
+      toast('Tracing is on. The controllers just opened their month-end stories; see Monitoring › Expensive Statement Logs.', 'ok');
+    } else toast(t.tracing.enabled ? 'Tracing settings saved' : 'Expensive statement tracing is off', 'ok');
+    ctx.save();
+    renderSystem(main);
+  });
   main.querySelectorAll<HTMLButtonElement>('[data-cert-delete]').forEach((b) =>
     b.addEventListener('click', () => {
       if (!confirm(`Delete the certificate ${b.dataset.certDelete}? TLS connections that rely on it stop validating.`)) return;
@@ -103,6 +120,19 @@ function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
   if (id === 'tenant') {
     return `${head}<dl class="props-list wide-dl"><dt>Disk</dt><dd>${CAPACITY.diskGB} GB, ${used.diskGB} GB assigned to spaces</dd>
       <dt>In-memory</dt><dd>${CAPACITY.memoryGB} GB, ${used.memoryGB} GB assigned to spaces</dd></dl>`;
+  }
+  if (id === 'monitoring') {
+    const tr = t.tracing;
+    if (ctx.currentChapter() < 9) return `${head}<p class="muted">You switch on expensive statement tracing in chapter 9.</p>`;
+    return `${head}
+      <form id="tracing-form" class="tracing-form">
+        <label class="check-line"><input type="checkbox" id="tracing-on" ${tr.enabled ? 'checked' : ''}> <b>Enable Expensive Statement Tracing</b></label>
+        <label class="field">Threshold: duration
+          <select id="tracing-threshold">${THRESHOLDS.map((ms) => `<option value="${ms}" ${tr.thresholdMs === ms ? 'selected' : ''}>${ms.toLocaleString('en-US')} ms</option>`).join('')}</select></label>
+        <div><button class="btn primary small" type="submit">Save</button></div>
+      </form>
+      <p class="muted">Statements that run longer than the threshold appear in <b>Monitoring › Expensive Statement Logs</b>, with duration,
+        peak memory and CPU time. Without tracing, the logs stay empty and peak memory is missing. A real tenant also offers thresholds for memory and CPU time.</p>`;
   }
   if (id === 'ip') {
     return `${head}<p class="muted">No entries. Two directions to keep apart: the allowlist here controls who may reach the tenant's database.

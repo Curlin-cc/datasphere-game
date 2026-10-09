@@ -28,7 +28,7 @@ const answered = () => {
 };
 
 /** Apps inside the expandable Monitoring entry: the tour first points at Monitoring, then the entry opens. */
-const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces' };
+const IN_MONITORING: Record<string, string> = { monitor: 'Data Integration', sysmonitor: 'System and Spaces', statements: 'Expensive Statement Logs' };
 
 const nav = (id: string, label: string, body: string): TourStep => ({
   title: `Open ${label}`,
@@ -621,6 +621,43 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Where the control sits',
       body: `<p>Assign the control to the view that holds the numbers: the fact. Everything built on it, such as the analytic model,
         takes the control over. To check it, preview the data <b>as a user</b>.</p>`,
+    },
+  ],
+  'c09-m01': [
+    {
+      title: 'Chapter 9: Persistence and performance',
+      body: `<p>Views are <b>virtual</b>: every time someone reads a model, the fact, the views below it and their joins are computed again.
+        That keeps the data fresh, but a deep stack on many rows gets slow.</p>
+        <p>The way out is <b>persistence</b>: a view stores its result as a snapshot. Fast to read, but it costs memory and is only as fresh as its
+        last run. This chapter: measure, find the expensive layer, persist it, schedule it, and know the limits.</p>`,
+    },
+    {
+      title: 'Measure first',
+      body: `<p><b>Expensive statement tracing</b> records SQL statements that exceed a threshold, with duration, peak memory and CPU time.
+        It is off by default; an administrator switches it on in System › Configuration › Monitoring.</p>
+        <p>In the game, runtimes are simulated for production volume: the training tenant only holds a sample.</p>`,
+    },
+  ],
+  'c09-m02': [
+    {
+      title: 'The View Analyzer',
+      body: `<p>The Data Integration Monitor has a tab <b>Views</b>: every deployed view of the space, virtual or persisted. Its <b>View Analyzer</b>
+        shows a view with everything below it and what each level costs.</p>
+        <p>Persist where the expensive work happens. Everything above keeps reading it virtually, so it still sees current master data.</p>`,
+    },
+  ],
+  'c09-m03': [
+    {
+      title: 'A snapshot ages',
+      body: `<p>A persisted view returns what was computed at its last run. New source rows appear after the next run. A <b>schedule</b>
+        runs the persistence regularly; in chapter 10, a task chain runs it right after the replication.</p>`,
+    },
+  ],
+  'c09-m04': [
+    {
+      title: 'Limits',
+      body: `<p>Two things to weigh: some views cannot be persisted (for example when they read a view with a data access control), and
+        some should not be (small, cheap views whose snapshot only adds runs and memory).</p>`,
     },
   ],
   'c08-m04': [
@@ -2087,5 +2124,123 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('Which object holds the numbers?'),
+  ],
+  // ================================================================ chapter 9
+  'c09-m01': [
+    [
+      {
+        title: 'System › Configuration',
+        view: 'system:monitoring',
+        target: '#system-body',
+        body: `<p>Configuration has an area <b>Monitoring</b>. Here the administrator decides what the monitoring apps record.</p>`,
+      },
+      {
+        title: 'Enable tracing',
+        target: '#tracing-form',
+        body: `<p>Tick <b>Enable Expensive Statement Tracing</b>, keep the threshold at 1,000 ms and save. The controllers then open their
+          month-end stories.</p>`,
+        action: { do: 'Enable tracing with 1,000 ms and press <b>Save</b>.', event: '^tracing:on:1000' },
+      },
+    ],
+    [
+      nav('statements', 'Expensive Statement Logs', `<p>Lists the expensive statements of all spaces.</p>`),
+      {
+        title: 'Sort by duration',
+        target: '#st-sort',
+        body: `<p>The slowest statements on top. The column <b>Object</b> names the model or view that was read.</p>`,
+        action: { do: 'Sort by <b>Duration</b>.', event: 'statements-sort:duration' },
+      },
+    ],
+    questions('Look at the top rows: object and duration.'),
+  ],
+  'c09-m02': [
+    [
+      {
+        title: 'Views in RHN_REP',
+        view: 'monitor:views:RHN_REP',
+        target: '#view-list',
+        body: `<p>The tab <b>Views</b> lists the deployed views of the space. Data Access shows whether a view is virtual or persisted.</p>`,
+        action: { do: 'Click <b>RHN_REP_F_CONSUMPTION</b>.', event: '^monitor-open:RHN_REP\\.RHN_REP_F_CONSUMPTION$' },
+      },
+      {
+        title: 'View Analyzer',
+        target: '#vw-analyzer',
+        body: `<p>The analyzer walks down the stack below the fact.</p>`,
+        action: { do: 'Press <b>View Analyzer</b>.', event: '^analyzer:RHN_REP\\.RHN_REP_F_CONSUMPTION$' },
+      },
+      {
+        title: 'Read the stack',
+        target: '#analyzer-panel',
+        body: `<p>Each row is one level. <b>Own runtime</b> is what that level's own SQL costs. Which level does the heavy lifting?</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Change the space',
+        target: '#mon-space',
+        body: `<p>The monitor shows one space. The expensive view lives in a different space than the fact.</p>`,
+        action: { do: 'Switch to the space of the expensive view.', event: '^space:monitor:' },
+      },
+      {
+        title: 'Start Data Persistence',
+        target: '#view-list',
+        body: `<p>Select the view, then <b>Start Data Persistence</b>. The run log shows how many records were stored.</p>`,
+        action: { do: 'Persist the expensive view.', event: '^persist:' },
+      },
+    ],
+    [
+      {
+        title: 'Open the model',
+        view: 'builder:landing:RHN_REP',
+        target: '#object-list',
+        body: `<p>Check what the controllers feel now.</p>`,
+        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_AM_CONSUMPTION') },
+      },
+      {
+        title: 'Runtime at production volume',
+        target: '#am-pivot',
+        body: `<p>Run the Data Preview. Its status line shows the simulated runtime at production volume.</p>`,
+        action: { do: 'Run the <b>Data Preview</b>.', event: '^am-runtime:RHN_REP\\.RHN_REP_AM_CONSUMPTION:' },
+      },
+    ],
+    questions('Compare the own runtimes in the analyzer, and read the runtime in the preview.'),
+  ],
+  'c09-m03': [
+    [
+      {
+        title: 'Views in RHN_HARM',
+        view: 'monitor:views:RHN_HARM',
+        target: '#view-list',
+        body: `<p>Select the persisted readings, then <b>Schedule</b>.</p>`,
+        action: { do: 'Schedule <b>RHN_HA_V_METER_READINGS</b> daily.', event: '^schedule:RHN_HARM\\.RHN_HA_V_METER_READINGS:Daily' },
+      },
+    ],
+    questions('When is the stored result computed, and where is it stored?'),
+  ],
+  'c09-m04': [
+    [
+      {
+        title: 'Markus\'s view',
+        view: 'monitor:views:RHN_REP',
+        target: '#view-list',
+        body: `<p>Select <code>RHN_REP_V_REGION_REVENUE</code> and start the persistence. Then read the messages of the run.</p>`,
+        action: { do: 'Start Data Persistence on <b>RHN_REP_V_REGION_REVENUE</b>.', event: '^persist-fail:RHN_REP\\.RHN_REP_V_REGION_REVENUE' },
+      },
+      {
+        title: 'The run log',
+        target: '#run-log',
+        body: `<p>The messages say why the run stopped.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'The tariffs',
+        view: 'monitor:views:RHN_HARM',
+        target: '#view-list',
+        body: `<p>Five rows, refreshed daily. The analyzer shows what computing them costs.</p>`,
+        action: { do: 'Remove the persisted data of <b>RHN_HA_V_TARIFFS</b> and set its schedule to <b>No schedule</b>.', event: '^schedule:RHN_HARM\\.RHN_HA_V_TARIFFS:none' },
+      },
+    ],
+    questions('What does the view read, and what does that object have?'),
   ],
 };

@@ -73,8 +73,8 @@ src/views/repository.ts ← Repository Explorer: Suche/Filter über alle Spaces,
 src/views/spaces.ts  ← Space Management (Kacheln, Anlegen/Bearbeiten/Löschen)
 src/views/security.ts ← Security (Roles, Users)
 src/views/connections.ts ← Connections: Space-Auswahl, Liste, Create (Typ-Auswahl mit Features), Edit, Validate, Delete
-src/views/monitor.ts ← Data Integration Monitor: Remote Tables (Snapshot, Remove, Schedule), Flows (Run, Schedule, Lauf-Log), Remote Queries, Consent
-src/views/system.ts  ← System: Configuration (Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
+src/views/monitor.ts ← Data Integration Monitor: Remote Tables (Snapshot, Remove, Schedule), Views ab Kapitel 9 (Persistenz, Schedule, Läufe, View Analyzer), Flows (Run, Schedule, Lauf-Log), Remote Queries, Consent
+src/views/system.ts  ← System: Configuration (Monitoring = Expensive Statement Tracing ab Kapitel 9, Security = Zertifikate, Data Integration = Cloud Connector; Rest Info), About
 src/views/flow.ts    ← Data Builder: „Import Remote Tables“-Dialog, Replication-Flow-Editor, `flowError` (Deploy-Prüfung)
 src/integration.ts   ← Kapitel 3: Verbindungstypen + Features, Quellsysteme, validateConnection, Remote Tables, runFlow, truncateRisk, Space-Sperre (`lockError`), Wiederherstellung nach Reload
 src/repo.ts          ← Repository-Objekte: Business/Technical Name, Status (Not Deployed / Changes to Deploy / Deployed), Deploy, Wiederherstellen nach Reload, Impact/Lineage (`readsFrom`, `usedBy`), Semantik (`Semantics`, `semanticsOf`) im Design- und Deploy-Stand
@@ -95,7 +95,9 @@ tests/playtest/      ← Headless-Durchläufe je Kapitel (Playwright/Python), vo
 src/tutorial.ts      ← Tutorial-Engine: Popup mit Spotlight, Ansicht wechseln, Beispiel in Editor; Hands-on-Schritte (`action`: event/appear/check), die auf den Spieler warten
 src/content/guided.ts ← Geführte Tutorials Kapitel 0–3 und 5–8: GUIDED_INTROS (Konzepte) + GUIDED_TOURS (Hands-on je Aufgabe); Missions-Tutorial = Intro + alle Aufgaben + Check
 src/styles.css       ← Horizon-Design-Tokens (hell/dunkel) nach docs/design, Layer-Farben IN/HARM/REP; Seitentypen A–G am Dateiende
-src/brand.ts         ← MSC-Logo (Curlins Marke) statt SAP-Logo
+src/brand.ts         ← MSC-Logo (Curlins Marke, aus Vorlage vektorisiert, Farben über --msc-* hell/dunkel) statt SAP-Logo
+src/perf.ts          ← Kapitel 9: View-Persistenz (Snapshot im Schema `persistence`), `persistError` (DAC-Grenze), Kostenmodell `analyze` (simulierte Produktionslaufzeit), Expensive Statements (`traceStatement`, `simulateStories`)
+src/views/statements.ts ← Kapitel 9: Monitoring › Expensive Statement Logs
 src/views/welcome.ts ← Seitentyp A: „Welcome to the …“ mit Space-Karten (usedMB, fmtSize)
 src/views/toolbar.ts ← Objekt-Werkzeugleiste der Editoren, „Details“, Kopf „Model Properties“
 scripts/data-report.ts ← `npm run data:report`: Zeilen, Fehlerzahlen, Fingerprint der Testdaten
@@ -114,7 +116,7 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (40 Missionen):
+Spielbar (44 Missionen):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
@@ -123,6 +125,7 @@ Spielbar (40 Missionen):
 - Kapitel 6 Semantics: Dimensionen `RHN_REP_D_GRID_AREA/_TARIFF/_CUSTOMER`, Facts `RHN_REP_F_CONSUMPTION/_INVOICES` mit Spaltenrollen und Associations; 1:1-Views `RHN_HA_V_GRID_AREAS/_TARIFFS/_INVOICES`
 - Kapitel 8 Data Access Controls: Berechtigungstabelle `RHN_REP_T_PERMISSIONS` (Data Editor), DAC `RHN_REP_DAC_GRID_AREA` (Single Values), zugewiesen an beide Facts; Prüfen „View as“ MBRANDT/ADEMIR/PLINDNER
 - Kapitel 7 Analytic Model: `RHN_REP_AM_INVOICES` (NET/TAX, GROSS_AMOUNT calculated, UNPAID_GROSS restricted, CUSTOMERS count distinct, Variable V_INVOICE_DATE) und `RHN_REP_AM_CONSUMPTION`, beide ohne Kundendimension
+- Kapitel 9 Persistence and Performance: Expensive Statement Tracing (System › Configuration › Monitoring) und Expensive Statement Logs (simulierte SAC-Last), View Analyzer, `RHN_HA_V_METER_READINGS` persistiert und täglich eingeplant; Grenzen: `RHN_REP_V_REGION_REVENUE` (liest DAC-geschützten Fact) nicht persistierbar, persistierte `RHN_HA_V_TARIFFS` (Setup) zurückbauen
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
@@ -134,7 +137,7 @@ Ab Kapitel 7 fragen `model`-Prüfungen das **deployte Analytic Model** ab (Zeile
 Prüfungen auf Klicks laufen über **Ereignisse** je Mission (`ctx.track`, z. B. `app:builder`, `space:builder:RHN_IN`,
 `open:RHN_IN.TARIFFS`, `preview:…`, `preview-in:<Space>:<Objekt>`, `repository-open:…`, `search:repository:…`, `save:…`, `deploy:…`,
 Kapitel 3: `create-connection:…`, `validate:<Space>.<Name>:ok|fail`, `import-remote:…`, `snapshot:…`, `schedule:…`, `run:<Flow>:<Status>`,
-`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
+`monitor:<Tab>`, `monitor-open:<Flow>`, `upload-cert:…`, `unlock:<Space>`, `consent`; Kapitel 7: `am-fact:<Fact>`, `am-node:<fact|Dim>`, `am-dim:<Modell>:<Dim>`, `am-measure:<Typ>:<Name>`, `am-variable:<Name>`, `am-preview:<Modell>`, `am-rows:<Modell>:<Attribute>`; Kapitel 9: `tracing:on|off:<ms>`, `statements-sort:…`, `statements-refresh`, `analyzer:<View>`, `persist:<View>`, `persist-fail:<View>`, `unpersist:<View>`, `schedule:<View>:<Frequenz|none>`, `am-runtime:<Modell>:<ms>`). Kapitel-3-Prüfungen lesen vor allem den Tenant-Zustand.
 Deployte SQL Views werden im Spielstand gespeichert und beim Start wieder angelegt.
 
 Neue Mission anlegen: Eintrag in `src/content/missions/cXX.ts` (Zahlen vorher gegen die Daten prüfen),
@@ -143,9 +146,8 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 9 (Persistence and Performance, Handbuch 6.5.6, 10.3.4): View-Persistenz im Data Integration Monitor (Reiter Views: Persist, Remove Persisted Data,
-   Schedule), Laufzeiten im Vergleich, View Analyzer vereinfacht; Grenze aus Handbuch 9.3.7: Views, die einen DAC-geschützten View lesen, nicht persistierbar.
-   Expensive Statement Logs als echte Seite (Monitoring)
+1. Kapitel 10 Operations (Handbuch 6.7.3, 6.8, 10): Task Chain „Replikation der Ablesungen → Persistenz `RHN_HA_V_METER_READINGS`“, Task Logs als echte Seite
+   (Monitoring › Task Logs), Benachrichtigung bei Fehlschlag, Transformation Flow vereinfacht; Views-Monitor-Zeitplan durch die Kette ersetzen
 2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
    + Space-Karten, Task Logs als Seite wie Bild 1, System-Reiter wie Bild 15. IDs/`data-*` beibehalten, danach `look.py` + alle Playtests
 3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen
@@ -153,4 +155,5 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 5. Hierarchy-Mission (Netzgebiet → Region), danach DAC-Typ Hierarchy
 6. c05-m01 optional mit Mapping-Tabelle (jetzt möglich: New Table + Data Editor) statt CASE
 7. Offene Punkte aus `docs/HANDBUCH_ABGLEICH.md` am echten Tenant prüfen (Curlin), u. a. ob Restricted Measures auf Calculated Measures aufsetzen dürfen
-   und ob die Data Preview im Data Builder die DAC des Modellierers anwendet
+   und ob die Data Preview im Data Builder die DAC des Modellierers anwendet; Kapitel 9: ob ein View mit eigener DAC persistierbar ist und ob ein
+   erneutes Deploy die persistierten Daten entfernt

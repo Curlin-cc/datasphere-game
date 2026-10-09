@@ -1,4 +1,5 @@
 import { ctx } from '../ctx';
+import { traceStatement, fmtMs } from '../perf';
 import { runSql } from '../db';
 import {
   STATUS_LABEL, STATUS_HELP, objectKey, findObject, objectNameError, suggestTechnicalName, touch, deploy, type RepoObject,
@@ -311,7 +312,15 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
       if (pv.user) ctx.track(`am-preview-as:${key}:${pv.user}`);
       const res = await runSql(sql);
       const rows = res.rows.length;
-      out.innerHTML = `<div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'} in ${res.ms.toFixed(0)} ms${pv.user ? ` · as ${esc(pv.user)}` : ''}</div>${resultTable(res.columns, res.rows.map((r) => r.map(round)))}`;
+      // Chapter 9: what the same query would take at production volume (simulated), logged if tracing is on.
+      let prod = '';
+      if (ctx.currentChapter() >= 9 && o?.deployed && o.status === 'deployed') {
+        const ms = await traceStatement(t, key, pv.user ?? 'YOU', 'Data Preview');
+        ctx.track(`am-runtime:${key}:${ms}`);
+        ctx.save();
+        prod = ` · <span id="am-prod-runtime" data-ms="${ms}">at production volume about <b>${fmtMs(ms)}</b> (simulated)</span>`;
+      }
+      out.innerHTML = `<div class="result-status ok">${rows} ${rows === 1 ? 'row' : 'rows'} in ${res.ms.toFixed(0)} ms${pv.user ? ` · as ${esc(pv.user)}` : ''}${prod}</div>${resultTable(res.columns, res.rows.map((r) => r.map(round)))}`;
     } catch (err) {
       out.innerHTML = `<div class="result-status error">${esc(err instanceof Error ? err.message : String(err))}</div>`;
     }

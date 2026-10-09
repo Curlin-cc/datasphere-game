@@ -88,7 +88,7 @@ export const APPS: AppInfo[] = [
     id: 'monitor', label: 'Data Integration Monitor', section: 'monitoring', navLabel: 'Data Integration', interactive: 3, chapter: 3,
     icon: '<path d="M2 12l3-4 3 2 3-5 3 3"/>',
     summary: 'Run, schedule and watch everything that moves data.',
-    does: ['Remote tables: switch between remote access and snapshot replication, load snapshots, schedule them', 'Flows and task chains: run, schedule, read the messages of each run', 'Remote queries: what this space asked the source systems', 'Find out why last night\'s load failed'],
+    does: ['Remote tables: switch between remote access and snapshot replication, load snapshots, schedule them', 'Views: persist a view as a snapshot, remove it, schedule it, and find the expensive layer with the View Analyzer', 'Flows and task chains: run, schedule, read the messages of each run', 'Remote queries: what this space asked the source systems', 'Find out why last night\'s load failed'],
     who: 'Integrators, operations',
   },
   {
@@ -149,10 +149,10 @@ export const APPS: AppInfo[] = [
     who: 'Administrators, operations',
   },
   {
-    id: 'statements', label: 'Expensive Statement Logs', section: 'monitoring', chapter: 9,
+    id: 'statements', label: 'Expensive Statement Logs', section: 'monitoring', interactive: 9, chapter: 9,
     icon: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/>',
     summary: 'Statements that used a lot of time or memory.',
-    does: ['Lists expensive SQL statements with duration and memory', 'Helps find views to persist or rewrite'],
+    does: ['Lists SQL statements above the tracing threshold with duration, peak memory and CPU time', 'Only filled while expensive statement tracing is on (System › Configuration › Monitoring)', 'Helps find the models and views worth persisting or rewriting'],
     who: 'Administrators, lead modelers',
   },
   {

@@ -260,3 +260,24 @@ with sync_playwright() as p:
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())
     g.done()
+
+# ---------------- c09-m02: View Analyzer, persist, preview while the tour waits
+from chapter9_data import TENANT9  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    s9 = save_before(9, 'c09-m02', TENANT9)
+    s9["missions"]["c09-m01"] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
+    g.start(s9)
+    expect(pg, 'The View Analyzer'); nexts(pg)
+    expect(pg, 'Views in RHN_REP'); pg.click('[data-vw="RHN_REP_F_CONSUMPTION"]')
+    expect(pg, 'View Analyzer'); pg.click('#vw-analyzer')
+    expect(pg, 'Read the stack'); g.shot('g-c09-analyzer'); nexts(pg)
+    expect(pg, 'Change the space'); pg.select_option('#mon-space', 'RHN_HARM')
+    expect(pg, 'Start Data Persistence'); pg.click('[data-vw="RHN_HA_V_METER_READINGS"]'); pg.click('#vw-persist')
+    expect(pg, 'Open the model'); pg.click('[data-list="models"]'); pg.click('#object-list [data-open="RHN_REP.RHN_REP_AM_CONSUMPTION"]')
+    expect(pg, 'Runtime at production volume'); pg.click('#run')
+    expect(pg, 'Your answers'); g.answer('why-here', 1); g.answer('after', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

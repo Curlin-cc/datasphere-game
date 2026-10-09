@@ -159,7 +159,7 @@ export interface Run {
   id: string;
   /** SPACE.NAME of the flow or remote table. */
   object: string;
-  kind: 'Replication Flow' | 'Remote Table';
+  kind: 'Replication Flow' | 'Remote Table' | 'View';
   start: string;
   status: 'Completed' | 'Running' | 'Failed';
   records: number;
@@ -365,7 +365,7 @@ export function sanitizeRuns(data: unknown): Run[] {
     .slice(0, 60)
     .map((r) => ({
       id: str(r.id, 40) || `R${Math.random().toString(36).slice(2)}`,
-      object: r.object, kind: r.kind === 'Remote Table' ? 'Remote Table' : 'Replication Flow',
+      object: r.object, kind: r.kind === 'Remote Table' || r.kind === 'View' ? r.kind : 'Replication Flow',
       start: str(r.start, 40), status: r.status, records: Math.max(0, Number(r.records) || 0),
       messages: (Array.isArray(r.messages) ? r.messages : []).map((m: unknown) => str(m, 400)).slice(0, 30),
     }));

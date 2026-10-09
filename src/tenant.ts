@@ -1,3 +1,4 @@
+import { DEFAULT_TRACING, sanitizeTracing, sanitizeStatements, type Tracing, type Statement } from './perf';
 /**
  * The simulated tenant: spaces with storage and priority, and objects shared between spaces.
  * Lives in the save game; DuckDB schemas are recreated from it on every start.
@@ -52,6 +53,9 @@ export interface TenantState {
   consent: boolean;
   runs: Run[];
   appliedColumns: AppliedColumn[];
+  /** Chapter 9: expensive statement tracing and its log. */
+  tracing: Tracing;
+  statements: Statement[];
   /** Mission set-ups already applied, e.g. c03-m06. */
   scenarios: string[];
 }
@@ -72,6 +76,8 @@ export function defaultTenant(): TenantState {
     consent: false,
     runs: [],
     appliedColumns: [],
+    tracing: { ...DEFAULT_TRACING },
+    statements: [],
     scenarios: [],
   };
 }
@@ -180,6 +186,8 @@ export function sanitizeTenant(data: unknown): TenantState {
   t.consent = !!d.consent;
   t.runs = sanitizeRuns(d.runs);
   t.appliedColumns = sanitizeApplied(d.appliedColumns, ids);
+  t.tracing = sanitizeTracing(d.tracing);
+  t.statements = sanitizeStatements(d.statements);
   t.scenarios = (Array.isArray(d.scenarios) ? d.scenarios : []).map(String).slice(0, 50);
   return t;
 }
