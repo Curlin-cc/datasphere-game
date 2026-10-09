@@ -119,7 +119,7 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (48 Missionen):
+Spielbar (51 Missionen, Hauptspiel komplett):
 - Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration: Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space
@@ -130,6 +130,7 @@ Spielbar (48 Missionen):
 - Kapitel 7 Analytic Model: `RHN_REP_AM_INVOICES` (NET/TAX, GROSS_AMOUNT calculated, UNPAID_GROSS restricted, CUSTOMERS count distinct, Variable V_INVOICE_DATE) und `RHN_REP_AM_CONSUMPTION`, beide ohne Kundendimension
 - Kapitel 9 Persistence and Performance: Expensive Statement Tracing (System › Configuration › Monitoring) und Expensive Statement Logs (simulierte SAC-Last), View Analyzer, `RHN_HA_V_METER_READINGS` persistiert und täglich eingeplant; Grenzen: `RHN_REP_V_REGION_REVENUE` (liest DAC-geschützten Fact) nicht persistierbar, persistierte `RHN_HA_V_TARIFFS` (Setup) zurückbauen
 - Kapitel 10 Operations: Task Chain `RHN_IN_TC_CRM` (CRM-Flow, geteilt mit RHN_HARM), `RHN_HARM_TC_NIGHTLY` (verschachtelte Kette → Persistenz `RHN_HA_V_CUSTOMERS` → `RHN_HA_V_METER_READINGS`, E-Mail an LHOFFMANN, täglich); Fehlerlauf durch Tims CAST (c10-m03, `setupAsync`); Task Logs mit simulierten Fehlern von `RHN_IN_RF_S4U` (c10-m04)
+- Kapitel 11 Board request (ohne Hinweise): `READING_MONTH` (Text YYYY-MM) im deployten `RHN_REP_F_CONSUMPTION` (Fact, DAC bleibt), Attribut in `RHN_REP_AM_CONSUMPTION`; Markus' Sicht über die geerbte DAC (keine Kopie); Nachtkette nach der Änderung + Laufzeit < 3 s
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
 `docs/handbuch/README.md`). Vor jedem neuen Kapitel die passenden Handbuch-Kapitel lesen; Stellen mit „nicht verifiziert“ nur vereinfacht
@@ -150,8 +151,9 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-1. Kapitel 11 „Board request“ (ohne Hinweise): eine Ende-zu-Ende-Änderung, z. B. neue Kennzahl „Verbrauch je Tarif und Monat“ von Inbound bis
-   Analytic Model, mit DAC, Persistenz-Entscheidung und Aufnahme in die Nachtkette; danach Exkurse (Business Builder, Catalog, Transport, Verbrauch)
+1. Exkurse (Handbuch 7, 8, 11, 12), je 1–2 kurze Missionen: Business Builder (Abgrenzung zum Analytic Model), Catalog & Marketplace
+   (Asset suchen, Glossar), Transport (Paket mit Fact + Modell + Kette exportieren, Abhängigkeiten), Verbrauch (Expose for Consumption,
+   Datenbankbenutzer/ODBC, OData); Kapitelkarte „Exkurse“ in `chapters.ts`
 2. Restliche Design-Punkte aus `docs/design/README.md` Abschnitt 4 („Noch offen“): Data Integration Monitor und Connections mit Willkommensseite
    + Space-Karten, Task Logs optisch wie Bild 1 (Seite gibt es seit Kapitel 10), System-Reiter wie Bild 15. IDs/`data-*` beibehalten, danach `look.py` + alle Playtests
 3. Kapitel 4 (SQL-Profiling) ebenfalls auf Hands-on-Tutorials umstellen

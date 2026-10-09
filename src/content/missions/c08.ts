@@ -17,7 +17,7 @@ const AUDIT = { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' };
 const SOUTH_MGR = { name: 'Aylin Demir', role: 'Regional Manager South', initials: 'AD' };
 
 const T_PERM = 'RHN_REP.RHN_REP_T_PERMISSIONS';
-const DAC = 'RHN_REP.RHN_REP_DAC_GRID_AREA';
+export const DAC = 'RHN_REP.RHN_REP_DAC_GRID_AREA';
 const F_INV = 'RHN_REP.RHN_REP_F_INVOICES';
 const F_CONS = 'RHN_REP.RHN_REP_F_CONSUMPTION';
 const D_GRID = 'RHN_REP.RHN_REP_D_GRID_AREA';
@@ -62,7 +62,7 @@ function dacOf({ tenant }: RuleContext) {
 }
 
 /** A view has the DAC assigned in its deployed version, criterion GRID_AREA → column GRID_AREA. */
-const assigned = (view: string) => ({ tenant }: RuleContext): string | null => {
+export const assigned = (view: string) => ({ tenant }: RuleContext): string | null => {
   const name = view.split('.')[1];
   const o = findObject(tenant, view);
   if (!o?.deployed) return `${name} is not deployed.`;

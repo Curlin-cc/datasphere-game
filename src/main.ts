@@ -722,7 +722,7 @@ function reportHtml() {
     <div class="real-tenant"><b>In the real tenant</b><p>${m.realTenant}</p></div>
     ${next
       ? `<button class="btn primary" type="button" id="next-mission">Next mission: ${esc(next.title)}</button>`
-      : `<p class="muted">That was the last mission built so far. The next chapter is in the making; your progress is saved.</p>`}`;
+      : `<p class="muted">That was the last mission: the main game is complete. Excursions (Business Builder, Catalog, Transport, consumption) are in the making; your progress is saved.</p>`}`;
 }
 
 async function runCheck() {

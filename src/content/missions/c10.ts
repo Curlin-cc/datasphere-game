@@ -52,7 +52,7 @@ function ranOk(t: TenantState, key: string, since?: string): string | null {
 }
 
 /** Makes sure the chapter-3 objects exist (connections, flows), for players who skipped parts or for test saves. */
-function ensureInbound(t: TenantState) {
+export function ensureInbound(t: TenantState) {
   const at = new Date().toISOString();
   if (!findConnection(t, 'RHN_IN', 'RHN_CRM')) {
     const c = { space: 'RHN_IN', name: 'RHN_CRM', businessName: 'CRM Export', type: 'S3', host: 'rheinau-crm-export', onprem: false, locationId: '', tls: true, auth: 'Access Key', changedAt: at };

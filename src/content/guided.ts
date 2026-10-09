@@ -638,6 +638,15 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>In the game, runtimes are simulated for production volume: the training tenant only holds a sample.</p>`,
     },
   ],
+  'c11-m01': [
+    {
+      title: 'Chapter 11: The board request',
+      body: `<p>One request, the whole stack: change a deployed fact without breaking anyone, offer the change in the model, keep the
+        protection, and make sure it is fast and fresh on the day it counts.</p>
+        <p>This chapter has <b>no hints and no Show me</b>. Everything you need, you have done before. The checks still tell you what is
+        missing.</p>`,
+    },
+  ],
   'c10-m01': [
     {
       title: 'Chapter 10: Operations',

@@ -95,3 +95,8 @@ Produktionsvolumen ≈ 1000 × Trainingsdaten; Dauer je Story-Aufruf (± 8 % je 
 
 View Analyzer unter `RHN_REP_F_CONSUMPTION`: eigene Laufzeit `RHN_HA_V_METER_READINGS` ≈ 5,5 s (Dublettenentfernung auf 5.824 Ablesungen),
 Fact ≈ 0,7 s (Join), `RHN_HA_V_CONTRACTS` ≈ 0,3 s. Snapshot der Ablesungen: 5.726 Datensätze, ≈ 1,1 GB In-Memory (Produktionsvolumen).
+
+## Board-Zahlen (Kapitel 11, geprüft am 09.10.2026)
+
+Ablesungen liegen fast nur Ende Juni und Dezember (Halbjahresabrechnung). `RHN_REP_AM_CONSUMPTION` nach `READING_MONTH` × COMMODITY:
+2025-06 GAS 3.373.608 kWh, POWER 1.445.454 kWh; 2025-12 GAS 1.638.890 kWh, POWER 1.217.494 kWh. Als MBRANDT 2025-06: 2.548.311 kWh.
