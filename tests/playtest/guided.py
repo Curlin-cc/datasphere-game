@@ -131,3 +131,46 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1200)
     print('   Show me finished, tour open:', pg.locator('.tour-card').count())
     g.done()
+
+# ---------------- c05-m01 and c05-m02: build and change a harmonization view while the tour waits
+from chapter5_data import CONTRACTS, KEYS, TENANT5  # noqa: E402
+
+with sync_playwright() as p:
+    g = Game(p, S); pg = g.pg
+    g.start(save_before(5, 'c05-m01', TENANT5))
+    expect(pg, 'Chapter 5: Harmonization'); nexts(pg, 2)
+    expect(pg, 'Open Data Builder'); pg.click('.nav [data-view="builder"]')
+    expect(pg, 'Space RHN_HARM')
+    if pg.locator('#space-picker').count() == 0:
+        pg.click('#space-switch')
+    pg.click('[data-space="RHN_HARM"]')
+    expect(pg, 'Shared with RHN_HARM'); nexts(pg)
+    expect(pg, 'New SQL View'); pg.click('[data-new="sqlview"]')
+    expect(pg, 'An example to start from'); g.shot('g-c05-example')
+    pg.click('.tour-card [data-act="example"]') if pg.locator('.tour-card [data-act="example"]').count() else None
+    g.sql(CONTRACTS); pg.click('#run')
+    expect(pg, 'Check before you save'); nexts(pg)
+    expect(pg, 'Names'); pg.fill('#prop-business', 'Contracts (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_V_CONTRACTS')
+    expect(pg, 'Save'); pg.click('#ed-save')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Your answers'); g.answer('where', 1)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+
+    pg.click('#next-mission'); pg.wait_for_timeout(400)
+    expect(pg, 'Change a deployed view'); nexts(pg, 2)
+    expect(pg, 'Space RHN_IN'); pg.click('#space-switch'); pg.click('[data-space="RHN_IN"]')
+    expect(pg, 'Share LEGACY_CUSTOMER_MAP')
+    pg.click('[data-share="RHN_IN.LEGACY_CUSTOMER_MAP"]'); pg.check('.share-targets input[value="RHN_HARM"]'); pg.click('.dialog button[type="submit"]')
+    expect(pg, 'Space RHN_HARM'); pg.click('#space-switch'); pg.click('[data-space="RHN_HARM"]')
+    expect(pg, 'Open the view'); pg.click('#object-list [data-open="RHN_HARM.RHN_HA_V_CONTRACTS"]')
+    expect(pg, 'Impact and Lineage'); g.shot('g-c05-lineage'); nexts(pg)
+    expect(pg, 'Sources'); nexts(pg)
+    expect(pg, 'Change the SQL'); g.sql(KEYS); pg.click('#run')
+    expect(pg, 'Save'); pg.click('#ed-save')
+    expect(pg, 'Changes to Deploy'); nexts(pg)
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    expect(pg, 'Your answers'); g.answer('orphans', 3)
+    expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
+    print('   gain:', pg.locator('.success .gain').all_inner_texts())
+    g.done()

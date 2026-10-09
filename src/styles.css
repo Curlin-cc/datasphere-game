@@ -392,6 +392,10 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
 .tour-body p { margin: 0 0 8px; }
 .tour-body ul { margin: 0 0 8px; padding-left: 18px; }
 .tour-body code, .tour-example { font-family: var(--font-code); font-size: 12.5px; }
+.tour-body pre {
+  margin: 4px 0 8px; padding: 8px 10px; background: var(--surface-sunk); border: 1px solid var(--line);
+  border-radius: var(--radius-s); overflow-x: auto; font-family: var(--font-code); font-size: 12px; line-height: 1.45;
+}
 .tour-body code { background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 .tour-example {
   margin: 4px 0 8px; padding: 10px 12px; background: var(--surface-sunk);
@@ -663,6 +667,11 @@ td.job { white-space: normal; max-width: 34ch; color: var(--ink-soft); font-size
 .props-list dt { color: var(--ink-faint); }
 .props-list dd { margin: 0; }
 .props-list dd .muted { margin: 4px 0 0; font-size: 12px; line-height: 1.4; }
+.lineage { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.lineage h4 { margin: 10px 0 4px; font-size: 12px; font-weight: 500; color: var(--ink-faint); }
+.lineage .muted { margin: 2px 0; font-size: 12px; line-height: 1.4; }
+.lineage-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lineage-list li { display: flex; align-items: center; gap: 6px; }
 .columns-panel { padding: 14px 16px; }
 .columns-panel h3 { margin: 0 0 8px; font-size: 13px; color: var(--ink-soft); }
 .columns-panel table.grid th { position: static; }

@@ -4,7 +4,7 @@ import { createSqlEditor } from '../editor';
 import { NEW_TILES, type NewTile } from '../content/apps';
 import {
   STATUS_LABEL, STATUS_HELP, SEMANTIC_USAGES, findObject, objectKey, objectNameError, suggestTechnicalName,
-  touch, deploy, dropObject, type RepoObject, type SemanticUsage,
+  touch, deploy, dropObject, readsFrom, usedBy, type RepoObject, type SemanticUsage,
 } from '../repo';
 import { accessError, isShared } from '../tenant';
 import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
@@ -321,6 +321,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
               <dt>Data Access</dt><dd>${esc(remote.access)}<p class="muted">${remote.access === 'Remote' ? 'Each query reads the source live.' : 'Reads the copy stored in this space.'} Change it in the Data Integration Monitor.</p></dd>` : ''}
             ${o?.loadFrom ? `<dt>Filled by</dt><dd>Replication from ${esc(o.loadFrom.connection)}</dd>` : ''}
           </dl>
+          ${o ? lineageHtml(o) : ''}
         </aside>
       </div>
       <div class="results" id="results"><div class="placeholder">
@@ -476,6 +477,23 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
       out.innerHTML = `<div class="result-status error">${esc(err instanceof Error ? err.message : String(err))}</div>`;
     }
   }
+}
+
+/** Impact and lineage of the open object: what it reads, and which views read it. */
+function lineageHtml(o: RepoObject) {
+  const t = ctx.tenant();
+  const from = readsFrom(o, t);
+  const by = usedBy(objectKey(o), t);
+  const sharedTo = t.shares.filter((s) => s.object === objectKey(o)).map((s) => s.to);
+  const list = (keys: string[], empty: string) =>
+    keys.length ? `<ul class="lineage-list">${keys.map((k) => `<li>${spaceChip(k.split('.')[0])}<span class="mono">${esc(k.split('.')[1])}</span></li>`).join('')}</ul>` : `<p class="muted">${empty}</p>`;
+  return `<section class="lineage" id="lineage">
+      <h3>Impact and Lineage</h3>
+      ${o.kind === 'SQL View' ? `<h4>Reads from</h4>${list(from, 'No sources yet.')}` : ''}
+      <h4>Used by</h4>${list(by, 'No view uses this object yet.')}
+      ${sharedTo.length ? `<h4>Shared with</h4><p>${sharedTo.map((s) => spaceChip(s)).join(' ')}</p>` : ''}
+      ${by.length || sharedTo.length ? `<p class="muted">A change here reaches ${by.length ? 'these views' : 'these spaces'}${by.length && sharedTo.length ? ' and spaces' : ''} as soon as you deploy it.</p>` : ''}
+    </section>`;
 }
 
 async function renderSources(main: HTMLElement, space: string) {

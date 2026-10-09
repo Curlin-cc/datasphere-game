@@ -1,7 +1,7 @@
 import type { TourStep } from '../tutorial';
 
 /**
- * Strongly guided, hands-on tutorials for chapters 0 to 3.
+ * Strongly guided, hands-on tutorials for chapters 0 to 3 and 5.
  *
  * GUIDED_INTROS: the concepts of a mission (read, then Next).
  * GUIDED_TOURS: one list of steps per task of the mission (index = task). Steps with `action` wait until the player
@@ -49,6 +49,56 @@ const closeDialog = (title: string, body: string): TourStep => ({
   body,
   action: { do: 'Read it, then close the dialog.', check: noDialog },
 });
+
+/** Switch the Data Builder to a space (picker or switch). */
+const toSpace = (space: string, body: string): TourStep => ({
+  title: `Space ${space}`,
+  view: 'builder:landing',
+  target: '#space-picker, #space-switch',
+  body,
+  action: { do: `Select the space <b>${space}</b>.`, check: () => builderSpace(space) },
+});
+
+/** Share one object of the current space with another space. */
+const shareStep = (object: string, to: string, owner = 'RHN_IN'): TourStep => ({
+  title: `Share ${object}`,
+  target: `[data-share="${owner}.${object}"]`,
+  body: `<p>The share icon at the end of the row. Tick <b>${to}</b> and save.</p>`,
+  action: { do: `Share <b>${object}</b> with <b>${to}</b>.`, event: `share:${owner}.${object}` },
+});
+
+/** Open a new SQL view from the start page. */
+const newView = (body: string): TourStep => ({
+  title: 'New SQL View',
+  target: '[data-new="sqlview"]',
+  body,
+  action: { do: 'Click <b>New SQL View</b>.', check: () => !!$('#editor') && !!$('.ed-title small')?.textContent?.includes('…') },
+});
+
+/** Name, save and deploy a new view in RHN_HARM. */
+const nameSaveDeploy = (name: string, business: string): TourStep[] => [
+  {
+    title: 'Names',
+    target: '#properties',
+    body: `<p>A business name for people, for example <i>${business}</i>. The technical name follows the convention and is fixed after saving.</p>`,
+    action: {
+      do: `Enter a business name and the technical name <code>${name}</code>.`,
+      check: () => val('#prop-technical') === name && val('#prop-business').length > 2,
+    },
+  },
+  {
+    title: 'Save',
+    target: '#ed-save',
+    body: `<p>Save creates the object in the repository: status <b>Not Deployed</b>.</p>`,
+    action: { do: 'Press <b>Save</b>.', event: `save:RHN_HARM.${name}` },
+  },
+  {
+    title: 'Deploy',
+    target: '#ed-deploy',
+    body: `<p>Only a deployed view exists in the database. The check reads what is deployed.</p>`,
+    action: { do: 'Press <b>Deploy</b>.', event: `deploy:RHN_HARM.${name}` },
+  },
+];
 
 // ---------------------------------------------------------------- intros
 
@@ -239,6 +289,69 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         The last one usually names the cause.</p>
         <p>Each space has a disk quota. A space that uses more than assigned is <b>locked</b>: no loads, no deployments,
         until it has enough storage again and someone presses <b>Unlock</b>.</p>`,
+    },
+  ],
+  'c05-m01': [
+    {
+      title: 'Chapter 5: Harmonization',
+      body: `<p>In chapter 4 you found what is wrong with the raw data. Now you fix it, in the right place: <b>views in RHN_HARM</b>
+        that read the shared inbound tables and deliver clean, uniform data. The inbound tables stay exactly as the sources sent them.</p>
+        <p>From now on your work is <b>deployed views</b>: the check reads what runs in the database, not the editor.
+        Hints cost XP from the first one; the tutorials stay free.</p>`,
+    },
+    {
+      title: 'Translate values with CASE',
+      body: `<p><code>CASE</code> turns one value into another, row by row:</p>
+        <pre>CASE REGION WHEN 'NORTH' THEN 'Nord'
+             WHEN 'SOUTH' THEN 'Süd'
+             ELSE REGION END AS REGION_DE</pre>
+        <p>Every value you do not list goes to <code>ELSE</code>. Without <code>ELSE</code> it becomes <code>NULL</code>, and rows silently lose
+        their value. <code>AS</code> names the result column.</p>`,
+    },
+  ],
+  'c05-m02': [
+    {
+      title: 'Change a deployed view',
+      body: `<p>Views others build on are changed, not copied. You open the view, change it, <b>Save</b> (status <i>Changes to Deploy</i>:
+        the database still runs the old version) and <b>Deploy</b>. The technical name stays, so everything built on it keeps working.</p>
+        <p>Before you change it, look at <b>Impact and Lineage</b>: what the view reads, and who reads the view.</p>`,
+    },
+    {
+      title: 'Keep every row: LEFT JOIN',
+      body: `<p>An inner <code>JOIN</code> keeps only rows with a partner on both sides. A <code>LEFT JOIN</code> keeps every row of the first
+        table; where there is no partner, the columns of the second table are <code>NULL</code>.</p>
+        <p><code>COALESCE(a, b)</code> returns <code>a</code>, or <code>b</code> when <code>a</code> is <code>NULL</code>: a fallback.</p>`,
+    },
+  ],
+  'c05-m03': [
+    {
+      title: 'What is a duplicate?',
+      body: `<p>Before you remove duplicates, define what makes two records the <b>same person</b>, and test that rule on the data.
+        A rule that is too loose merges different people; one that is too strict misses duplicates.</p>
+        <p>Then decide which record <b>survives</b>. The contracts point to one of the IDs; that one must stay.</p>`,
+    },
+    {
+      title: 'Number the rows per group',
+      body: `<p><code>ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)</code> numbers rows inside each group, starting at 1:</p>
+        <pre>ROW_NUMBER() OVER (PARTITION BY REGION
+                   ORDER BY GRID_AREA) AS RN</pre>
+        <p>Number the rows in a subquery, then keep <code>WHERE RN = 1</code> outside. That works in SAP HANA SQL too.</p>`,
+    },
+  ],
+  'c05-m04': [
+    {
+      title: 'Units and exact copies',
+      body: `<p>Two classic cleanings in one view:</p>
+        <ul><li><b>Units</b>: convert per row with <code>CASE WHEN UNIT = … THEN … ELSE … END</code>, and name the column after the unit.</li>
+        <li><b>Exact duplicates</b>: <code>SELECT DISTINCT</code> returns each different row once.</li></ul>
+        <p>Compare the row count in the Data Preview with what you expect.</p>`,
+    },
+  ],
+  'c05-m05': [
+    {
+      title: 'One layer up',
+      body: `<p>Reporting builds only on harmonization. You share the harmonized views with <code>RHN_REP</code>, and the reporting query
+        uses them as they are: no mapping, no unit conversion, no deduplication. That work is done once.</p>`,
     },
   ],
 };
@@ -1075,5 +1188,156 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     questions('What can you set up once, so the next failure reaches you first?'),
+  ],
+
+  // ================================================================ chapter 5
+  'c05-m01': [
+    [
+      nav('builder', 'Data Builder', `<p>Harmonization views live in RHN_HARM.</p>`),
+      toSpace('RHN_HARM', `<p>Calin's modeling space.</p>`),
+      {
+        title: 'Shared with RHN_HARM',
+        target: '#shared-list',
+        body: `<p>These inbound tables may be read here. <code>BILLING_CONTRACTS</code> was shared in chapter 1, so you can build on it.</p>`,
+      },
+    ],
+    [
+      newView(`<p>A new SQL view in RHN_HARM. On the left, the sources: own objects and <b>Shared Objects</b>.</p>`),
+      {
+        title: 'An example to start from',
+        target: '#editor',
+        example: `SELECT GRID_AREA,\n  CASE REGION WHEN 'NORTH' THEN 'Nord' WHEN 'SOUTH' THEN 'Süd' ELSE REGION END AS REGION_DE\nFROM RHN_IN.GRID_AREAS`,
+        body: `<p>Put the example into the editor and preview it: CASE with ELSE, on the grid areas. Then replace it with your contracts view:
+          every column of the ticket, with a CASE for the grid area and one for the tariff.</p>`,
+        action: { do: 'Write your SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+      {
+        title: 'Check before you save',
+        target: '#results',
+        body: `<p>1,178 rows? Only S/4 codes in GRID_AREA and TARIFF? Scroll through or add a quick <code>GROUP BY</code> in a second scratch view.</p>`,
+      },
+    ],
+    nameSaveDeploy('RHN_HA_V_CONTRACTS', 'Contracts (harmonized)'),
+    questions('Think about the next load from the legacy system, and about how many reports need the codes.'),
+  ],
+  'c05-m02': [
+    [
+      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('LEGACY_CUSTOMER_MAP', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_HARM', `<p>Back to harmonization.</p>`),
+      {
+        title: 'Open the view',
+        target: '#object-list',
+        body: `<p>Your view from the last mission, status <b>Deployed</b>.</p>`,
+        action: { do: 'Open <b>RHN_HA_V_CONTRACTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_V_CONTRACTS') },
+      },
+      {
+        title: 'Impact and Lineage',
+        target: '#lineage',
+        body: `<p><b>Reads from</b>: the objects in its SQL. <b>Used by</b>: views that read this one. Whatever you deploy here reaches all of them.</p>`,
+      },
+      {
+        title: 'Sources',
+        target: '#sources',
+        body: `<p>The key mapping now appears under <b>Shared Objects</b>. If not, it is not shared yet.</p>`,
+      },
+    ],
+    [
+      {
+        title: 'Change the SQL',
+        target: '#editor',
+        body: `<p>Add a <code>LEFT JOIN</code> to the key mapping on the old customer number. <code>CUSTOMER_ID</code> becomes the CRM ID with a fallback,
+          <code>LEGACY_CUSTOMER_ID</code> the old number. Keep the grid area and tariff mapping.</p>`,
+        action: { do: 'Change the SQL and press <b>Data Preview</b>.', event: 'preview:RHN_HARM.RHN_HA_V_CONTRACTS' },
+      },
+    ],
+    [
+      {
+        title: 'Save',
+        target: '#ed-save',
+        body: `<p>Save stores your change as design.</p>`,
+        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_HARM.RHN_HA_V_CONTRACTS' },
+      },
+      {
+        title: 'Changes to Deploy',
+        target: '.props-list',
+        body: `<p>The status is now <b>Changes to Deploy</b>: anyone reading the view still gets the old version.</p>`,
+      },
+      {
+        title: 'Deploy',
+        target: '#ed-deploy',
+        body: `<p>Now make it active.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_HARM.RHN_HA_V_CONTRACTS' },
+      },
+      ...questions('Count contracts, not customers.'),
+    ],
+  ],
+  'c05-m03': [
+    [
+      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('CRM_CUSTOMERS', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_HARM', `<p>Now explore the CRM data from harmonization.</p>`),
+      newView(`<p>A scratch view to explore first. You turn it into the real view in the next step.</p>`),
+      {
+        title: 'Find the duplicates',
+        target: '#editor',
+        body: `<p>Group by the e-mail in lower case and keep the groups with <code>HAVING COUNT(*) > 1</code>. Then look inside some groups:
+          same street? same person?</p>`,
+        action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+    ],
+    [
+      {
+        title: 'Number per person',
+        target: '#editor',
+        example: `SELECT GRID_AREA, REGION,\n  ROW_NUMBER() OVER (PARTITION BY REGION ORDER BY GRID_AREA) AS RN\nFROM RHN_IN.GRID_AREAS`,
+        body: `<p>The example numbers the grid areas per region. For the customers: partition by what makes a person, order by
+          <code>CREATED_AT</code>, keep number 1 in an outer query.</p>`,
+        action: { do: 'Write the deduplicating SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+      ...nameSaveDeploy('RHN_HA_V_CUSTOMERS', 'Customers (harmonized)'),
+    ],
+    questions('Compare row counts, and think about the next CRM export.'),
+  ],
+  'c05-m04': [
+    [
+      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('METER_READINGS', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_HARM', `<p>Back to harmonization.</p>`),
+      newView(`<p>A new view for the readings.</p>`),
+      {
+        title: 'Convert and deduplicate',
+        target: '#editor',
+        body: `<p>One <code>CASE</code> for the unit, named <code>CONSUMPTION_KWH</code>, and <code>DISTINCT</code> for the exact copies.
+          The status bar of the preview shows the row count.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+      },
+    ],
+    nameSaveDeploy('RHN_HA_V_METER_READINGS', 'Meter Readings (harmonized)'),
+    questions('A second scratch view can sum your deployed view for 2025.'),
+  ],
+  'c05-m05': [
+    [
+      toSpace('RHN_HARM', `<p>The views belong to RHN_HARM, so you share them from here.</p>`),
+      shareStep('RHN_HA_V_CONTRACTS', 'RHN_REP', 'RHN_HARM'),
+      shareStep('RHN_HA_V_METER_READINGS', 'RHN_REP', 'RHN_HARM'),
+    ],
+    [
+      toSpace('RHN_REP', `<p>The reporting space.</p>`),
+      newView(`<p>A scratch view in RHN_REP. The sources list shows only the shared harmonized views.</p>`),
+      {
+        title: 'Consumption per grid area',
+        target: '#editor',
+        body: `<p>Join readings and contracts on <code>CONTRACT_ID</code>, group by the grid area and sum the kWh. No CASE, no conversion.</p>`,
+        action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:draft' },
+      },
+    ],
+    questions('Where does the mapping live, and what does ELSE do with a code it does not know?'),
   ],
 };

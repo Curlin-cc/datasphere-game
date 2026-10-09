@@ -187,4 +187,29 @@ export const GLOSSARY: GlossaryTerm[] = [
     text: 'A space that uses more disk than assigned is locked: nothing can be written. It needs more storage (or less data) and an Unlock.',
     realTenant: 'Space Management > Unlock on the space.',
   },
+  {
+    term: 'Harmonization layer',
+    text: 'Views between inbound and reporting that make data uniform: one code per value, one key per business object, one unit, no duplicates. The logic lives here once and every consumer builds on it.',
+    realTenant: 'Usually its own space; views read the inbound tables through sharing.',
+  },
+  {
+    term: 'Value mapping',
+    text: 'Translates the codes of one source into the codes of the target model, e.g. Nord → NORTH. Small mappings fit in a CASE; larger ones go into a mapping table the business maintains.',
+    realTenant: 'SQL view with CASE, or a local table joined in a view.',
+  },
+  {
+    term: 'Key mapping',
+    text: 'A table that links the keys of an old or second system to the leading key, e.g. a legacy customer number to the CRM ID. Joined with a LEFT JOIN so rows without an entry stay.',
+    realTenant: 'Local table, often maintained by IT or replicated from a master data system.',
+  },
+  {
+    term: 'Deduplication',
+    text: 'Keeps one record per real-world object. Needs a tested rule for "same object" and a rule for which record survives, e.g. the oldest.',
+    realTenant: 'SQL view with ROW_NUMBER() OVER (PARTITION BY …); Intelligent Lookup for fuzzy matches.',
+  },
+  {
+    term: 'Impact and lineage',
+    text: 'Lineage shows where an object gets its data from; impact shows which objects use it. Check both before you change or delete something others build on.',
+    realTenant: 'Data Builder editor toolbar > Impact and Lineage Analysis; across spaces in the Catalog.',
+  },
 ];

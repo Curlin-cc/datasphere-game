@@ -43,3 +43,18 @@ Remote Tables sind DuckDB-Views auf diese Tabellen, Läufe zählen nur Datensät
 | S4U | `billing.rheinau-s4.example` | SAP S/4HANA Cloud | BILLING_CONTRACTS, BILLING_INVOICES (nur S4U-Zeilen), TARIFFS, GRID_AREAS | Verträge, Rechnungen |
 | MDM | `mdm-db.rheinau.local` | SAP HANA on-premise, Cloud Connector `RHEINAU_DC`, TLS mit „Rheinau Root CA“ | METER_READINGS (nur MDM-Zeilen) | ja |
 | CRM | Bucket `rheinau-crm-export` | Amazon S3 | `customers/CRM_CUSTOMERS.csv` | nein |
+
+## Kennzahlen der Harmonisierung (Kapitel 5, geprüft mit DuckDB am 09.10.2026)
+
+| View in `RHN_HARM` | Zeilen | Wichtige Zahlen |
+| --- | --- | --- |
+| `RHN_HA_V_CONTRACTS` | 1178 | nach Mapping NORTH 385, EAST 251, SOUTH 411, WEST 131; Region NORTH 636, SOUTH 542; 91 Altkunden-Nummern → 69 CRM-IDs; 0 Verträge ohne CRM-Kunde |
+| `RHN_HA_V_CUSTOMERS` | 900 | 946 Datensätze − 46 Dubletten. Dublette = gleiche E-Mail (ohne Groß/Klein) **und** gleiche Adresse; ältester Datensatz (CREATED_AT) bleibt, denn Verträge zeigen immer auf ihn |
+| `RHN_HA_V_METER_READINGS` | 5726 | 5824 − 98 Dubletten (= Anzahl Rechnungen); 19.878.601 kWh gesamt, 2025: 7,74 GWh |
+
+Fallen, die die Prüfungen gezielt erkennen:
+- **Namensvettern:** Nur nach E-Mail gruppiert → 897 Kunden, weil 3 Paare verschiedener Personen (verschiedene Straßen) dieselbe E-Mail haben; 2 Verträge verlieren ihren Kunden
+- **Neuester statt ältester Datensatz:** 61 Verträge finden ihren Kunden nicht
+- **E-Mails:** Großbuchstaben kommen nur bei Dubletten vor; `lower(EMAIL)` ändert beim ältesten Datensatz nichts
+- 2025 falsch: ohne MWh-Umrechnung 6,96 GWh, mit Dubletten 7,88 GWh, beides falsch 7,10 GWh
+

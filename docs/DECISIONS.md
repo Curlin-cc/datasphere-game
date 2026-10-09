@@ -4,6 +4,14 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-09 | Ab Kapitel 5 prüfen Missionen die **deployte** View (Laufzeitversion), nicht den Editor; gespeicherte, nicht deployte Änderungen werden ausdrücklich gemeldet | Lernziel Save vs. Deploy; im echten System konsumieren andere nur, was deployt ist |
+| 2026-10-09 | Ticket gibt die Spaltennamen der View vor, Prüfung vergleicht nach Spaltennamen (nur die geprüften Spalten, zusätzliche erlaubt) | Views sind Schnittstellen für andere; Namen sind Teil des Vertrags. Spart die Permutationssuche über viele Spalten |
+| 2026-10-09 | Neuer Prüftyp `metric` (eine Zahl per SQL, z. B. „Verträge ohne Kunde“) | Fachliches Feedback unabhängig davon, wie der Spieler die View schreibt |
+| 2026-10-09 | c05-m02 ändert die bestehende View statt eine zweite zu bauen; zweite View auf dieselbe Quelle wird als Kopie gemeldet | Best Practice „Logik einmal zentral“; Status *Changes to Deploy* wird erlebbar |
+| 2026-10-09 | Dubletten-Regel: gleiche E-Mail (ohne Groß/Klein) **und** gleiche Adresse, ältester Datensatz bleibt | Daten enthalten 3 echte Namensvettern-Paare mit gleicher E-Mail; Verträge zeigen auf die älteste ID. Lehrt: Regel an den Daten testen |
+| 2026-10-09 | Mapping per CASE statt Mapping-Tabelle | Spiel kann noch keine lokalen Tabellen anlegen; Mapping-Tabelle als Best Practice in Debrief/„In the real tenant“ erwähnt |
+| 2026-10-09 | Impact and Lineage vereinfacht als Liste im Properties-Panel, berechnet aus `SPACE.OBJEKT`-Referenzen im gespeicherten SQL | Handbuch 6.11.2 beschreibt nur den Zweck; reicht für „vor dem Ändern prüfen, wer es nutzt“ |
+| 2026-10-09 | Kapitel-5-Hinweise und Tutorials HANA-kompatibel (ROW_NUMBER in Unterabfrage statt QUALIFY) | Spieler soll SQL lernen, das auch im echten Tenant läuft |
 | 2026-10-09 | Tutorials hands-on: Schritte warten auf die echte Aktion des Spielers, Seite bleibt bedienbar, Tour geht von selbst weiter | Wunsch von Curlin: „stark guided“; Lernen durch Tun statt Lesen |
 | 2026-10-09 | Missions-Tutorial = Intro + Hands-on-Schritte aller Aufgaben + Check; „Show me“ spielt dieselben Schritte einer Aufgabe | Eine Quelle für beide, keine doppelten Texte |
 | 2026-10-09 | Ab Kapitel 2 führen Tutorials jeden Klick, Entscheidungen (Rolle, Load Type, Truncate, Datenzugriff) bleiben erklärende Schritte ohne Prüfung | Tutorial soll nicht die Lösung vorgeben |

@@ -12,7 +12,7 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 2 Users & Roles | 3.7 Rollen | Konzept ja (Standard-, Custom-, Scoped Roles) | Namen DW Space Administrator/Integrator/Modeler/Consumer „nicht verifiziert“ |
 | 3 Data Integration | 5, 6.4, 6.7, 10 | ja, gebaut am 09.10.2026 | Feature-Matrix je Verbindungstyp und Button-Texte „nicht verifiziert“ |
 | 4 Inbound Layer | 6.4, 6.11 | ja (Data Preview, lokale Tabellen) | SQL-Grundlagen kommen nicht aus dem Handbuch |
-| 5 Harmonization | 6.5.2, 6.11.4 | ja: SQL Views, Sharing | – |
+| 5 Harmonization | 6.5.2, 6.11.2, 6.11.4 | ja, gebaut am 09.10.2026: SQL Views, Sharing, Impact and Lineage (vereinfacht) | Lineage-Diagramm im Handbuch ohne Details; Spiel zeigt nur Liste im Properties-Panel |
 | 6 Semantics | 6.5.3, 6.5.4, 6.6 | ja: Fact, Dimension, Text, Hierarchy (+ with Directory), Assoziationen, E/R-Modell | Spiel kennt bisher nur Relational Dataset/Fact/Dimension/Text → Hierarchy ergänzen |
 | 7 Analytic Model | 6.10 | ja: Kennzahlarten (calculated, restricted, count distinct …), Variablen | – |
 | 8 Data Access Controls | 9.3 | ja: Single Values, Operator and Values, Hierarchy, Zuweisung | – |
@@ -38,3 +38,15 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 - Space-Sperre bei Speicherüberschreitung, Unlock (4.4.3, 4.4.11); E-Mail-Benachrichtigung bei fehlgeschlagenen Replication Flows (10.3.5)
 
 Nicht simuliert: Real-Time-Replikation, Data Provisioning Agent, Data Flows, Custom Connection Types, Premium Outbound, Cron-Ausdrücke.
+
+## Was Kapitel 5 aus dem Handbuch umsetzt
+
+- SQL View: genau eine SELECT-Anweisung, nur Objekte des eigenen Spaces und geteilte Objekte referenzierbar (6.5.2)
+- Save → *Not Deployed* / *Changes to Deploy*, Deploy → *Deployed*; Prüfungen lesen nur die deployte Version (6.3.3)
+- Impact and Lineage: vereinfacht als Abschnitt im Properties-Panel des Editors (*Reads from*, *Used by*, *Shared with*),
+  ausgewertet über `SPACE.OBJEKT`-Referenzen im gespeicherten SQL; kein Diagramm, keine Space-übergreifende Katalog-Lineage (6.11.2)
+- Sharing: Inbound → Harmonization → Reporting, immer nur eine Schicht nach oben; geteilte Objekte read-only (6.11.4)
+- Bereitstellungsreihenfolge: Deploy einer View scheitert, solange eine Quelle nicht geteilt ist (6.13)
+
+Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (kommt in Kapitel 9), Intelligent Lookup (nur erwähnt).
+

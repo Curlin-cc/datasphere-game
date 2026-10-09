@@ -1,7 +1,8 @@
-import { runSql, listObjects, type QueryResult } from '../db';
+import { runSql, listObjects, describeColumns, type QueryResult } from '../db';
 import { review, type ReviewNote } from './review';
-import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, RuleContext } from './types';
+import type { Mission, ResultCheck, StructureCheck, QuestionCheck, RuleCheck, RuleContext, MetricCheck } from './types';
 import { accessError, type TenantState } from '../tenant';
+import { findObject } from '../repo';
 
 /**
  * Check engine: result check (result set vs. reference solution, independent of writing style),
@@ -33,7 +34,7 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
   const outcomes: CheckOutcome[] = [];
   let notes: ReviewNote[] = [];
 
-  const needsQuery = mission.checks.some((c) => c.type === 'result');
+  const needsQuery = mission.checks.some((c) => c.type === 'result' && !c.object);
   let player: QueryResult | null = null;
   let playerError = '';
   const query = lastStatement(input.sql);
@@ -53,7 +54,9 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
   }
 
   for (const check of mission.checks) {
-    if (check.type === 'result') {
+    if (check.type === 'result' && check.object) {
+      outcomes.push(await checkObject(check, input.tenant));
+    } else if (check.type === 'result') {
       if (player && check.space && input.tenant.activeSpace !== check.space) {
         outcomes.push({
           label: check.label,
@@ -67,30 +70,70 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
       outcomes.push(await checkStructure(check));
     } else if (check.type === 'rule') {
       outcomes.push(checkRule(check, { tenant: input.tenant, events: new Set(input.events) }));
+    } else if (check.type === 'metric') {
+      outcomes.push(await checkMetric(check));
     } else {
       outcomes.push(checkQuestion(check, input.answers[check.id]));
     }
   }
 
   if (player && query) notes = review(query, player.columns, mission.review);
+  else {
+    // Missions about deployed views: review what runs, i.e. the deployed SQL of the first checked view.
+    const first = mission.checks.find((c): c is ResultCheck => c.type === 'result' && !!c.object);
+    const o = first && findObject(input.tenant, first.object!);
+    if (o?.deployed?.sql) notes = review(o.deployed.sql, [], mission.review);
+  }
   return { passed: outcomes.every((o) => o.ok), outcomes, notes };
 }
 
 // ---------------------------------------------------------------- result
 
-async function checkResult(check: ResultCheck, player: QueryResult): Promise<CheckOutcome> {
+async function checkResult(check: ResultCheck, player: QueryResult, named = false): Promise<CheckOutcome> {
   const tol = check.tolerance ?? 0.01;
   const refs = Array.isArray(check.expected) ? check.expected : [check.expected];
+  const subject = named ? 'Your view' : 'Your query';
   let best: Comparison | null = null;
   for (const sql of refs) {
-    const cmp = compare(player, await runSql(sql), !!check.ordered, tol);
-    if (cmp.match) return { label: check.label, ok: true, message: 'Your result matches what the ticket asks for.' };
+    const cmp = compare(player, await runSql(sql), !!check.ordered, tol, named, subject);
+    if (cmp.match) return { label: check.label, ok: true, message: named ? `${check.object} delivers what the ticket asks for.` : 'Your result matches what the ticket asks for.' };
     if (!best || cmp.score > best.score) best = cmp;
   }
   for (const d of check.diagnose ?? []) {
-    if (compare(player, await runSql(d.sql), !!check.ordered, tol).match) return { label: check.label, ok: false, message: d.message };
+    if (compare(player, await runSql(d.sql), !!check.ordered, tol, named, subject).match) return { label: check.label, ok: false, message: d.message };
   }
+  const known = check.counts?.[player.rows.length];
+  if (known) return { label: check.label, ok: false, message: known };
   return { label: check.label, ok: false, message: best!.reason };
+}
+
+/** Result check on a deployed view: reads its runtime version and compares the named columns. */
+async function checkObject(check: ResultCheck, tenant: TenantState): Promise<CheckOutcome> {
+  const fail = (message: string) => ({ label: check.label, ok: false, message });
+  const [space, name] = check.object!.split('.');
+  const o = findObject(tenant, check.object!);
+  if (!o) {
+    const elsewhere = tenant.objects.find((x) => x.name === name);
+    return fail(elsewhere
+      ? `${name} exists, but in ${elsewhere.space}. It belongs in ${space}: switch the Data Builder to ${space} and create it there.`
+      : `There is no object ${name} in ${space} yet. Create a SQL view with exactly this technical name.`);
+  }
+  if (!o.deployed) return fail(`${name} is saved, but not deployed. Checks read what runs in the database: press Deploy.`);
+  if (o.status === 'changes') return fail(`${name} has saved changes that are not deployed yet. The runtime still uses the old version: press Deploy.`);
+  const have = await describeColumns(space, name);
+  const byUpper = new Map(have.map((c) => [c.name.toUpperCase(), c.name]));
+  const missing = (check.columns ?? []).filter((c) => !byUpper.has(c.toUpperCase()));
+  if (missing.length) {
+    return fail(`${name} has no column ${missing.join(', ')}. Name the output columns exactly as the ticket says, with AS where you calculate.`);
+  }
+  const cols = (check.columns ?? []).map((c) => `"${byUpper.get(c.toUpperCase())}"`).join(', ');
+  let player: QueryResult;
+  try {
+    player = await runSql(`SELECT ${cols} FROM "${space}"."${name}"`);
+  } catch (err) {
+    return fail(`${name} does not run any more: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return checkResult(check, player, true);
 }
 
 interface Comparison {
@@ -100,7 +143,7 @@ interface Comparison {
   reason: string;
 }
 
-function compare(player: QueryResult, expected: QueryResult, ordered: boolean, tol: number): Comparison {
+function compare(player: QueryResult, expected: QueryResult, ordered: boolean, tol: number, named = false, subject = 'Your query'): Comparison {
   const pc = player.columns.length;
   const ec = expected.columns.length;
   const pr = player.rows.length;
@@ -109,7 +152,7 @@ function compare(player: QueryResult, expected: QueryResult, ordered: boolean, t
     return {
       match: false,
       score: 0,
-      reason: `Your result has ${pc} ${pc === 1 ? 'column' : 'columns'}, the ticket needs ${ec}. Check what you list after SELECT.`,
+      reason: `${subject === 'Your query' ? 'Your result' : subject} has ${pc} ${pc === 1 ? 'column' : 'columns'}, the ticket needs ${ec}. Check what you list after SELECT.`,
     };
   }
   if (pr !== er) {
@@ -117,7 +160,7 @@ function compare(player: QueryResult, expected: QueryResult, ordered: boolean, t
     return {
       match: false,
       score: 1,
-      reason: `Your query returns ${pr} ${pr === 1 ? 'row' : 'rows'}, the ticket needs ${er}. ${
+      reason: `${subject} returns ${pr} ${pr === 1 ? 'row' : 'rows'}, the ticket needs ${er}. ${
         more ? 'You have too many rows: check your filter (WHERE), your grouping (GROUP BY) or a LIMIT.' : 'Rows are missing: check your filter (WHERE) or your joins.'
       }`,
     };
@@ -128,7 +171,8 @@ function compare(player: QueryResult, expected: QueryResult, ordered: boolean, t
   const expRows = expected.rows.map((r) => r.map(key));
   let bestMatched = -1;
   let orderOnly = false;
-  for (const perm of permutations(pc)) {
+  // Views are compared by column name (the check selects the columns in order): no need to try other orders.
+  for (const perm of named ? [[...Array(pc).keys()]] : permutations(pc)) {
     const rows = player.rows.map((r) => perm.map((i) => key(r[i])));
     const matched = countMultisetMatches(rows, expRows);
     if (matched === er) {
@@ -145,7 +189,9 @@ function compare(player: QueryResult, expected: QueryResult, ordered: boolean, t
   return {
     match: false,
     score: 2 + bestMatched / Math.max(1, er),
-    reason: `The shape is right (${er} rows, ${ec} columns), but only ${bestMatched} of ${er} rows have the right values. Check your filter, what you count or add up, and which column you group by.`,
+    reason: named
+      ? `The number of rows is right (${er}), but only ${bestMatched} of ${er} rows have the right values. Compare a few rows in the Data Preview with what the ticket asks for, column by column.`
+      : `The shape is right (${er} rows, ${ec} columns), but only ${bestMatched} of ${er} rows have the right values. Check your filter, what you count or add up, and which column you group by.`,
   };
 }
 
@@ -211,6 +257,20 @@ async function checkStructure(check: StructureCheck): Promise<CheckOutcome> {
 
 function checkRule(check: RuleCheck, ctx: RuleContext): CheckOutcome {
   const problem = check.test(ctx);
+  return problem ? { label: check.label, ok: false, message: problem } : { label: check.label, ok: true, message: check.ok ?? 'Done.' };
+}
+
+// ---------------------------------------------------------------- metric
+
+async function checkMetric(check: MetricCheck): Promise<CheckOutcome> {
+  let value: number;
+  try {
+    const res = await runSql(check.sql);
+    value = Number(res.rows[0]?.[0] ?? 0);
+  } catch {
+    return { label: check.label, ok: false, message: check.missing ?? 'Build and deploy the view first.' };
+  }
+  const problem = check.test(value);
   return problem ? { label: check.label, ok: false, message: problem } : { label: check.label, ok: true, message: check.ok ?? 'Done.' };
 }
 

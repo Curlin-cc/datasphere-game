@@ -13,6 +13,7 @@ CH = {
     2: ['c02-m01', 'c02-m02', 'c02-m03'],
     3: ['c03-m01', 'c03-m02', 'c03-m03', 'c03-m04', 'c03-m05', 'c03-m06'],
     4: ['c04-m01', 'c04-m02', 'c04-m03', 'c04-m04'],
+    5: ['c05-m01', 'c05-m02', 'c05-m03', 'c05-m04', 'c05-m05'],
 }
 
 
@@ -87,6 +88,39 @@ class Game:
         self.pg.click('#next-mission')
         self.pg.wait_for_timeout(300)
         self.skip_tutorial()
+
+    # ---- Data Builder helpers (chapter 5+)
+    def space(self, sid):
+        """Open the Data Builder in space sid (picker or switch)."""
+        self.nav('builder')
+        if not self.pg.locator('#space-picker').count():
+            self.pg.click('#space-switch'); self.pg.wait_for_selector('#space-picker')
+        self.pg.click(f'[data-space="{sid}"]'); self.pg.wait_for_selector('#new-tiles')
+
+    def share(self, key, to):
+        """Share SPACE.OBJECT with space `to` from the object list (the builder must show the owner space)."""
+        self.pg.click(f'[data-share="{key}"]')
+        self.pg.check(f'.share-targets input[value="{to}"]')
+        self.pg.click('.dialog button[type="submit"]'); self.pg.wait_for_timeout(250)
+
+    def new_view(self, sql, technical=None, business=None, deploy=True):
+        """New SQL view in the current space; with a technical name it is saved (and deployed)."""
+        self.pg.click('[data-new="sqlview"]'); self.pg.wait_for_selector('#editor')
+        self.sql(sql)
+        if technical:
+            self.pg.fill('#prop-business', business or technical.title())
+            self.pg.fill('#prop-technical', technical)
+            self.pg.click('#ed-deploy' if deploy else '#ed-save'); self.pg.wait_for_timeout(600)
+
+    def edit_view(self, key, sql, deploy=True):
+        """Open a view from the object list, replace its SQL, save or deploy."""
+        self.pg.click(f'#object-list [data-open="{key}"]'); self.pg.wait_for_selector('#editor')
+        self.sql(sql)
+        self.pg.click('#ed-deploy' if deploy else '#ed-save'); self.pg.wait_for_timeout(600)
+
+    def toast(self):
+        t = self.pg.locator('.toast').all_inner_texts()
+        return t[-1] if t else ''
 
     def shot(self, name):
         self.pg.screenshot(path=f'{self.shots}/{name}.png')

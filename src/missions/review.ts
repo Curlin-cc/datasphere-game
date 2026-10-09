@@ -40,6 +40,13 @@ const RULES: Record<ReviewRule, (sql: string, columns: string[]) => string | nul
     /\bcreate\s+(or\s+replace\s+)?view\s+"?RHN_IN"?\./i.test(codeOnly(sql))
       ? 'This view sits in RHN_IN. The inbound layer holds source data 1:1; business logic belongs in RHN_HARM.'
       : null,
+
+  case_else: (sql) => {
+    const blocks = codeOnly(sql).match(/\bcase\b[\s\S]*?\bend\b/gi) ?? [];
+    return blocks.some((b) => !/\belse\b/i.test(b))
+      ? 'A CASE without ELSE turns every value you did not list into NULL. Add ELSE with the original column: then a new source code shows up in the reports instead of silently disappearing.'
+      : null;
+  },
 };
 
 export function review(sql: string, columns: string[], rules: ReviewRule[] = []): ReviewNote[] {

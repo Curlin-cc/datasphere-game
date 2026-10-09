@@ -44,7 +44,7 @@ Stakeholder (schicken Tickets):
 | 2 | Users & Roles | DW Administrator, Space Administrator, Integrator, Modeler, Viewer, Consumer, Scoped Roles | Rollenmatrix für 8 Personas | Least Privilege, Space Admin delegieren |
 | 3 | Data Integration | Connections + Features, Cloud Connector, Zertifikate, Remote vs. Snapshot, Replication Flow (Initial/Delta, Truncate, Projektion), Data Integration Monitor, gesperrter Space | Quellen anbinden, Datenzugriff wählen, Flows bauen, Fehler beheben | `SRC_SYS_ID` beim Laden setzen, Truncate nur wenn eine Quelle die Tabelle besitzt |
 | 4 | Inbound Layer | Local Tables, Datenqualität, SQL-Grundlagen | per SQL profilen (Scratch-SQL-View, Data Preview) | keine Logik im Inbound |
-| 5 | Harmonization | SQL Views, Joins, Bereinigung, Sharing | Dubletten, Einheiten, Altschlüssel | Logik einmal zentral, wiederverwendbar |
+| 5 | Harmonization | SQL Views (deployt), CASE-Mapping, LEFT JOIN + Key-Mapping, Dubletten mit ROW_NUMBER, Einheiten, Impact and Lineage, Sharing nach Reporting | Codes, Altschlüssel, CRM-Dubletten, MWh/Dubletten in Ablesungen, Verbrauch je Netzgebiet in RHN_REP | Logik einmal zentral, View ändern statt kopieren, Quelle an der Quelle korrigieren |
 | 6 | Semantics | Fact, Dimension, Text, Hierarchy, Associations | Objekte typisieren und verknüpfen | Fact + Associations statt Riesen-View |
 | 7 | Analytic Model | Measures, Calculated/Restricted Measures, Variables | Modell für CFO | schlankes Modell je Use Case |
 | 8 | Data Access Controls | DAC mit Kriterien, Berechtigungstabelle | Regionalleiter sehen nur ihr Gebiet | datengetrieben statt hart kodiert |

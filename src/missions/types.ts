@@ -29,6 +29,15 @@ export interface ResultCheck {
    * these queries, the message is shown instead of the generic feedback.
    */
   diagnose?: { sql: string; message: string }[];
+  /**
+   * Check a deployed object instead of the editor (chapter 5+): SPACE.NAME of a view. Its runtime version is read,
+   * so saved but undeployed changes do not count. Needs `columns`.
+   */
+  object?: string;
+  /** With `object`: the columns to compare, by name and in this order. `expected` must return exactly these. */
+  columns?: string[];
+  /** Messages for a known wrong number of rows, e.g. { 897: 'Namesakes merged…' }. */
+  counts?: Record<number, string>;
 }
 
 /** Checks that an object exists in the right space (chapters 1+). */
@@ -74,10 +83,23 @@ export interface RuleCheck {
   test: (ctx: RuleContext) => string | null;
 }
 
-export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck;
+/**
+ * Runs a query that returns one number (first column of the first row) and tests it, e.g. "contracts without a customer".
+ * If the query fails (an object is missing), `missing` is shown.
+ */
+export interface MetricCheck {
+  type: 'metric';
+  label: string;
+  sql: string;
+  ok?: string;
+  missing?: string;
+  test: (value: number) => string | null;
+}
+
+export type Check = ResultCheck | StructureCheck | QuestionCheck | RuleCheck | MetricCheck;
 
 /** Rule IDs of the senior architect's review, see review.ts. */
-export type ReviewRule = 'no_select_star' | 'alias_aggregates' | 'explicit_join' | 'no_logic_in_inbound';
+export type ReviewRule = 'no_select_star' | 'alias_aggregates' | 'explicit_join' | 'no_logic_in_inbound' | 'case_else';
 
 export interface Mission {
   /** c<chapter>-m<nr>, e.g. c00-m02 */

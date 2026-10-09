@@ -115,6 +115,25 @@ export async function dropObject(o: RepoObject) {
   if (o.kind === 'Local Table' && o.loadFrom) await exec(`DROP TABLE IF EXISTS "${o.space}"."${o.name}"`);
 }
 
+/**
+ * Impact and lineage (simplified, Handbuch 6.11.2): which objects a view reads (lineage),
+ * and which views read an object (impact). Looks at the saved SQL of views, SPACE.NAME references only.
+ */
+export function readsFrom(o: RepoObject, t: TenantState): string[] {
+  if (o.kind !== 'SQL View' || !o.sql) return [];
+  const code = o.sql.replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/'(?:[^']|'')*'/g, "''");
+  const keys = new Set<string>();
+  for (const m of code.matchAll(/"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\.\s*"?([A-Za-z_][A-Za-z0-9_]*)"?/g)) {
+    const key = `${m[1].toUpperCase()}.${m[2].toUpperCase()}`;
+    if (findObject(t, key)) keys.add(key);
+  }
+  return [...keys];
+}
+
+export function usedBy(key: string, t: TenantState): string[] {
+  return t.objects.filter((o) => objectKey(o) !== key && readsFrom(o, t).includes(key)).map(objectKey);
+}
+
 const stripSemicolon = (sql: string) => sql.trim().replace(/;\s*$/, '');
 
 /** Recreates deployed views after a reload. Views can depend on each other, so retry until nothing changes. */

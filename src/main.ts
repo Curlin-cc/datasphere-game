@@ -512,7 +512,8 @@ function renderMission() {
   const openHints = Math.max(FREE_HINTS[guidance], mp.hintsOpen);
   const xp = ctx.progress.xp;
   const questions = m.checks.filter((c): c is QuestionCheck => c.type === 'question');
-  const usesSql = m.checks.some((c) => c.type === 'result');
+  const usesSql = m.checks.some((c) => c.type === 'result' && !c.object);
+  const usesViews = m.checks.some((c) => c.type === 'result' && !!c.object);
   const all = MISSIONS.indexOf(m);
   const prev = MISSIONS[all - 1];
   const next = MISSIONS[all + 1];
@@ -568,7 +569,7 @@ function renderMission() {
     </div>
     <div class="feedback">
       <button class="btn primary" type="button" id="check" ${state.checking ? 'disabled' : ''}>${state.checking ? 'Checking…' : 'Check my solution'}</button>
-      <p>${usesSql ? 'Checks the SQL in the SQL view editor' : 'Checks what you did in the tenant'}${questions.length ? ' and your answers' : ''}.${mp.done ? ' You already earned the XP for this mission.' : ` Worth ${m.xp} XP, plus ${CLEAN_BONUS} for a clean review.`}</p>
+      <p>${usesSql ? 'Checks the SQL in the SQL view editor' : usesViews ? 'Checks your deployed views and the tenant' : 'Checks what you did in the tenant'}${questions.length ? ' and your answers' : ''}.${mp.done ? ' You already earned the XP for this mission.' : ` Worth ${m.xp} XP, plus ${CLEAN_BONUS} for a clean review.`}</p>
       ${reportHtml()}
     </div>`;
 
