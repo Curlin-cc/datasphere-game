@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" width="320" height="80" role="img" aria-label="MSC">
-  <!-- MSC: Curlins eigene Marke, ersetzt im Spiel das SAP-Logo. Wortmarke fett (Big-4-Stil), Emblem: moderne Triquetra
-       (Vorlage von Curlin) aus drei Bögen in Lila #5B2A86, Weinrot #7A1F3D, Orange #F07C1A in einem dünnen Ring. Quelle im Code: src/brand.ts -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 166 40" width="332" height="80" role="img" aria-label="MSC">
+  <!-- MSC: Curlins eigene Marke, ersetzt im Spiel das SAP-Logo. Wortmarke fett (Big-4-Stil), Emblem: angedeutetes Auge (nur Umriss)
+       mit moderner Triquetra als Pupille (Vorlage von Curlin), Bögen in Lila #5B2A86, Weinrot #7A1F3D, Orange #F07C1A. Quelle im Code: src/brand.ts -->
   <text x="0" y="32" font-family="Inter, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="800" letter-spacing="-1.5" fill="#1D2D3E">MSC</text>
-  <g transform="translate(118 20.5)" color="#1D2D3E">
-    <circle r="18" fill="none" stroke="currentColor" stroke-width="1.8"/>
-    <path transform="rotate(240)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#F07C1A" stroke-width="3.2" stroke-linejoin="round"/><path transform="rotate(120)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#7A1F3D" stroke-width="3.2" stroke-linejoin="round"/><path transform="rotate(0)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#5B2A86" stroke-width="3.2" stroke-linejoin="round"/>
+  <g transform="translate(120 20.5)" color="#1D2D3E">
+    <path d="M-21 0Q0 -21 21 0Q0 21 -21 0Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
+    <g transform="translate(0 1.9) scale(0.5)"><path transform="rotate(240)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#F07C1A" stroke-width="4.8" stroke-linejoin="round"/><path transform="rotate(120)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#7A1F3D" stroke-width="4.8" stroke-linejoin="round"/><path transform="rotate(0)" d="M0 -15A12.2 12.2 0 0 1 0 7A12.2 12.2 0 0 1 0 -15Z" fill="none" stroke="#5B2A86" stroke-width="4.8" stroke-linejoin="round"/></g>
   </g>
 </svg>
