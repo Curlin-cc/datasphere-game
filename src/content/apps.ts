@@ -215,7 +215,7 @@ export const NEW_TILES: NewTile[] = [
     icon: '<rect x="4" y="4" width="8" height="8" rx="1.5"/><rect x="20" y="4" width="8" height="8" rx="1.5"/><rect x="4" y="20" width="8" height="8" rx="1.5"/><rect x="20" y="20" width="8" height="8" rx="1.5"/><path d="M12 8h8M8 12v8M24 12v8M12 24h8M13 13l6 6"/>' },
   { id: 'analytic', label: 'Analytic Model', chapter: 7, text: 'The model SAP Analytics Cloud consumes: measures, dimensions, variables, built on a fact.',
     icon: '<path d="M16 3l11 6.3v13.4L16 29 5 22.7V9.3z"/><path d="M5 9.3l11 6.4 11-6.4M16 15.7V29"/><path d="M10.5 6.2l11 6.3"/>' },
-  { id: 'dataflow', label: 'Data Flow', text: 'An ETL process on a canvas: sources, operators such as join, union, projection, aggregation and Python script, and a target table. This game uses replication and transformation flows instead.',
+  { id: 'dataflow', label: 'Data Flow', chapter: 12, text: 'An ETL process on a canvas: sources, operators such as join, union, projection, aggregation and Python script, and a target table with mode Append, Truncate or Delete. You build one in the excursions.',
     icon: '<rect x="4" y="9" width="17" height="15" rx="2.5"/><path d="M8 18l3-3 3 3 3-3"/><circle cx="23" cy="10" r="6"/><path d="M23 7v3l2 1.5"/>' },
   { id: 'replication', label: 'Replication Flow', chapter: 3, text: 'Copies objects from a source connection into local tables: once (Initial Only) or once and then by delta (Initial and Delta). Filters and extra columns, no complex logic.',
     icon: '<rect x="4" y="5" width="24" height="5" rx="2"/><rect x="4" y="13.5" width="24" height="5" rx="2"/><rect x="4" y="22" width="24" height="5" rx="2"/><path d="M10 10v3.5M22 18.5V22"/>' },

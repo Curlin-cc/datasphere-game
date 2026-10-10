@@ -3,6 +3,7 @@ import { isShared } from './tenant';
 import { findObject, objectKey, type RepoObject } from './repo';
 import { addRun, runFlow, lockError, createRemoteView, countRows, type Run, type StepResult } from './integration';
 import { persistView, persistError } from './perf';
+import { runDataFlow } from './dataflow';
 
 /**
  * Task chains (chapter 10, Handbuch 6.8, 10.3.6, 10.5): several integration tasks run as one unit, in a fixed order,
@@ -14,7 +15,7 @@ import { persistView, persistError } from './perf';
  * branches with ALL/ANY are explained, not simulated. A failed step stops the chain; the rest is not run.
  */
 
-export type StepType = 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain';
+export type StepType = 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain' | 'Data Flow';
 
 export interface ChainStep {
   /** SPACE.NAME of the object. */
@@ -34,7 +35,8 @@ const stepTypeOf = (o: RepoObject): StepType | null =>
   o.kind === 'Replication Flow' ? 'Replication Flow'
     : o.kind === 'SQL View' ? 'View Persistence'
       : o.kind === 'Remote Table' ? 'Remote Table Replication'
-        : o.kind === 'Task Chain' ? 'Task Chain' : null;
+        : o.kind === 'Task Chain' ? 'Task Chain'
+          : o.kind === 'Data Flow' ? 'Data Flow' : null;
 
 /** Objects that can be added as a step to a chain of this space (deployed; chains also when shared with the space). */
 export function stepCandidates(t: TenantState, space: string, self?: string): { o: RepoObject; type: StepType }[] {
@@ -105,6 +107,11 @@ async function runStep(t: TenantState, step: ChainStep, depth: number): Promise<
     const status = r.status === 'Failed' ? 'Failed' : 'Completed';
     return { ...base, status, records: r.records, ms: r.ms, runId: r.id, message: r.messages[r.messages.length - 1] ?? '' };
   }
+  if (step.type === 'Data Flow') {
+    const r = await runDataFlow(t, o);
+    r.ms = durationOf(r.records * 6);
+    return { ...base, status: r.status === 'Failed' ? 'Failed' : 'Completed', records: r.records, ms: r.ms, runId: r.id, message: r.messages[r.messages.length - 1] ?? '' };
+  }
   if (step.type === 'View Persistence') {
     const res = await persistView(t, o, 'Task Chain');
     const r = t.runs.find((x) => x.object === step.object);
@@ -167,7 +174,7 @@ export async function runChain(t: TenantState, o: RepoObject, trigger: 'Manual' 
 export const mailedOnFailure = (r?: Run) => !!r?.messages.some((m) => m.startsWith('Email sent to') && m.endsWith('failed.'));
 
 const KEY = /^[A-Z0-9_]{1,20}\.[A-Z_][A-Z0-9_]{0,49}$/;
-const TYPES: StepType[] = ['Replication Flow', 'View Persistence', 'Remote Table Replication', 'Task Chain'];
+const TYPES: StepType[] = ['Replication Flow', 'View Persistence', 'Remote Table Replication', 'Task Chain', 'Data Flow'];
 
 export function sanitizeChain(d: unknown): ChainDef | undefined {
   if (!d || typeof d !== 'object') return undefined;

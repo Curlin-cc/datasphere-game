@@ -159,7 +159,7 @@ export interface Run {
   id: string;
   /** SPACE.NAME of the flow or remote table. */
   object: string;
-  kind: 'Replication Flow' | 'Remote Table' | 'View' | 'Task Chain';
+  kind: 'Replication Flow' | 'Remote Table' | 'View' | 'Task Chain' | 'Data Flow';
   start: string;
   status: 'Completed' | 'Running' | 'Failed';
   records: number;
@@ -173,7 +173,7 @@ export interface Run {
 /** One step of a task chain run. */
 export interface StepResult {
   object: string;
-  type: 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain';
+  type: 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain' | 'Data Flow';
   status: 'Completed' | 'Failed' | 'Not Run';
   records: number;
   ms: number;

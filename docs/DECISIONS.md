@@ -111,3 +111,5 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 | 2026-10-08 | SQL statt Drag & Drop | Weniger Aufwand, mehr Lerneffekt |
 | 2026-10-08 | Fact-Views + Analytic Model als Standard, Business Builder nur Exkurs | SAP-Empfehlung, Analytical Dataset und Business-Builder-Objekte abgelöst (Business Builder im Tenant als „Deprecated“ betitelt, Bild 8) |
 | 2026-10-09 | c05-m01: Mapping-Tabelle als gleichwertiger zweiter Weg neben CASE; Kachel *New Table* ab Kapitel 5 | Lokale Tabellen gibt es seit Kapitel 8; geprüft wird nur die deployte View, beide Wege liefern dieselben Zeilen. Tutorial bleibt bei CASE, Mapping-Weg über Intro-Schritt und Hinweis 4 |
+| 2026-10-10 | Data Flows als feste Knotenreihe statt freiem Canvas; Union und Script nur erklärt; Ziel nur lokale Tabellen des eigenen Space, Spalten nach Namen zugeordnet, max. 500 Zeilen im Spielstand | Lernziel sind Operatoren und Zielmodi, nicht Drag & Drop; kein Screenshot des echten Editors vorhanden |
+| 2026-10-10 | Lokale Tabellen: Decimal = `DECIMAL(18,3)` statt `(15,2)` | kWh-Summen haben drei Nachkommastellen; Rundung auf zwei Stellen ließ Ergebnisprüfungen an der Toleranzgrenze scheitern |

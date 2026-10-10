@@ -29,4 +29,5 @@ Kapitel 12 OData: `chapter12_odata.py` (Start wie Kapitel 12, m01–m07 gelöst)
 Alle auf einmal: `bash run_all.sh <ordner> [skript …]` (eine Zeile je Skript, Exit-Code 1 bei Traceback oder Seitenfehler).
 Kapitel 12 Content Network: `chapter12_onb.py` (m01–m08 gelöst): Partnerpaket (Lizenz), Sample (läuft), Utilities-Paket per Hands-on-Tutorial, Import-Log, Repository Explorer, Re-Import ohne Overwrite, Reload.
 Design Exkurse: `look_exc.py <ordner> [dark] [1366x768]` fotografiert Semantic Onboarding, App Integration, Security-Seiten, Versionen, Settings und misst seitlichen Überlauf.
+Kapitel 12 Data Flow: `chapter12_df.py` (m01–m09 gelöst): ohne Aggregation + Append (Zeilenlimit), Append doppelt, dann Truncate; Reload, Monitor; zweiter Lauf mit Hands-on-Tutorial.
 Kapitel 5 Mapping-Tabelle: `chapter5_map.py` löst c05-m01 über `RHN_HA_T_CODE_MAP` (New Table, Data Editor) statt CASE: inner Join, ohne COALESCE, dann richtig, mit Reload.

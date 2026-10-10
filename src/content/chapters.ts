@@ -312,6 +312,12 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Analytic model > Measures > Count Distinct.',
   },
   {
+    term: 'Data flow',
+    chapter: 12,
+    text: 'An ETL process: reads sources, transforms rows with operators (join, projection, aggregation, union, Python script) and writes one target table with mode Append (add), Truncate (replace) or Delete (remove by key). Stored result, as fresh as the last run.',
+    realTenant: 'Data Builder > New Data Flow; runs in the Data Integration Monitor › Flows (Handbuch 6.7.1).',
+  },
+  {
     term: 'Content Network',
     chapter: 12,
     text: 'Where SAP and partners publish business content and samples: packages with their own space, remote tables, views and models for an industry. Imported through Semantic Onboarding; connections and data are not part of a package.',

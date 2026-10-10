@@ -19,7 +19,7 @@ export interface TableDef {
   rows: string[][];
 }
 
-const SQL_TYPE: Record<ColType, string> = { String: 'VARCHAR', Integer: 'INTEGER', Decimal: 'DECIMAL(15,2)', Date: 'DATE' };
+const SQL_TYPE: Record<ColType, string> = { String: 'VARCHAR', Integer: 'INTEGER', Decimal: 'DECIMAL(18,3)', Date: 'DATE' };
 const NAME = /^[A-Z_][A-Z0-9_]{0,49}$/;
 
 export const emptyTable = (): TableDef => ({ columns: [{ name: 'ID', type: 'String', key: true }], rows: [] });

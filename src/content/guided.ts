@@ -737,6 +737,14 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
   ],
+  'c12-m10': [
+    {
+      title: 'Data flows',
+      body: `<p>A <b>data flow</b> reads sources, transforms the rows with operators (join, projection, aggregation, union, script) and writes them
+        into one <b>target table</b>. Unlike a view, the result is stored: it is as fresh as the last run.</p>
+        <p>The target <b>mode</b> decides what a run does with the rows already there: <b>Append</b> adds, <b>Truncate</b> replaces, <b>Delete</b> removes by key.</p>`,
+    },
+  ],
   'c12-m09': [
     {
       title: 'Content from the Content Network',
@@ -2851,6 +2859,69 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m10': [
+    [
+      {
+        title: 'New Data Flow',
+        view: 'builder:landing:RHN_REP',
+        target: '[data-new="dataflow"]',
+        body: `<p>Data flows belong to a space; Sabine's table lives in reporting.</p>`,
+        action: { do: 'Click <b>Data Flow</b>.', appear: '#df-canvas' },
+      },
+      {
+        title: 'The canvas',
+        target: '#df-canvas',
+        body: `<p>Each box is a node: source, join, projection, aggregation, target. Dashed boxes are not used yet. Click a box to set it up on the right.</p>`,
+      },
+      {
+        title: 'Source',
+        target: '#properties',
+        body: `<p>The harmonized readings are shared with RHN_REP since chapter 6.</p>`,
+        action: { do: 'Choose <b>RHN_HARM.RHN_HA_V_METER_READINGS</b> as source.', event: '^df-source:RHN_HARM\\.RHN_HA_V_METER_READINGS$' },
+      },
+      {
+        title: 'Join',
+        target: '[data-node="join"]',
+        body: `<p>The grid area is on the contract. Add a join with the contracts view, CONTRACT_ID on both sides.</p>`,
+        action: { do: 'Open <b>Join</b>, add it and choose <b>RHN_HARM.RHN_HA_V_CONTRACTS</b>.', event: '^df-join:RHN_HARM\\.RHN_HA_V_CONTRACTS$' },
+      },
+    ],
+    [
+      {
+        title: 'Projection',
+        target: '[data-node="projection"]',
+        body: `<p>Three columns: the month as text (<code>strftime(a.READING_DATE, '%Y-%m')</code>), <code>b.GRID_AREA</code> and <code>a.CONSUMPTION_KWH</code>. The SQL below the canvas follows every change.</p>`,
+        action: { do: 'Open <b>Projection</b> and add the three columns.', check: () => (document.querySelectorAll('[data-col-name]').length >= 3) },
+      },
+      {
+        title: 'Aggregation',
+        target: '[data-node="aggregation"]',
+        body: `<p>Columns without a function are the groups; CONSUMPTION_KWH gets SUM.</p>`,
+        action: { do: 'Add the <b>Aggregation</b> and set SUM for CONSUMPTION_KWH.', check: () => !!document.querySelector('[data-agg="CONSUMPTION_KWH"]') && (document.querySelector('[data-agg="CONSUMPTION_KWH"]') as HTMLSelectElement).value === 'SUM' },
+      },
+      {
+        title: 'Target and mode',
+        target: '[data-node="target"]',
+        body: `<p>A new name creates the table on the first run. Read what each mode does with the rows of last night.</p>`,
+        action: { do: 'Name the target <b>RHN_REP_T_MONTHLY_CONSUMPTION</b> and choose a mode.', event: '^df-mode:' },
+      },
+    ],
+    [
+      {
+        title: 'Name, save, deploy',
+        target: '#ed-deploy',
+        body: `<p>The flow's own names are under <b>‹ Data flow properties</b> on the right: technical name <code>RHN_REP_DF_MONTHLY</code>.</p>`,
+        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_DF_MONTHLY$' },
+      },
+      {
+        title: 'Two nights',
+        target: '#df-run',
+        body: `<p>Run it, then run it again, as two nights would. Compare the row counts in the run messages.</p>`,
+        action: { do: 'Press <b>Run</b> twice.', check: () => (document.querySelectorAll('#df-runs li').length >= 2) },
+      },
+    ],
+    questions('Append adds what the run delivers. When is adding exactly right?'),
   ],
   'c12-m09': [
     [

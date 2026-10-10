@@ -24,6 +24,14 @@ const SABINE = { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' }
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 
 const D_TARIFF = 'RHN_REP.RHN_REP_D_TARIFF';
+const DF_MONTHLY = 'RHN_REP.RHN_REP_DF_MONTHLY';
+const T_MONTHLY = 'RHN_REP.RHN_REP_T_MONTHLY_CONSUMPTION';
+const MONTHLY_COLS = ['READING_MONTH', 'GRID_AREA', 'CONSUMPTION_KWH'];
+/** One row per month and grid area (c12-m10), from the deployed harmonized views the flow reads (they passed chapter 5). */
+const READINGS_X_CONTRACTS = `SELECT r.READING_DATE, c.GRID_AREA, r.CONSUMPTION_KWH
+  FROM RHN_HARM.RHN_HA_V_METER_READINGS r JOIN RHN_HARM.RHN_HA_V_CONTRACTS c ON r.CONTRACT_ID = c.CONTRACT_ID`;
+const REF_MONTHLY = `SELECT strftime(READING_DATE, '%Y-%m') AS READING_MONTH, GRID_AREA, SUM(CONSUMPTION_KWH) AS CONSUMPTION_KWH
+  FROM (${READINGS_X_CONTRACTS}) f GROUP BY 1, 2`;
 const CONTRACTS = 'RHN_HARM.RHN_HA_V_CONTRACTS';
 const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
 export const IN_PKG = 'RHN_IN_PKG_INBOUND';
@@ -672,5 +680,74 @@ export const CHAPTER_12: Mission[] = [
     debrief: `<p>Good: five objects we did not have to build, in a space of their own, and we know exactly what is missing to run them.</p>
       <p><i>Calin adds:</i> I will compare their billing fact with ours. Where SAP models something better, we copy the idea into our own spaces;
       we do not build our reports on top of content that a re-import could overwrite.</p>`,
+  },
+  {
+    id: 'c12-m10',
+    chapter: 12,
+    title: 'A table for Excel',
+    from: { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' },
+    ticket: `<p>Sabine again. For the yearly audit I compare our consumption with the grid operator's figures in Excel, every month.
+      I need a plain <b>table</b>, not a model: <code>RHN_REP_T_MONTHLY_CONSUMPTION</code> with <code>READING_MONTH</code> (text YYYY-MM),
+      <code>GRID_AREA</code> and <code>CONSUMPTION_KWH</code> (sum), one row per month and grid area.</p>
+      <p><i>Calin adds:</i> A table that gets filled is a job for a <b>data flow</b>: <code>RHN_REP_DF_MONTHLY</code> in <code>RHN_REP</code>, reading the
+      harmonized readings joined with the contracts, aggregating, and writing the target. It will run every night. Run it at least twice before you
+      tell Sabine it is ready: the numbers must be the same after the second night.</p>`,
+    tasks: [
+      'In <code>RHN_REP</code>, create a <b>New Data Flow</b>: source <code>RHN_HA_V_METER_READINGS</code>, join <code>RHN_HA_V_CONTRACTS</code> on <code>CONTRACT_ID</code>.',
+      'Projection: <code>READING_MONTH</code>, <code>GRID_AREA</code>, <code>CONSUMPTION_KWH</code>; Aggregation: sum of the kWh. Target <code>RHN_REP_T_MONTHLY_CONSUMPTION</code> with the right mode.',
+      'Name it <code>RHN_REP_DF_MONTHLY</code>, save, deploy, and <b>Run</b> it twice.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'New Data Flow is a tile of the Data Builder in RHN_REP. Click the nodes of the canvas to set them up; the SQL below shows what the flow runs.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Every night the flow delivers the complete result again. Which target mode makes the second run replace the first instead of adding to it?' },
+    ],
+    checks: [
+      {
+        type: 'rule', label: 'The data flow', ok: 'RHN_REP_DF_MONTHLY is deployed and writes RHN_REP_T_MONTHLY_CONSUMPTION with mode Truncate.',
+        test: ({ tenant }) => {
+          const f = findObject(tenant, DF_MONTHLY);
+          if (!f) return 'There is no data flow RHN_REP_DF_MONTHLY in RHN_REP yet.';
+          const d = f.deployed?.dataflow;
+          if (!d) return 'RHN_REP_DF_MONTHLY is not deployed.';
+          if (f.status === 'changes') return 'RHN_REP_DF_MONTHLY has saved changes that are not deployed.';
+          if (d.target.table !== 'RHN_REP_T_MONTHLY_CONSUMPTION') return `The flow writes ${d.target.table}; Sabine needs RHN_REP_T_MONTHLY_CONSUMPTION.`;
+          if (d.target.mode === 'Append') return 'Mode Append: every night adds the complete result again, and the second night doubles every month. The flow delivers everything each time: Truncate.';
+          if (d.target.mode === 'Delete') return 'Mode Delete removes rows from the target; it does not load. The flow delivers everything each time: Truncate.';
+          return null;
+        },
+      },
+      {
+        type: 'rule', label: 'Two nights', ok: 'The flow ran twice without errors.',
+        test: ({ tenant }) => (tenant.runs.filter((r) => r.object === DF_MONTHLY && r.status === 'Completed').length >= 2 ? null
+          : 'Run the deployed flow twice (button Run in its editor, or in the Data Integration Monitor › Flows), as two nights would.'),
+      },
+      {
+        type: 'result', label: 'The table for Excel', object: T_MONTHLY, columns: MONTHLY_COLS, expected: REF_MONTHLY,
+        counts: { 116: 'Every month is in the table twice: the runs added up. Switch the target to Truncate, deploy and run again.' },
+        diagnose: [
+          { sql: `${REF_MONTHLY} UNION ALL ${REF_MONTHLY}`, message: 'Every month is in the table twice: the runs added up. Switch the target to Truncate, deploy and run again.' },
+          { sql: `SELECT strftime(READING_DATE, '%Y-%m') AS READING_MONTH, GRID_AREA, CONSUMPTION_KWH FROM (${READINGS_X_CONTRACTS}) f`, message: 'One row per reading: the aggregation is missing. Sum CONSUMPTION_KWH per month and grid area.' },
+        ],
+      },
+      {
+        type: 'question', id: 'append', label: 'When Append is right',
+        prompt: 'When would Append be the right mode for a flow like this?',
+        options: [
+          'Never; Truncate is always safer',
+          'When each run delivers only new rows, for example only last month, so the table grows by one month per run',
+          'When the target table has no key',
+          'When the flow has an aggregation',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Append adds what the run delivers. When is adding exactly right?',
+      },
+    ],
+    xp: 50,
+    realTenant: `In a real tenant: Data Builder › New Data Flow, drag the sources onto the canvas, connect Join, Projection and Aggregation, and a target
+      table with mode Append, Truncate or Delete (Handbuch 6.7.1). Deploy, then Run or schedule it; runs are in the Data Integration Monitor.
+      The game shows the canvas as a fixed row of nodes, and Union and Script only explain themselves.`,
+    debrief: `<p>Same numbers after two nights, one row per month and grid area. That goes straight into my audit workbook.</p>
+      <p><i>Calin adds:</i> Put the flow into a task chain of RHN_REP after the nightly load, and Sabine's table is always one day old at most.</p>`,
   },
 ];

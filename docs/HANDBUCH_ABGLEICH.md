@@ -76,6 +76,10 @@ deployten Version und Restore im Editor über *Versions*. Nur SQL Views, letzte 
 lesen, danach Verbindungen ergänzen (8.6.2 Schritt 167). Paketnamen, CDS-Namen und die Optionen Overwrite/Deploy sind erfunden bzw. vereinfacht
 (8.6.2: Importoptionen „nicht verifiziert“). Import Entities aus SAP-Systemen (5.7) ist nur erklärt.
 
+**Data Flow (c12-m10, Handbuch 6.7.1, ergänzt am 10.10.2026):** Quelle, Join, Projektion (Spalten als SQL-Ausdruck, Filter), Aggregation, Ziel
+mit Append/Truncate/Delete und neuer Zieltabelle. Vereinfacht: feste Knotenreihe statt Canvas, Union und Python-Script nur erklärt, Upsert bei Append
+nicht gespielt, Zeitplan nur über Task Chains.
+
 ## Was Kapitel 3 aus dem Handbuch umsetzt
 
 - Connection gehört genau einem Space, entsteht aus einem Typ; Validate zeigt verfügbare Features (5.1, 5.4.3, 5.4.4)
