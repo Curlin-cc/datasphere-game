@@ -93,10 +93,10 @@ export async function checkMission(mission: Mission, input: CheckInput): Promise
 
 // ---------------------------------------------------------------- result
 
-async function checkResult(check: ResultCheck, player: QueryResult, named = false): Promise<CheckOutcome> {
+async function checkResult(check: ResultCheck, player: QueryResult, named = false, table?: string): Promise<CheckOutcome> {
   const tol = check.tolerance ?? 0.01;
   const refs = Array.isArray(check.expected) ? check.expected : [check.expected];
-  const subject = named ? 'Your view' : 'Your query';
+  const subject = table ?? (named ? 'Your view' : 'Your query');
   let best: Comparison | null = null;
   for (const sql of refs) {
     const cmp = compare(player, await runSql(sql), !!check.ordered, tol, named, subject);
@@ -137,7 +137,7 @@ async function checkObject(check: ResultCheck, tenant: TenantState): Promise<Che
   } catch (err) {
     return fail(`${name} does not run any more: ${err instanceof Error ? err.message : String(err)}`);
   }
-  return checkResult(check, player, true);
+  return checkResult(check, player, true, o.kind === 'Local Table' ? `Table ${name}` : undefined);
 }
 
 interface Comparison {
@@ -164,8 +164,9 @@ function compare(player: QueryResult, expected: QueryResult, ordered: boolean, t
     return {
       match: false,
       score: 1,
-      reason: `${subject} returns ${pr} ${pr === 1 ? 'row' : 'rows'}, the ticket needs ${er}. ${
-        more ? 'You have too many rows: check your filter (WHERE), your grouping (GROUP BY) or a LIMIT.' : 'Rows are missing: check your filter (WHERE) or your joins.'
+      reason: `${subject} ${subject.startsWith('Your') ? 'returns' : 'holds'} ${pr} ${pr === 1 ? 'row' : 'rows'}, the ticket needs ${er}. ${
+        !subject.startsWith('Your') ? `${more ? 'It has too many rows' : 'Rows are missing'}: look at how the table is loaded and when it last ran.`
+          : more ? 'You have too many rows: check your filter (WHERE), your grouping (GROUP BY) or a LIMIT.' : 'Rows are missing: check your filter (WHERE) or your joins.'
       }`,
     };
   }

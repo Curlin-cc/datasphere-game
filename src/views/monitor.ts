@@ -555,6 +555,8 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
         <div class="toolbar">
           <button class="btn small primary" type="button" id="flow-run">Run</button>
           <button class="btn small" type="button" id="flow-schedule" ${sel.kind !== 'Replication Flow' ? 'disabled title="In the game, data and transformation flows run on a schedule as a step of a task chain"' : ''}>Schedule</button>
+          ${sel.kind === 'Transformation Flow' && sel.deployed?.transform?.loadType === 'Initial and Delta'
+            ? `<button class="btn small" type="button" id="flow-reset" ${sel.tfPointer === undefined ? 'disabled title="The next run is an initial load already"' : 'title="The next run loads everything again (initial load), then delta continues"'}>Reset Delta</button>` : ''}
         </div></div>
       <div class="runs-layout">
         <table class="grid" id="run-list"><thead><tr><th>Runs</th><th>Status</th><th>Records</th></tr></thead>
@@ -583,6 +585,14 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
     if (!sel) return;
     const r = sel.kind === 'Data Flow' ? await startDataFlowRun(sel) : sel.kind === 'Transformation Flow' ? await startTransformRun(sel) : await startFlowRun(sel);
     if (r) selectedRun = r.id;
+    redraw();
+  });
+  host.querySelector('#flow-reset')?.addEventListener('click', () => {
+    if (!sel) return;
+    sel.tfPointer = undefined;
+    ctx.track(`tf-reset:${objectKey(sel)}`);
+    ctx.save();
+    toast(`Delta of ${sel.name} reset: the next run is an initial load.`, 'ok');
     redraw();
   });
   host.querySelector('#flow-schedule')?.addEventListener('click', () =>

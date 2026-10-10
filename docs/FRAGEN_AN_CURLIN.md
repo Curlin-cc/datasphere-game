@@ -25,7 +25,7 @@
 - [ ] Semantic Onboarding › Content Network: Wie sieht die Paketliste und der Import-Dialog aus (Optionen Overwrite/Deploy?), wohin führt „Open Import Logs“? Legt ein Business-Content-Paket eigene Spaces an? Screenshots wären ideal
 - [ ] Data Flow (Handbuch 6.7.1): Screenshot des Editors (Canvas, Operatoren, Ziel-Eigenschaften); heißen die Modi Append / Truncate / Delete?
 - [ ] Delta Capture (Handbuch 6.4.2): Wo sitzt der Schalter im Tabellen-Editor, und lässt er sich nach dem Deploy wieder **abschalten**? Welche Werte zeigt **Change_Type** (I/U/D oder andere)? Screenshot der Tabelle mit Delta Capture wäre ideal
-- [ ] Transformation Flow (Handbuch 6.7.3): Screenshot des Editors (View Transform, Target Table, Eigenschaften). Was macht **Initial Only** bei jedem Lauf mit dem Ziel (ersetzen oder anhängen)? Wie heißt die Aktion zum **Zurücksetzen des Delta** im Monitor? Darf die Delta-Quelle eine **geteilte Tabelle eines anderen Space** sein (Spiel: ja)?
+- [ ] Transformation Flow (Handbuch 6.7.3): Screenshot des Editors (View Transform, Target Table, Eigenschaften). Was macht **Initial Only** bei jedem Lauf mit dem Ziel (ersetzen oder anhängen)? Wie heißt die Aktion zum **Zurücksetzen des Delta** im Monitor (Spiel: *Reset Delta* in Monitor › Flows, c12-m12)? Darf die Delta-Quelle eine **geteilte Tabelle eines anderen Space** sein (Spiel: ja)?
 - [ ] Standardrollen: welche Rollen-Vorlagen gibt es im Tenant wirklich (Handbuch belegt nur DW Administrator, DW Viewer, Catalog User)?
 
 ## Erledigt

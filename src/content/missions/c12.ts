@@ -10,6 +10,7 @@ import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
 import { exec, runSql } from '../../db';
 import { tableStatements } from '../../localtable';
 import { isDeltaRun } from '../../transformflow';
+import { ensureInbound } from './c10';
 
 /**
  * Chapter 12, Excursions (Handbuch 12, 11, 8, 7): four short side trips after the main game, one per app the main game
@@ -45,6 +46,10 @@ const REF_PAYMENTS = `SELECT p.PAYMENT_ID, p.INVOICE_ID, i.CONTRACT_ID, p.PAID_O
   FROM RHN_IN.RHN_IN_T_PAYMENTS p JOIN RHN_HARM.RHN_HA_V_INVOICES i ON p.INVOICE_ID = i.INVOICE_ID`;
 /** Today's bank message (c12-m11): one new payment, one corrected amount, one returned direct debit. */
 export const BANK = { add: ['PAY-0096', 'INV-4000080', '2026-07-15', '874.39'], fix: ['PAY-0012', '286.38'], drop: 'PAY-0007' };
+/** c12-m12: the nightly chain of the harmonization layer, and today's new payment after Tim's clean-up. */
+const NIGHTLY = 'RHN_HARM.RHN_HARM_TC_NIGHTLY';
+export const NEW_PAYMENT = ['PAY-0097', 'INV-4000172', '2026-07-16', '994.69'];
+const LOST_DAY = '2026-02-12';
 const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
 export const IN_PKG = 'RHN_IN_PKG_INBOUND';
 export const HARM_PKG = 'RHN_HARM_PKG_HARMONIZED';
@@ -894,5 +899,125 @@ export const CHAPTER_12: Mission[] = [
       the target, and a changed flow starts over with an initial load.`,
     debrief: `<p>95 payments, the returned direct debit is gone and the partial payment shows the right amount. The second run touched three keys, not all of them.</p>
       <p><i>Calin adds:</i> Add the flow to the nightly chain of RHN_HARM after the inbound load. When the table holds a hundred thousand payments, the night still processes only the day's changes.</p>`,
+  },
+  {
+    id: 'c12-m12',
+    chapter: 12,
+    title: 'The night shift',
+    from: { name: 'Lena Hoffmann', role: 'Integration Engineer', initials: 'LH' },
+    ticket: `<p>Petra's cash report is short this morning: <code>RHN_HA_T_PAYMENTS</code> lacks all payments of 12 February. Tim tested something in the
+      Data Editor of the target table yesterday and deleted that day. The delta run of the flow brings in today's new payment, but not the lost ones.</p>
+      <p>Please repair the table, and make sure the flow runs every night: it should be a step of our nightly chain <code>RHN_HARM_TC_NIGHTLY</code>
+      (I get the failure emails).</p>
+      <p><i>Calin adds:</i> A delta only carries what changed in the <b>source</b>. Nothing changed there; the target was damaged. In the Data Integration Monitor
+      you can <b>reset the delta</b> of a transformation flow: the next run is an initial load again, and the delta continues from there.</p>`,
+    tasks: [
+      'In the <b>Data Integration Monitor › Flows</b> of <code>RHN_HARM</code>, select <code>RHN_HA_TF_PAYMENTS</code>, press <b>Reset Delta</b> and <b>Run</b> it.',
+      'Open <code>RHN_HARM_TC_NIGHTLY</code>, add <code>RHN_HA_TF_PAYMENTS</code> as its last step and deploy the chain.',
+      '<b>Run</b> the chain once, as tonight would.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Monitoring › Data Integration › Flows, space RHN_HARM: the flow\'s detail has Run and Reset Delta. The chain is a Task Chain of RHN_HARM in the Data Builder; Add Step lists transformation flows too.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'A delta run reads the change records of the source since the last run. The lost rows never changed in the source, so only a full read brings them back: reset, then run.' },
+    ],
+    setup: (t) => {
+      ensureInbound(t);
+      const target = findObject(t, T_PAYMENTS);
+      const src = findObject(t, PAYMENTS);
+      const flow = findObject(t, TF_PAYMENTS);
+      if (!target?.table || !src?.table || !src.deployed?.table?.deltaCapture || !flow?.deployed) return;
+      // Tim's clean-up in the target: the payments of one day are gone.
+      const iPaid = target.table.columns.findIndex((c) => c.name === 'PAID_ON');
+      if (iPaid >= 0) {
+        target.table.rows = target.table.rows.filter((r) => r[iPaid] !== LOST_DAY);
+        if (target.deployed?.table) target.deployed.table.rows = target.table.rows.map((r) => [...r]);
+      }
+      // Today's bank message: one new payment, recorded by Delta Capture.
+      if (!src.table.rows.some((r) => r[0] === NEW_PAYMENT[0])) {
+        src.table.rows.push([...NEW_PAYMENT]);
+        src.deployed.table.rows.push([...NEW_PAYMENT]);
+        const log = (src.deltaLog ??= []);
+        log.push({ seq: (log.at(-1)?.seq ?? 0) + 1, type: 'I', at: new Date().toISOString(), row: [...NEW_PAYMENT] });
+      }
+      // The flow had already done its initial load (c12-m11); if not, the next run is the initial load anyway.
+      if (flow.tfPointer === undefined) flow.tfPointer = Math.max(0, ...(src.deltaLog ?? []).slice(0, -1).map((r) => r.seq));
+    },
+    setupAsync: async (t) => {
+      for (const key of [PAYMENTS, T_PAYMENTS]) {
+        const o = findObject(t, key);
+        if (o?.deployed?.table) for (const stmt of tableStatements(o.space, o.name, o.deployed.table)) await exec(stmt);
+      }
+    },
+    checks: [
+      {
+        type: 'rule', label: 'All payments are back', ok: 'RHN_HA_T_PAYMENTS holds every payment of the source again.',
+        test: ({ tenant }) => {
+          const src = findObject(tenant, PAYMENTS)?.deployed?.table?.rows ?? [];
+          const tgt = findObject(tenant, T_PAYMENTS)?.deployed?.table?.rows;
+          if (!tgt) return 'RHN_HA_T_PAYMENTS is missing in RHN_HARM. Solve "Only what changed" first.';
+          const have = new Set(tgt.map((r) => r[0]));
+          const missing = src.filter((r) => !have.has(r[0])).length;
+          if (!missing) return null;
+          return missing === 1 && !have.has(NEW_PAYMENT[0])
+            ? `Today's payment ${NEW_PAYMENT[0]} is not in the target yet. Run the flow.`
+            : `${missing} payments are still missing in RHN_HA_T_PAYMENTS. A delta run only brings what changed in the source; reset the delta, then run.`;
+        },
+      },
+      {
+        type: 'rule', label: 'Reset, not rebuilt', ok: 'The delta was reset in the monitor, and the next run was an initial load.',
+        test: ({ tenant, events }) => {
+          if (![...events].some((e) => e === `tf-reset:${TF_PAYMENTS}`)) return 'Reset the delta of RHN_HA_TF_PAYMENTS in the Data Integration Monitor › Flows (RHN_HARM), then run it.';
+          const f = findObject(tenant, TF_PAYMENTS);
+          if (f?.deployed?.transform?.loadType !== 'Initial and Delta') return 'RHN_HA_TF_PAYMENTS no longer loads by delta. Keep Initial and Delta: tonight should process the changes only.';
+          return tenant.runs.some((r) => r.object === TF_PAYMENTS && r.status === 'Completed' && r.messages[0]?.startsWith('Initial load'))
+            ? null : 'After the reset, run the flow (or the chain): that run is the initial load.';
+        },
+      },
+      {
+        type: 'rule', label: 'A step of the night', ok: 'RHN_HARM_TC_NIGHTLY runs the flow, deployed.',
+        test: ({ tenant }) => {
+          const c = findObject(tenant, NIGHTLY);
+          if (!c) return 'RHN_HARM_TC_NIGHTLY is missing in RHN_HARM.';
+          if (!c.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'Add RHN_HA_TF_PAYMENTS as a step of RHN_HARM_TC_NIGHTLY (Add Step › Transformation Flow).';
+          if (!c.deployed?.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'The step is saved but the chain is not deployed. Deploy RHN_HARM_TC_NIGHTLY.';
+          if (c.status === 'changes') return 'RHN_HARM_TC_NIGHTLY has saved changes that are not deployed.';
+          const steps = c.deployed.chain.steps;
+          if (steps[steps.length - 1]?.object !== TF_PAYMENTS) return 'Put the flow at the end of the chain: the steps before it load the inbound data of the night.';
+          return null;
+        },
+      },
+      {
+        type: 'rule', label: 'The chain ran', ok: 'The chain ran with the flow as a step, without errors.',
+        test: ({ tenant }) => {
+          const r = tenant.runs.find((x) => x.object === NIGHTLY && x.status !== 'Running');
+          const step = r?.steps?.find((s) => s.object === TF_PAYMENTS);
+          if (!r || !step) return 'Run RHN_HARM_TC_NIGHTLY once after deploying it with the new step.';
+          if (r.status === 'Failed') return `The last run of RHN_HARM_TC_NIGHTLY failed: ${r.steps?.find((s) => s.status === 'Failed')?.message ?? 'see the Task Chains monitor'}.`;
+          return step.status === 'Completed' ? null : 'The flow step did not complete. Open the run in the Task Chains monitor.';
+        },
+      },
+      {
+        type: 'result', label: 'The payments in harmonization', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
+      },
+      {
+        type: 'question', id: 'why-reset', label: 'Why the delta did not repair it',
+        prompt: 'Why did the delta run of the morning bring PAY-0097 but not the payments Tim deleted?',
+        options: [
+          'Delta runs ignore deletions',
+          'The delta reads the change records of the source; the lost payments never changed in the source, only the target was damaged',
+          'The delta pointer was broken by Tim and had to be repaired',
+          'Delta runs process at most one change per night',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Where does a delta run look for changes, and where did Tim delete the rows?',
+      },
+    ],
+    xp: 50,
+    realTenant: `In a real tenant: Data Integration Monitor › Flows, select the transformation flow; the monitor lets you reset the delta so the next run loads
+      everything again (Handbuch 6.7.3, name of the action not verified; the game calls it Reset Delta). Task chains run transformation flows as steps (6.8);
+      the chain's schedule then runs the flow every night.`,
+    debrief: `<p>The report is complete again, and tonight the flow runs after the inbound load. If it fails, I get the email.</p>
+      <p><i>Calin adds:</i> Targets of a flow are no place for manual edits. If you need test data, copy the table; and if a target is damaged, a delta reset is the repair.</p>`,
   },
 ];

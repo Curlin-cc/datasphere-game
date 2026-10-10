@@ -744,6 +744,14 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
   ],
+  'c12-m12': [
+    {
+      title: 'When a delta cannot help',
+      body: `<p>A delta run reads the change records of the <b>source</b>. If the <b>target</b> is damaged while the source did not change, no delta brings the rows back.</p>
+        <p><b>Reset Delta</b> in the Data Integration Monitor makes the next run an initial load: it reads everything and replaces the target, then the delta continues.
+        After the repair, a step in the nightly task chain runs the flow every night.</p>`,
+    },
+  ],
   'c12-m11': [
     {
       title: 'Loading only what changed',
@@ -2875,6 +2883,59 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m12': [
+    [
+      {
+        title: 'The flows of RHN_HARM',
+        view: 'monitor:flows:RHN_HARM',
+        target: '#flow-list',
+        body: `<p>Deployed flows of the space with their last run. The transformation flow's last run was a delta.</p>`,
+        action: { do: 'Select <b>RHN_HA_TF_PAYMENTS</b>.', appear: '#flow-reset' },
+      },
+      {
+        title: 'Reset Delta',
+        target: '#flow-reset',
+        body: `<p>Only for flows with Initial and Delta. Nothing runs yet; the flow forgets how far it has read the delta table.</p>`,
+        action: { do: 'Press <b>Reset Delta</b>.', event: '^tf-reset:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+      },
+      {
+        title: 'Run',
+        target: '#flow-run',
+        body: `<p>This run is an initial load: every payment, including today's PAY-0097. Read its messages on the right.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+      },
+    ],
+    [
+      {
+        title: 'Open the nightly chain',
+        view: 'builder:landing:RHN_HARM',
+        target: '#object-list',
+        body: `<p>The chain from chapter 10: the CRM chain of RHN_IN, then two view persistences.</p>`,
+        action: { do: 'Open <b>RHN_HARM_TC_NIGHTLY</b>.', check: () => editorOf('RHN_HARM.RHN_HARM_TC_NIGHTLY') },
+      },
+      {
+        title: 'Add Step',
+        target: '#chain-add',
+        body: `<p>Transformation flows have their own group in the dialog. New steps go to the end.</p>`,
+        action: { do: 'Add <b>RHN_HA_TF_PAYMENTS</b>.', event: '^chain-add:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+      },
+      {
+        title: 'Deploy',
+        target: '#ed-deploy',
+        body: `<p>The schedule of the chain runs the deployed version.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+      },
+    ],
+    [
+      {
+        title: 'Run the chain',
+        target: '#chain-run',
+        body: `<p>As tonight would. The flow is the last step; after the reset and the initial load it reads only the changes.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
+      },
+    ],
+    questions('Where does a delta run look for changes, and where did Tim delete the rows?'),
   ],
   'c12-m11': [
     [

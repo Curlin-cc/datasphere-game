@@ -156,6 +156,7 @@ Spielbar (61 Missionen, Hauptspiel und Exkurse komplett):
   OData (c12-m08): `RHN_REP_D_GRID_AREA` freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200;
   Data Flow (c12-m10): `RHN_REP_DF_MONTHLY` (Ablesungen JOIN Verträge, Monat + Netzgebiet, SUM) schreibt `RHN_REP_T_MONTHLY_CONSUMPTION` mit Truncate, zweimal gelaufen;
   Transformation Flow (c12-m11): Delta Capture auf `RHN_IN_T_PAYMENTS` (95 Zahlungen, vom Setup angelegt und mit RHN_HARM geteilt), `RHN_HA_TF_PAYMENTS` (Initial and Delta, + CONTRACT_ID aus `RHN_HA_V_INVOICES`) → `RHN_HA_T_PAYMENTS`; Erstladung, Bankmeldung (PAY-0096 neu, PAY-0012 = 286.38, PAY-0007 gelöscht), Delta-Lauf mit 3 Schlüsseln;
+  Nachtlauf (c12-m12): Setup löscht die Zahlungen vom 12.02. im Ziel (Tims Test) und fügt PAY-0097 in der Quelle hinzu; Reset Delta im Data Integration Monitor › Flows, Lauf (Erstladung, 96 Zeilen), Flow als letzter Schritt in `RHN_HARM_TC_NIGHTLY`, Kette deployt und gelaufen;
   Content Network (c12-m09): Paket *Utilities – Billing Analysis* über Semantic Onboarding in eigenen Space `SAP_UTIL` importieren, Import-Log lesen (Verbindung `SAP_S4H` fehlt), Fact im Repository Explorer
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
@@ -180,4 +181,4 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
    Am Ende jeder Session danach fragen; Antworten einarbeiten
 2. Alle geplanten Exkurse sind gebaut, dazu Data Flows und Transformation Flow mit Delta (c12-m11). Mögliche weitere: E/R-Modell (6.6), Data Marketplace mit Lizenzschlüssel (8.3), Import Entities im Semantic Onboarding;
-   den Transformation Flow in die Nachtkette von RHN_HARM einbauen (Kettenschritt geht schon, Mission fehlt); „Delta zurücksetzen“ im Monitor (Handbuch 6.7.3, Bezeichnung nicht verifiziert)
+   Transformation Flow in der Nachtkette und Reset Delta sind seit c12-m12 gebaut

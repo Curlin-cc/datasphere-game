@@ -143,3 +143,7 @@ Zieltabelle, Ladearten *Initial Only* / *Initial and Delta*, Läufe im Data Inte
 Delta Capture an, Flow anlegen, Ziel + Ladeart, deployen, ausführen. Vereinfacht: nur SQL-Transform, eine Delta-Quelle je Flow, Werte von *Change_Type*
 (Handbuch nennt keine), Initial Only ersetzt das Ziel, Delta zurücksetzen nur erklärt (Bezeichnung „nicht verifiziert“), Python-Operator und Dateibereiche nur erklärt.
 
+**Reset Delta und Nachtkette (c12-m12, Handbuch 6.7.3, 6.8, ergänzt am 10.10.2026):** Das Handbuch nennt das Zurücksetzen des Delta-Zeigers über den Monitor
+(„Bezeichnung nicht verifiziert“); das Spiel nennt den Knopf *Reset Delta* im Data Integration Monitor › Flows. Der Transformation Flow läuft als Schritt der
+Nachtkette (6.8 nennt Transformationsflüsse als mögliche Aufgabe).
+
