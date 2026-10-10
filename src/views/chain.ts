@@ -29,6 +29,7 @@ const TYPE_TEXT: Record<StepType, string> = {
   'View Persistence': 'Persists the view: runs it and stores the result',
   'Remote Table Replication': 'Loads a new snapshot of the remote table',
   'Data Flow': 'Runs the data flow and writes its target table',
+  'Transformation Flow': 'Runs the transformation flow: the full load, or only the changes by delta',
   'Task Chain': 'Runs another task chain with all its steps',
 };
 
@@ -181,7 +182,7 @@ export function renderChainEditor(main: HTMLElement, o: RepoObject | null, nav: 
 
   function addStepDialog() {
     const cands = stepCandidates(t, space, self).filter((c) => !def.steps.some((s) => s.object === objectKey(c.o)));
-    const groups: StepType[] = ['Replication Flow', 'Data Flow', 'View Persistence', 'Remote Table Replication', 'Task Chain'];
+    const groups: StepType[] = ['Replication Flow', 'Data Flow', 'Transformation Flow', 'View Persistence', 'Remote Table Replication', 'Task Chain'];
     const { form, close } = openDialog('Add Step', `
       <p class="guide-lead">Deployed objects of ${esc(space)}, and task chains other spaces shared with it.</p>
       ${groups.map((g) => {

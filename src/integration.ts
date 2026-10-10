@@ -159,7 +159,7 @@ export interface Run {
   id: string;
   /** SPACE.NAME of the flow or remote table. */
   object: string;
-  kind: 'Replication Flow' | 'Remote Table' | 'View' | 'Task Chain' | 'Data Flow';
+  kind: 'Replication Flow' | 'Remote Table' | 'View' | 'Task Chain' | 'Data Flow' | 'Transformation Flow';
   start: string;
   status: 'Completed' | 'Running' | 'Failed';
   records: number;
@@ -173,7 +173,7 @@ export interface Run {
 /** One step of a task chain run. */
 export interface StepResult {
   object: string;
-  type: 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain' | 'Data Flow';
+  type: 'Replication Flow' | 'View Persistence' | 'Remote Table Replication' | 'Task Chain' | 'Data Flow' | 'Transformation Flow';
   status: 'Completed' | 'Failed' | 'Not Run';
   records: number;
   ms: number;
@@ -381,7 +381,7 @@ export function sanitizeRuns(data: unknown): Run[] {
     .slice(0, 120)
     .map((r) => ({
       id: str(r.id, 40) || `R${Math.random().toString(36).slice(2)}`,
-      object: r.object, kind: ['Remote Table', 'View', 'Task Chain'].includes(r.kind) ? r.kind : 'Replication Flow',
+      object: r.object, kind: ['Remote Table', 'View', 'Task Chain', 'Data Flow', 'Transformation Flow'].includes(r.kind) ? r.kind : 'Replication Flow',
       ms: Number.isFinite(r.ms) ? Math.max(0, Number(r.ms)) : undefined,
       steps: Array.isArray(r.steps) ? r.steps.slice(0, 20).filter((s: StepResult) => s && typeof s.object === 'string').map((s: StepResult) => ({
         object: str(s.object, 80), type: s.type, status: ['Completed', 'Failed', 'Not Run'].includes(s.status) ? s.status : 'Failed',

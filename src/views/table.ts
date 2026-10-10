@@ -8,6 +8,7 @@ import { COL_TYPES, emptyTable, tableError, type TableDef, type ColType } from '
 import { lockError } from '../integration';
 import { esc, spaceChip, icon, ICONS, toast, resultTable } from '../ui';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
+import { EXCURSIONS } from '../content/chapters';
 
 /**
  * Local table editor (chapter 8, Handbuch 6.4.1): columns with data type and key, and a Data Editor for the rows.
@@ -36,6 +37,7 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
   let techTouched = o ? true : fresh!.touched;
   let usage: SemanticUsage = o?.semanticUsage ?? 'Relational Dataset';
   const chapter = ctx.currentChapter();
+  const lockedDelta = !!o?.deployed?.table?.deltaCapture;
   const keep = () => {
     if (!o && fresh) Object.assign(fresh, { def, business, technical, touched: techTouched });
   };
@@ -82,8 +84,10 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
                     <td><button class="btn small link" type="button" data-del-row="${ri}" aria-label="Delete row ${ri + 1}">Delete</button></td></tr>`).join('')
                   : `<tr><td colspan="${def.columns.length + 1}" class="empty-row">No rows yet. Press Add Row.</td></tr>`}</tbody>
               </table></div>
-              <p class="muted tbl-note">Rows are part of the design: Save keeps them, Deploy writes them into the table.</p>
+              <p class="muted tbl-note">Rows are part of the design: Save keeps them, Deploy writes them into the table.${o?.deployed?.table?.deltaCapture
+                ? ' Delta Capture records what each deployment changed.' : ''}</p>
             </div>
+            ${o?.deployed?.table?.deltaCapture ? deltaHtml(o) : ''}
           </section>
           <aside class="props" id="properties" aria-label="Properties">
             ${propsHead('Model Properties', ICONS.table, `Local Table ${technical || ''}`)}
@@ -92,6 +96,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
               <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
             <label>Semantic Usage <small>what kind of data this is</small>
               <select id="prop-semantic" ${chapter >= 6 ? '' : 'disabled'}>${SEMANTIC_USAGES.map((u) => `<option ${u === usage ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+            ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture <small>${lockedDelta ? 'on: the table records its changes; the game does not switch it off again' : 'records inserts, updates and deletes in a delta table, for delta loads'}</small>
+              <span class="switch"><input type="checkbox" id="prop-delta" ${def.deltaCapture ? 'checked' : ''} ${lockedDelta ? 'disabled' : ''}></span></label>` : ''}
             <dl class="props-list">
               <dt>Type</dt><dd>Local Table</dd>
               <dt>Space</dt><dd>${spaceChip(space)}</dd>
@@ -128,6 +134,12 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
       techTouched = true;
       tn.value = technical = tn.value.toUpperCase();
       keep();
+    });
+    main.querySelector<HTMLInputElement>('#prop-delta')?.addEventListener('change', (e) => {
+      readInputs();
+      def.deltaCapture = (e.target as HTMLInputElement).checked || undefined;
+      ctx.track(`table-delta:${o ? objectKey(o) : 'draft'}:${def.deltaCapture ? 'on' : 'off'}`);
+      draw();
     });
     main.querySelector<HTMLSelectElement>('#prop-semantic')!.addEventListener('change', (e) => (usage = (e.target as HTMLSelectElement).value as SemanticUsage));
     main.querySelector('#ed-back')!.addEventListener('click', () => {
@@ -239,3 +251,21 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
 
   draw();
 }
+
+/** The delta table of a table with Delta Capture: change records, newest first (Handbuch 6.4.2). */
+function deltaHtml(o: RepoObject): string {
+  const def = o.deployed!.table!;
+  const keys = def.columns.map((c, i) => (c.key ? i : -1)).filter((i) => i >= 0);
+  const log = [...(o.deltaLog ?? [])].reverse();
+  const shown = log.slice(0, 30);
+  return `<div class="tbl-section" id="tbl-delta">
+      <div class="tbl-head"><h3>Delta Table <small class="muted mono">${esc(o.name)}_Delta · ${log.length} ${log.length === 1 ? 'record' : 'records'}</small></h3></div>
+      ${shown.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th>#</th><th>Change_Type</th><th>Change_Date</th>${keys.map((i) => `<th>${esc(def.columns[i].name)}</th>`).join('')}<th>Row</th></tr></thead>
+        <tbody>${shown.map((r) => `<tr><td class="num">${r.seq}</td><td><span class="delta-type" data-type="${r.type}">${r.type}</span></td><td>${esc(fmtStampShort(r.at))}</td>
+          ${keys.map((i) => `<td class="mono">${esc(r.row[i] ?? '')}</td>`).join('')}<td class="muted">${esc(r.row.filter((_, i) => !keys.includes(i)).join(' · '))}</td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="muted">No changes recorded yet. Change rows in the Data Editor and deploy: every insert, update and delete lands here.</p>'}
+      <p class="muted tbl-note">I = insert, U = update, D = delete. Transformation flows with Initial and Delta read these records; a SQL view cannot query the delta table.</p>
+    </div>`;
+}
+
+const fmtStampShort = (iso: string) => (iso ? iso.slice(0, 19).replace('T', ' ') : '');

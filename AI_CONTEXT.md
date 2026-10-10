@@ -64,7 +64,7 @@ src/ui.ts            ← Helfer: esc, Layer-Farben, Icons, Dialog, Toast, Ergebn
 src/content/apps.ts  ← App-Katalog der Seitennavigation (Name, Gruppe, Zweck, ab welchem Kapitel interaktiv) + „New“-Kacheln des Data Builders
 src/analytic.ts      ← Kapitel 7: Analytic Model – Definition (Measures, Variablen), Quellen aus dem deployten Fact, `modelError`, `modelSql` (Abfrage wie SAC), Persistenz
 src/views/analytic.ts ← Kapitel 7: Editor des Analytic Model (Fact-Auswahl, Canvas, Properties, Measure-/Variablen-Dialoge, Data Preview)
-src/localtable.ts    ← Kapitel 8: lokale Tabellen (Spalten, Zeilen, CREATE/INSERT, Prüfung)
+src/localtable.ts    ← Kapitel 8: lokale Tabellen (Spalten, Zeilen, CREATE/INSERT, Prüfung); Exkurs: Delta Capture (`deltaBetween` → Änderungssätze I/U/D, `deltaLog` am Objekt)
 src/views/table.ts   ← Kapitel 8: Tabellen-Editor mit Data Editor
 src/dac.ts           ← Kapitel 8/12: Data Access Controls – Single Values und Hierarchy (Knoten + Nachfahren, rekursiv), Zuweisung, `securedFrom` (lesen als Benutzer), DAC_USERS
 src/views/dac.ts     ← Kapitel 8: DAC-Editor
@@ -114,6 +114,8 @@ src/views/catalog.ts ← Kapitel 12: Catalog & Marketplace › Search (Suche, Fi
 src/views/business.ts ← Kapitel 12: Business Builder (Deprecated), lesend, mit Altobjekten von 2023 in RHN_REP
 src/dataflow.ts      ← Kapitel 12: Data Flows – Definition (Quelle, Join, Projektion, Aggregation, Ziel + Modus), `dataFlowSelect`, `dataFlowError`, `runDataFlow` (Ziel anlegen, Append/Truncate/Delete, Zeilen im Spielstand)
 src/views/dataflow.ts ← Kapitel 12: Data-Flow-Editor (Knotenreihe als Canvas, Eigenschaften je Knoten, SQL-Vorschau, Läufe)
+src/transformflow.ts ← Kapitel 12: Transformation Flows – SQL-View-Transform, Ziel, Ladeart; `transformError`, `runTransformFlow` (Initial Only = Volllast, Initial and Delta = Erstladung + Delta-Zeiger `tfPointer`, Änderungen per Schlüssel)
+src/views/transformflow.ts ← Kapitel 12: Transformation-Flow-Editor (zwei Knoten, SQL-Editor mit Data Preview, Ladeart in den Flow-Eigenschaften, Läufe)
 src/onboarding.ts    ← Kapitel 12: Content-Network-Pakete (`PACKAGES`), `importPackage` (Space anlegen, Objekte, Deploy, Log), Import-Logs im Tenant
 src/views/onboarding.ts ← Kapitel 12: App Semantic Onboarding (Bild 10): SAP Systems, Content Network, Paketseite, Import-Dialog, Import Logs
 src/badges.ts        ← Badges (aus dem Spielstand abgeleitet, nichts extra gespeichert): Kapitel-Meilensteine, First Try, Calin Approves, Self-Reliant
@@ -153,6 +155,7 @@ Spielbar (61 Missionen, Hauptspiel und Exkurse komplett):
   Versionshistorie (c12-m07): Tims Version von `RHN_HA_V_CONTRACTS` (nur S4U) per Versions › Restore zurückrollen und deployen;
   OData (c12-m08): `RHN_REP_D_GRID_AREA` freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200;
   Data Flow (c12-m10): `RHN_REP_DF_MONTHLY` (Ablesungen JOIN Verträge, Monat + Netzgebiet, SUM) schreibt `RHN_REP_T_MONTHLY_CONSUMPTION` mit Truncate, zweimal gelaufen;
+  Transformation Flow (c12-m11): Delta Capture auf `RHN_IN_T_PAYMENTS` (95 Zahlungen, vom Setup angelegt und mit RHN_HARM geteilt), `RHN_HA_TF_PAYMENTS` (Initial and Delta, + CONTRACT_ID aus `RHN_HA_V_INVOICES`) → `RHN_HA_T_PAYMENTS`; Erstladung, Bankmeldung (PAY-0096 neu, PAY-0012 = 286.38, PAY-0007 gelöscht), Delta-Lauf mit 3 Schlüsseln;
   Content Network (c12-m09): Paket *Utilities – Billing Analysis* über Semantic Onboarding in eigenen Space `SAP_UTIL` importieren, Import-Log lesen (Verbindung `SAP_S4H` fehlt), Fact im Repository Explorer
 
 **Fachliche Quelle:** Curlins „SAP Datasphere Handbuch“ in `docs/handbuch/` (Original-docx + Markdown je Kapitel, Übersicht in
@@ -176,4 +179,5 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
    Am Ende jeder Session danach fragen; Antworten einarbeiten
-2. Alle geplanten Exkurse sind gebaut, dazu Data Flows. Mögliche weitere: E/R-Modell (6.6), Transformation Flow mit Delta (6.7.3), Data Marketplace mit Lizenzschlüssel (8.3); Import Entities im Semantic Onboarding
+2. Alle geplanten Exkurse sind gebaut, dazu Data Flows und Transformation Flow mit Delta (c12-m11). Mögliche weitere: E/R-Modell (6.6), Data Marketplace mit Lizenzschlüssel (8.3), Import Entities im Semantic Onboarding;
+   den Transformation Flow in die Nachtkette von RHN_HARM einbauen (Kettenschritt geht schon, Mission fehlt); „Delta zurücksetzen“ im Monitor (Handbuch 6.7.3, Bezeichnung nicht verifiziert)

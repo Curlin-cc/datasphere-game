@@ -15,10 +15,10 @@ let selected = '';
 
 /** Activity and object type as the real Task Logs show them (Bild 1): technical names in capitals. */
 const ACTIVITY: Record<Run['kind'], string> = {
-  'Replication Flow': 'RUN', 'Remote Table': 'REPLICATE', View: 'PERSIST', 'Task Chain': 'RUN_CHAIN', 'Data Flow': 'RUN',
+  'Replication Flow': 'RUN', 'Remote Table': 'REPLICATE', View: 'PERSIST', 'Task Chain': 'RUN_CHAIN', 'Data Flow': 'RUN', 'Transformation Flow': 'RUN',
 };
 const TYPE: Record<Run['kind'], string> = {
-  'Replication Flow': 'REPLICATION_FLOWS', 'Remote Table': 'REMOTE_TABLES', View: 'VIEWS', 'Task Chain': 'TASK_CHAINS', 'Data Flow': 'DATA_FLOWS',
+  'Replication Flow': 'REPLICATION_FLOWS', 'Remote Table': 'REMOTE_TABLES', View: 'VIEWS', 'Task Chain': 'TASK_CHAINS', 'Data Flow': 'DATA_FLOWS', 'Transformation Flow': 'TRANSFORMATION_FLOWS',
 };
 const STATUS_CLASS: Record<Run['status'], string> = { Failed: 'bad', Running: 'run', Completed: 'ok' };
 

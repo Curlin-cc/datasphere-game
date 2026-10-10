@@ -2,11 +2,12 @@ import { exec } from './db';
 import type { TenantState } from './tenant';
 import { sanitizeFlow, sanitizeRemote, type FlowDef, type RemoteInfo, type LoadFrom, type Frequency } from './integration';
 import { sanitizeModel, modelReads, type AnalyticModelDef } from './analytic';
-import { sanitizeTable, tableStatements, type TableDef } from './localtable';
+import { sanitizeTable, sanitizeDelta, tableStatements, deltaBetween, MAX_DELTA, type TableDef, type DeltaRecord } from './localtable';
 import { sanitizeDac, sanitizeAssignments, type DacDef, type DacAssignment } from './dac';
 import { sanitizePersist, type PersistInfo } from './perf';
 import { sanitizeChain, type ChainDef } from './taskchain';
 import { sanitizeDataFlow, type DataFlowDef } from './dataflow';
+import { sanitizeTransform, type TransformFlowDef } from './transformflow';
 
 /**
  * Repository objects: what the Data Builder and the Repository Explorer list.
@@ -17,8 +18,10 @@ import { sanitizeDataFlow, type DataFlowDef } from './dataflow';
  *  - Deployed: what is saved is what runs
  */
 
-export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model' | 'Data Access Control' | 'Task Chain' | 'Data Flow';
-export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model', 'Data Access Control', 'Task Chain', 'Data Flow'];
+export type ObjectKind = 'Local Table' | 'Remote Table' | 'SQL View' | 'Replication Flow' | 'Analytic Model' | 'Data Access Control' | 'Task Chain' | 'Data Flow'
+  | 'Transformation Flow';
+export const OBJECT_KINDS: ObjectKind[] = ['Local Table', 'Remote Table', 'SQL View', 'Replication Flow', 'Analytic Model', 'Data Access Control', 'Task Chain', 'Data Flow',
+  'Transformation Flow'];
 export type DeployStatus = 'deployed' | 'not_deployed' | 'changes';
 export type SemanticUsage = 'Relational Dataset' | 'Fact' | 'Dimension' | 'Text' | 'Hierarchy';
 
@@ -91,7 +94,8 @@ export interface RepoObject {
   /** SQL views only: the saved definition. */
   sql?: string;
   /** What is active in the runtime. Missing until the first deploy. */
-  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef; table?: TableDef; dac?: DacDef; chain?: ChainDef; dataflow?: DataFlowDef } & Partial<Semantics>;
+  deployed?: { businessName: string; sql?: string; flow?: FlowDef; model?: AnalyticModelDef; table?: TableDef; dac?: DacDef; chain?: ChainDef; dataflow?: DataFlowDef;
+    transform?: TransformFlowDef } & Partial<Semantics>;
   /** Remote tables: connection, source object, data access. */
   remote?: RemoteInfo;
   /** Replication flows: the saved definition. */
@@ -107,6 +111,11 @@ export interface RepoObject {
   chainSchedule?: Frequency;
   /** Data flows (excursions): the saved definition. */
   dataflow?: DataFlowDef;
+  /** Transformation flows (excursions): the saved definition, and the last delta record processed (missing: next run is initial). */
+  transform?: TransformFlowDef;
+  tfPointer?: number;
+  /** Local tables with Delta Capture: the delta table NAME_Delta (change records, oldest first). */
+  deltaLog?: DeltaRecord[];
   /** Chapter 9: the deployed view is persisted (its result stored as a snapshot). */
   persisted?: PersistInfo;
   /** Chapter 9: schedule of the view persistence (Data Integration Monitor › Views). */
@@ -172,6 +181,7 @@ export function statusAfterSave(o: RepoObject): DeployStatus {
     && JSON.stringify(o.deployed.dac) === JSON.stringify(o.dac)
     && JSON.stringify(o.deployed.chain) === JSON.stringify(o.chain)
     && JSON.stringify(o.deployed.dataflow) === JSON.stringify(o.dataflow)
+    && JSON.stringify(o.deployed.transform) === JSON.stringify(o.transform)
     && JSON.stringify(semanticsOf(o.deployed)) === JSON.stringify(semanticsOf(o));
   return same ? 'deployed' : 'changes';
 }
@@ -214,12 +224,21 @@ export async function deploy(o: RepoObject): Promise<string | null> {
     } catch (err) {
       return `Deployment failed: ${err instanceof Error ? err.message : String(err)}`;
     }
+    // Delta Capture records the changes of every deployment after the first one with the switch on (Handbuch 6.4.2).
+    if (o.table.deltaCapture && o.deployed?.table?.deltaCapture) {
+      const log = (o.deltaLog ??= []);
+      log.push(...deltaBetween(o.deployed.table, o.table, (log.at(-1)?.seq ?? 0) + 1, now()));
+      if (log.length > MAX_DELTA) log.splice(0, log.length - MAX_DELTA);
+    } else if (o.table.deltaCapture) o.deltaLog ??= [];
   }
+  // A changed transformation flow starts over with an initial load (simplified).
+  if (o.kind === 'Transformation Flow' && JSON.stringify(o.deployed?.transform) !== JSON.stringify(o.transform)) o.tfPointer = undefined;
   o.deployed = {
     businessName: o.businessName, sql: o.sql, flow: o.flow ? structuredClone(o.flow) : undefined,
     model: o.model ? structuredClone(o.model) : undefined, table: o.table ? structuredClone(o.table) : undefined,
     dac: o.dac ? structuredClone(o.dac) : undefined, chain: o.chain ? structuredClone(o.chain) : undefined,
-    dataflow: o.dataflow ? structuredClone(o.dataflow) : undefined, ...structuredClone(semanticsOf(o)),
+    dataflow: o.dataflow ? structuredClone(o.dataflow) : undefined, transform: o.transform ? structuredClone(o.transform) : undefined,
+    ...structuredClone(semanticsOf(o)),
   };
   o.status = 'deployed';
   o.changedAt = now();
@@ -345,6 +364,7 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
             dac: o.kind === 'Data Access Control' ? sanitizeDac(o.deployed.dac) : undefined,
             chain: o.kind === 'Task Chain' ? sanitizeChain(o.deployed.chain) : undefined,
             dataflow: o.kind === 'Data Flow' ? sanitizeDataFlow(o.deployed.dataflow) : undefined,
+            transform: o.kind === 'Transformation Flow' ? sanitizeTransform(o.deployed.transform) : undefined,
             ...sanitizeSemantics(o.deployed),
           }
         : undefined,
@@ -355,6 +375,9 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       dac: o.kind === 'Data Access Control' ? sanitizeDac(o.dac) : undefined,
       chain: o.kind === 'Task Chain' ? sanitizeChain(o.chain) : undefined,
       dataflow: o.kind === 'Data Flow' ? sanitizeDataFlow(o.dataflow) : undefined,
+      transform: o.kind === 'Transformation Flow' ? sanitizeTransform(o.transform) : undefined,
+      tfPointer: o.kind === 'Transformation Flow' && Number.isInteger(o.tfPointer) && o.tfPointer >= 0 ? o.tfPointer : undefined,
+      deltaLog: o.kind === 'Local Table' ? sanitizeDelta(o.deltaLog) : undefined,
       chainSchedule: o.kind === 'Task Chain' && ['Daily', 'Weekly', 'Monthly'].includes(o.chainSchedule) ? o.chainSchedule : undefined,
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }

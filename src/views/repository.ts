@@ -64,7 +64,7 @@ export function renderRepository(main: HTMLElement) {
       ? rows.map((o) => `<tr>
           <td><button type="button" class="link-btn" data-open="${esc(objectKey(o))}">${typeIcon(o)}${esc(shownName(o))}</button></td>
           <td>${esc(o.name)}</td>
-          <td>${esc(o.kind)}${o.kind === 'Analytic Model' || o.kind === 'Replication Flow' || o.kind === 'Data Flow' || o.kind === 'Task Chain' ? '' : ` <span class="muted">(${esc(o.semanticUsage)})</span>`}</td>
+          <td>${esc(o.kind)}${o.kind === 'Analytic Model' || o.kind === 'Replication Flow' || o.kind === 'Data Flow' || o.kind === 'Transformation Flow' || o.kind === 'Task Chain' ? '' : ` <span class="muted">(${esc(o.semanticUsage)})</span>`}</td>
           <td>${esc(o.space)}</td>
           <td><span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span></td>
           <td>${fmtStamp(o.changedAt)}</td></tr>`).join('')

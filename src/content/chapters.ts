@@ -318,6 +318,18 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Data Builder > New Data Flow; runs in the Data Integration Monitor › Flows (Handbuch 6.7.1).',
   },
   {
+    term: 'Delta capture',
+    chapter: 12,
+    text: 'A switch on a local table: from then on every insert, update and delete is recorded in a delta table (suffix _Delta, technical columns Change_Type and Change_Date). Delta loads read these records; a SQL view cannot query the delta table. Needs a key.',
+    realTenant: 'Table editor › Delta Capture (Handbuch 6.4.2).',
+  },
+  {
+    term: 'Transformation flow',
+    chapter: 12,
+    text: 'Loads the result of a view transform (graphical or SQL) into one target table. Initial Only processes all source rows each run; Initial and Delta loads everything once, then only the changes of a source with delta capture, applied to the target by key.',
+    realTenant: 'Data Builder > New Transformation Flow; runs in the Data Integration Monitor › Flows (Handbuch 6.7.3, 6.12.4).',
+  },
+  {
     term: 'Content Network',
     chapter: 12,
     text: 'Where SAP and partners publish business content and samples: packages with their own space, remote tables, views and models for an industry. Imported through Semantic Onboarding; connections and data are not part of a package.',

@@ -219,7 +219,7 @@ export const NEW_TILES: NewTile[] = [
     icon: '<rect x="4" y="9" width="17" height="15" rx="2.5"/><path d="M8 18l3-3 3 3 3-3"/><circle cx="23" cy="10" r="6"/><path d="M23 7v3l2 1.5"/>' },
   { id: 'replication', label: 'Replication Flow', chapter: 3, text: 'Copies objects from a source connection into local tables: once (Initial Only) or once and then by delta (Initial and Delta). Filters and extra columns, no complex logic.',
     icon: '<rect x="4" y="5" width="24" height="5" rx="2"/><rect x="4" y="13.5" width="24" height="5" rx="2"/><rect x="4" y="22" width="24" height="5" rx="2"/><path d="M10 10v3.5M22 18.5V22"/>' },
-  { id: 'transformation', label: 'Transformation Flow', chapter: 10, text: 'Loads the result of a view into a table, fully or by delta.',
+  { id: 'transformation', label: 'Transformation Flow', chapter: 12, text: 'Loads the result of a view transform into a table: in full, or after the first load only the changes of a source with Delta Capture. You build one in the excursions.',
     icon: '<path d="M10 28V18l6-6 6 6v10M4 22h6M22 22h6"/><path d="M16 4v8M13 7l3-3 3 3"/>' },
   { id: 'lookup', label: 'Intelligent Lookup', text: 'Matches records of two entities by fuzzy rules, e.g. customer names with typos, and lets you confirm the matches.',
     icon: '<rect x="4" y="4" width="10" height="10" rx="2"/><rect x="4" y="18" width="10" height="10" rx="2"/><path d="M14 9h4v14h-4M18 16h3"/><path d="M22 16l2.5 2.5L29 13"/>' },

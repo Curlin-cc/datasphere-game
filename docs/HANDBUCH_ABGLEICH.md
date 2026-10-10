@@ -137,3 +137,9 @@ Explain Plan/PlanViz, Speicherprüfung des Spaces beim Persistieren, System Moni
 Vereinfacht und gekennzeichnet: Kardinalität immer „many to one“; Associations nur im Properties-Panel (kein E/R-Modell);
 Hierarchy wählbar, Mission folgt später. Nicht simuliert: Hierarchy with Directory, semantische Spaltentypen, Expose for Consumption (Kapitel 12).
 
+**Transformation Flow mit Delta (c12-m11, Handbuch 6.4.2, 6.7.3, 6.12.4, 10.3.5, ergänzt am 10.10.2026):** Delta Capture als Schalter im Tabellen-Editor,
+Delta-Tabelle `NAME_Delta` mit *Change_Type* (I/U/D) und *Change_Date*, nicht per SQL View lesbar (6.4.2); Transformation Flow mit View Transform und
+Zieltabelle, Ladearten *Initial Only* / *Initial and Delta*, Läufe im Data Integration Monitor › Flows, Schritt in Task Chains (6.8). Ablauf wie 6.12.4:
+Delta Capture an, Flow anlegen, Ziel + Ladeart, deployen, ausführen. Vereinfacht: nur SQL-Transform, eine Delta-Quelle je Flow, Werte von *Change_Type*
+(Handbuch nennt keine), Initial Only ersetzt das Ziel, Delta zurücksetzen nur erklärt (Bezeichnung „nicht verifiziert“), Python-Operator und Dateibereiche nur erklärt.
+

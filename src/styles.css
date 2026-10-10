@@ -1591,3 +1591,16 @@ td.wrap, dd.wrap, p.wrap { word-break: break-all; white-space: normal; overflow-
 .df-modes label { display: grid !important; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; cursor: pointer; }
 .df-modes input { margin-top: 3px; }
 .df-modes small { grid-column: 2; }
+
+/* Transformation flow (excursion c12-m11) and delta table */
+.tf-editor { height: 220px; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.tf-editor.readonly { opacity: .75; pointer-events: none; }
+.tf-sql-section { display: grid; gap: 8px; }
+.tf-load-chip { margin-left: auto; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-soft); }
+.tf-warn { color: var(--critical); font-weight: 600; }
+.tf-sources { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+.tf-sources code { overflow-wrap: anywhere; }
+.delta-type { display: inline-block; min-width: 22px; text-align: center; font-weight: 700; border-radius: 4px; padding: 0 4px; border: 1px solid var(--line-strong); }
+.delta-type[data-type="I"] { color: var(--ok); }
+.delta-type[data-type="U"] { color: var(--accent); }
+.delta-type[data-type="D"] { color: var(--critical); }

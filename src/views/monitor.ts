@@ -9,6 +9,7 @@ import { esc, openDialog, toast, fmtDate } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { runChain } from '../taskchain';
 import { runDataFlow } from '../dataflow';
+import { runTransformFlow } from '../transformflow';
 import { persistView, unpersistView, persistError, analyze, sizeMB, fmtSize, fmtMs, type PerfNode } from '../perf';
 
 /**
@@ -383,7 +384,7 @@ export async function startChainRun(o: RepoObject): Promise<Run | null> {
   return run;
 }
 
-const STEP_TAB: Record<string, Tab> = { 'Data Flow': 'flows', 'Replication Flow': 'flows', 'View Persistence': 'views', 'Remote Table Replication': 'remote', 'Task Chain': 'chains' };
+const STEP_TAB: Record<string, Tab> = { 'Data Flow': 'flows', 'Transformation Flow': 'flows', 'Replication Flow': 'flows', 'View Persistence': 'views', 'Remote Table Replication': 'remote', 'Task Chain': 'chains' };
 
 /** The steps of a chain run, with a link into the monitor of each step. */
 export function stepTable(run: Run): string {
@@ -516,9 +517,20 @@ export async function startDataFlowRun(o: RepoObject) {
   return run;
 }
 
+/** Runs a deployed transformation flow from the monitor or its editor, with a toast. */
+export async function startTransformRun(o: RepoObject) {
+  const t = ctx.tenant();
+  const run = await runTransformFlow(t, o);
+  ctx.track(`tf-run:${objectKey(o)}:${run.status}`);
+  ctx.save();
+  toast(run.status === 'Failed' ? `${o.name} failed: ${run.messages[run.messages.length - 1]}`
+    : `${o.name}: ${run.records.toLocaleString('en-US')} ${run.messages[0]?.startsWith('Delta:') ? 'changed keys' : 'rows'} processed`, run.status === 'Failed' ? 'error' : 'ok');
+  return run;
+}
+
 function flowsTab(host: HTMLElement, redraw: () => void) {
   const t = ctx.tenant();
-  const list = t.objects.filter((o) => o.space === t.activeSpace && (o.kind === 'Replication Flow' || o.kind === 'Data Flow') && o.deployed);
+  const list = t.objects.filter((o) => o.space === t.activeSpace && (o.kind === 'Replication Flow' || o.kind === 'Data Flow' || o.kind === 'Transformation Flow') && o.deployed);
   if (!list.some((o) => o.name === selectedFlow)) selectedFlow = '';
   const sel = list.find((o) => o.name === selectedFlow);
   const runs = sel ? runsOf(t, objectKey(sel)) : [];
@@ -534,7 +546,7 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
           return `<tr class="${o.name === selectedFlow ? 'selected' : ''}">
             <td><button type="button" class="link-btn mono" data-flow="${esc(o.name)}">${esc(o.name)}</button></td><td>${esc(o.kind)}</td>
             <td>${runChip(r)}</td><td class="muted">${r ? fmtDate(r.start) : '–'}</td><td class="num">${r ? r.records.toLocaleString('en-US') : '–'}</td>
-            <td>${o.kind === 'Data Flow' ? '<span class="muted">via task chain</span>' : o.deployed!.flow?.schedule ? esc(o.deployed!.flow.schedule) : o.deployed!.flow?.objects.some((x) => x.loadType === 'Initial and Delta') ? '<span class="muted">Delta runs continuously</span>' : 'None'}</td></tr>`;
+            <td>${o.kind === 'Data Flow' || o.kind === 'Transformation Flow' ? '<span class="muted">via task chain</span>' : o.deployed!.flow?.schedule ? esc(o.deployed!.flow.schedule) : o.deployed!.flow?.objects.some((x) => x.loadType === 'Initial and Delta') ? '<span class="muted">Delta runs continuously</span>' : 'None'}</td></tr>`;
         }).join('') : `<tr><td colspan="6" class="muted">No deployed flows in this space yet.</td></tr>`}</tbody>
       </table></div>
     </section>
@@ -542,7 +554,7 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
       <div class="table-head"><h3>${esc(sel.name)} <small class="muted">${esc(sel.businessName)}</small></h3>
         <div class="toolbar">
           <button class="btn small primary" type="button" id="flow-run">Run</button>
-          <button class="btn small" type="button" id="flow-schedule" ${sel.kind === 'Data Flow' ? 'disabled title="In the game, data flows run on a schedule as a step of a task chain"' : ''}>Schedule</button>
+          <button class="btn small" type="button" id="flow-schedule" ${sel.kind !== 'Replication Flow' ? 'disabled title="In the game, data and transformation flows run on a schedule as a step of a task chain"' : ''}>Schedule</button>
         </div></div>
       <div class="runs-layout">
         <table class="grid" id="run-list"><thead><tr><th>Runs</th><th>Status</th><th>Records</th></tr></thead>
@@ -569,7 +581,7 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
   );
   host.querySelector('#flow-run')?.addEventListener('click', async () => {
     if (!sel) return;
-    const r = sel.kind === 'Data Flow' ? await startDataFlowRun(sel) : await startFlowRun(sel);
+    const r = sel.kind === 'Data Flow' ? await startDataFlowRun(sel) : sel.kind === 'Transformation Flow' ? await startTransformRun(sel) : await startFlowRun(sel);
     if (r) selectedRun = r.id;
     redraw();
   });

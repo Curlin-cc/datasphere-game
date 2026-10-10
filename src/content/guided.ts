@@ -26,6 +26,13 @@ const tabOn = (sel: string) => !!$(`${sel}[aria-selected="true"]`);
 /** SQL in the open editor (upper case, spaces collapsed), for chapter 4 steps that wait for a query. */
 const sqlText = () => ($('.cm-content')?.textContent ?? '').toUpperCase().replace(/\s+/g, ' ');
 /** The editor contains every word, and the Data Preview shows a result. */
+/** c12-m11: the Data Editor shows today's bank message (new PAY-0096, PAY-0012 corrected, PAY-0007 deleted). */
+const bankEntered = () => {
+  const rows = [...document.querySelectorAll<HTMLTableRowElement>('#tbl-data tbody tr')].map((tr) =>
+    [...tr.querySelectorAll<HTMLInputElement>('[data-cell]')].map((i) => i.value.trim()));
+  const id = (k: string) => rows.find((r) => r[0] === k);
+  return !!id('PAY-0096') && Number(id('PAY-0012')?.[3]) === 286.38 && !id('PAY-0007');
+};
 const ranWith = (...words: string[]) => () => !!$('#results-body .result-status.ok') && words.every((w) => sqlText().includes(w));
 const answered = () => {
   const sets = [...document.querySelectorAll('#questions fieldset')];
@@ -735,6 +742,15 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Parent and child',
       body: `<p>A <b>hierarchy</b> view has one row per node: the node itself (Child) and the node above it (Parent). The root has no parent.
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
+    },
+  ],
+  'c12-m11': [
+    {
+      title: 'Loading only what changed',
+      body: `<p>A <b>transformation flow</b> writes the result of a <b>view transform</b> into one target table. With load type <b>Initial and Delta</b> the first run
+        loads everything; every later run reads only what changed in the source since the last run and updates the target by key.</p>
+        <p>To know what changed, the source table needs <b>Delta Capture</b>: it records every insert, update and delete in a delta table.
+        So the order is: Delta Capture on, initial load, then the changes.</p>`,
     },
   ],
   'c12-m10': [
@@ -2859,6 +2875,112 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
+  ],
+  'c12-m11': [
+    [
+      {
+        title: 'Open the payments',
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>Accounts Receivable's table in the inbound layer: 95 payments, key PAYMENT_ID.</p>`,
+        action: { do: 'Open <b>RHN_IN_T_PAYMENTS</b>.', check: () => editorOf('RHN_IN.RHN_IN_T_PAYMENTS') },
+      },
+      {
+        title: 'Delta Capture',
+        target: '#prop-delta',
+        body: `<p>In the properties on the right. From now on the table records every change it gets deployed with.</p>`,
+        action: { do: 'Switch <b>Delta Capture</b> on.', event: '^table-delta:RHN_IN\\.RHN_IN_T_PAYMENTS:on$' },
+      },
+      {
+        title: 'Deploy',
+        target: '#ed-deploy',
+        body: `<p>The switch is part of the design, like the rows: it works once deployed.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_T_PAYMENTS$' },
+      },
+    ],
+    [
+      {
+        title: 'New Transformation Flow',
+        view: 'builder:landing:RHN_HARM',
+        target: '[data-new="transformation"]',
+        body: `<p>The flow belongs to the harmonization layer; the payments table is shared with RHN_HARM.</p>`,
+        action: { do: 'Click <b>Transformation Flow</b>.', appear: '#tf-canvas' },
+      },
+      {
+        title: 'The view transform',
+        target: '#tf-editor',
+        body: `<p>Two nodes: the view transform and the target table. Write the transform as one SELECT: the payment columns from
+          <code>RHN_IN.RHN_IN_T_PAYMENTS</code>, joined with <code>RHN_HARM.RHN_HA_V_INVOICES</code> on <code>INVOICE_ID</code> for the <code>CONTRACT_ID</code>.
+          Read the table itself, not a delta table. <b>Data Preview</b> shows what it returns.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', check: () => !!$('#tf-preview-out .result-status.ok') && ['RHN_IN_T_PAYMENTS', 'RHN_HA_V_INVOICES', 'CONTRACT_ID'].every((w) => sqlText().includes(w)) },
+      },
+      {
+        title: 'Target table',
+        target: '[data-node="target"]',
+        body: `<p>A new name creates the table on the first run, with the columns of the transform and the key of the delta source.</p>`,
+        action: { do: 'Open <b>Target Table</b> and name it <b>RHN_HA_T_PAYMENTS</b>.', event: '^tf-target:RHN_HA_T_PAYMENTS$' },
+      },
+      {
+        title: 'Load type',
+        target: '#properties',
+        body: `<p>The load type belongs to the flow itself: <b>‹ Transformation flow properties</b> at the top of the panel.</p>`,
+        action: { do: 'Choose <b>Initial and Delta</b>.', event: '^tf-load:Initial and Delta$' },
+      },
+    ],
+    [
+      {
+        title: 'Name and deploy',
+        target: '#ed-deploy',
+        body: `<p>Business name as you like, technical name <code>RHN_HA_TF_PAYMENTS</code>, in the same panel.</p>`,
+        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+      },
+      {
+        title: 'The initial load',
+        target: '#tf-run',
+        body: `<p>The first run of a delta flow reads all payments and remembers how far the delta table has been read.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+      },
+    ],
+    [
+      {
+        title: 'Back to the payments',
+        view: 'builder:landing:RHN_IN',
+        target: '#object-list',
+        body: `<p>Today's bank message goes into the Data Editor, as Accounts Receivable does every morning.</p>`,
+        action: { do: 'Open <b>RHN_IN_T_PAYMENTS</b>.', check: () => editorOf('RHN_IN.RHN_IN_T_PAYMENTS') },
+      },
+      {
+        title: 'The bank message',
+        target: '#tbl-data',
+        body: `<p>Three changes from the ticket: <b>Add Row</b> for PAY-0096, the new amount in the AMOUNT cell of PAY-0012, and <b>Delete</b> on the row of PAY-0007.</p>`,
+        action: { do: 'Enter the three changes.', check: bankEntered },
+      },
+      {
+        title: 'Deploy the changes',
+        target: '#ed-deploy',
+        body: `<p>Deploying writes the rows, and Delta Capture records one change record per changed key.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_T_PAYMENTS$' },
+      },
+      {
+        title: 'The delta table',
+        target: '#tbl-delta',
+        body: `<p>RHN_IN_T_PAYMENTS_Delta: an I, a U and a D, each with its change date. This is what the next delta run reads.</p>`,
+      },
+      {
+        title: 'Open the flow',
+        view: 'builder:landing:RHN_HARM',
+        target: '#object-list',
+        body: `<p>The second night: run the flow again.</p>`,
+        action: { do: 'Open <b>RHN_HA_TF_PAYMENTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_TF_PAYMENTS') },
+      },
+      {
+        title: 'The delta run',
+        target: '#tf-run',
+        body: `<p>Compare the message of this run with the first one: how many records, and of which kinds?</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+      },
+    ],
+    questions('Look at the messages of your second run: how many records did it read, and of which kinds?'),
   ],
   'c12-m10': [
     [

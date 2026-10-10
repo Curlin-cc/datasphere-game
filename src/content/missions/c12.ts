@@ -7,6 +7,9 @@ import { packageById } from '../../onboarding';
 import { packageStatus, presetPackage, validatePackage, validationMessages } from '../../transport';
 import { findAsset } from '../../catalog';
 import { values, netAs, NOTHING, DAC as DAC_VALUES } from './c08';
+import { exec, runSql } from '../../db';
+import { tableStatements } from '../../localtable';
+import { isDeltaRun } from '../../transformflow';
 
 /**
  * Chapter 12, Excursions (Handbuch 12, 11, 8, 7): four short side trips after the main game, one per app the main game
@@ -33,6 +36,15 @@ const READINGS_X_CONTRACTS = `SELECT r.READING_DATE, c.GRID_AREA, r.CONSUMPTION_
 const REF_MONTHLY = `SELECT strftime(READING_DATE, '%Y-%m') AS READING_MONTH, GRID_AREA, SUM(CONSUMPTION_KWH) AS CONSUMPTION_KWH
   FROM (${READINGS_X_CONTRACTS}) f GROUP BY 1, 2`;
 const CONTRACTS = 'RHN_HARM.RHN_HA_V_CONTRACTS';
+/** c12-m11: bank payments with Delta Capture, loaded into harmonization by a transformation flow. */
+const PAYMENTS = 'RHN_IN.RHN_IN_T_PAYMENTS';
+const TF_PAYMENTS = 'RHN_HARM.RHN_HA_TF_PAYMENTS';
+const T_PAYMENTS = 'RHN_HARM.RHN_HA_T_PAYMENTS';
+const PAYMENT_COLS = ['PAYMENT_ID', 'INVOICE_ID', 'CONTRACT_ID', 'PAID_ON', 'AMOUNT'];
+const REF_PAYMENTS = `SELECT p.PAYMENT_ID, p.INVOICE_ID, i.CONTRACT_ID, p.PAID_ON, p.AMOUNT
+  FROM RHN_IN.RHN_IN_T_PAYMENTS p JOIN RHN_HARM.RHN_HA_V_INVOICES i ON p.INVOICE_ID = i.INVOICE_ID`;
+/** Today's bank message (c12-m11): one new payment, one corrected amount, one returned direct debit. */
+export const BANK = { add: ['PAY-0096', 'INV-4000080', '2026-07-15', '874.39'], fix: ['PAY-0012', '286.38'], drop: 'PAY-0007' };
 const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
 export const IN_PKG = 'RHN_IN_PKG_INBOUND';
 export const HARM_PKG = 'RHN_HARM_PKG_HARMONIZED';
@@ -749,5 +761,138 @@ export const CHAPTER_12: Mission[] = [
       The game shows the canvas as a fixed row of nodes, and Union and Script only explain themselves.`,
     debrief: `<p>Same numbers after two nights, one row per month and grid area. That goes straight into my audit workbook.</p>
       <p><i>Calin adds:</i> Put the flow into a task chain of RHN_REP after the nightly load, and Sabine's table is always one day old at most.</p>`,
+  },
+  {
+    id: 'c12-m11',
+    chapter: 12,
+    title: 'Only what changed',
+    from: CFO,
+    ticket: `<p>Since February, Accounts Receivable types the bank's payment advice into <code>RHN_IN_T_PAYMENTS</code> in <code>RHN_IN</code>
+      (one row per payment, key <code>PAYMENT_ID</code>). For my cash report I need the payments in harmonization with their contract:
+      <code>RHN_HA_T_PAYMENTS</code> with <code>PAYMENT_ID</code>, <code>INVOICE_ID</code>, <code>CONTRACT_ID</code>, <code>PAID_ON</code> and <code>AMOUNT</code>, every night.</p>
+      <p><i>Calin adds:</i> The table will grow to thousands of payments while only a handful change each day. Do not reload everything every night:
+      a <b>transformation flow</b> <code>RHN_HA_TF_PAYMENTS</code> in <code>RHN_HARM</code> with load type <b>Initial and Delta</b>. For that the source has to record its
+      changes, so switch on <b>Delta Capture</b> first. Run the initial load, then enter today's bank message and run again: the second run must process the changes only.</p>
+      <p><b>Today's bank message</b></p>
+      <ul><li>New payment <code>PAY-0096</code>: invoice <code>INV-4000080</code>, paid on <code>2026-07-15</code>, <code>874.39</code></li>
+        <li>Correction: <code>PAY-0012</code> was a partial payment, the amount is <code>286.38</code></li>
+        <li>Returned direct debit: <code>PAY-0007</code> did not go through. Delete the row.</li></ul>`,
+    tasks: [
+      'In <code>RHN_IN</code>, open <code>RHN_IN_T_PAYMENTS</code>, switch on <b>Delta Capture</b> and deploy the table.',
+      'In <code>RHN_HARM</code>, create a <b>New Transformation Flow</b>: a SQL view transform that adds <code>CONTRACT_ID</code> from <code>RHN_HA_V_INVOICES</code>, target <code>RHN_HA_T_PAYMENTS</code>, load type <b>Initial and Delta</b>.',
+      'Name it <code>RHN_HA_TF_PAYMENTS</code>, deploy it and <b>Run</b> it: the initial load.',
+      'Enter today\'s bank message in the Data Editor of <code>RHN_IN_T_PAYMENTS</code>, deploy the table, and <b>Run</b> the flow again.',
+      'Answer the question below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 10, text: 'Delta Capture is a switch in the properties of the table editor. New Transformation Flow is a tile of the Data Builder; the load type sits in the flow\'s own properties.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Order matters: Delta Capture records only changes deployed after it is on, and the initial run loads everything up to then. The bank message belongs after the initial run, otherwise the second run finds nothing new.' },
+    ],
+    setup: (t) => {
+      if (findObject(t, PAYMENTS)) return;
+      const table = {
+        columns: [{ name: 'PAYMENT_ID', type: 'String' as const, key: true }, { name: 'INVOICE_ID', type: 'String' as const, key: false },
+          { name: 'PAID_ON', type: 'Date' as const, key: false }, { name: 'AMOUNT', type: 'Decimal' as const, key: false }],
+        rows: [] as string[][],
+      };
+      t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_T_PAYMENTS', kind: 'Local Table', businessName: 'Bank payments', semanticUsage: 'Relational Dataset',
+        table, status: 'deployed', changedAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(), deployed: { businessName: 'Bank payments', table: structuredClone(table) } });
+      if (!t.shares.some((x) => x.object === PAYMENTS && x.to === 'RHN_HARM')) t.shares.push({ object: PAYMENTS, to: 'RHN_HARM' });
+    },
+    setupAsync: async (t) => {
+      const o = findObject(t, PAYMENTS);
+      if (!o?.table || o.table.rows.length) return;
+      // The payments of the invoices paid from 12 February 2026 on: PAY-0001 … PAY-0095.
+      const res = await runSql(`SELECT INVOICE_ID, CAST(PAID_DATE AS VARCHAR), CAST(NET_AMOUNT + TAX_AMOUNT AS VARCHAR)
+        FROM RHN_IN.BILLING_INVOICES WHERE PAID_DATE >= DATE '2026-02-12' ORDER BY PAID_DATE, INVOICE_ID`);
+      o.table.rows = res.rows.map((r, i) => [`PAY-${String(i + 1).padStart(4, '0')}`, String(r[0]), String(r[1]), String(r[2])]);
+      o.deployed = { businessName: o.businessName, table: structuredClone(o.table) };
+      for (const stmt of tableStatements(o.space, o.name, o.table)) await exec(stmt);
+    },
+    checks: [
+      {
+        type: 'rule', label: 'The source records its changes', ok: 'RHN_IN_T_PAYMENTS is deployed with Delta Capture.',
+        test: ({ tenant }) => {
+          const o = findObject(tenant, PAYMENTS);
+          if (!o) return 'RHN_IN_T_PAYMENTS is missing in RHN_IN.';
+          if (o.deployed?.table?.deltaCapture) return null;
+          return o.table?.deltaCapture ? 'Delta Capture is switched on but not deployed. Deploy RHN_IN_T_PAYMENTS.'
+            : 'RHN_IN_T_PAYMENTS records no changes. Open it in RHN_IN, switch on Delta Capture in its properties and deploy.';
+        },
+      },
+      {
+        type: 'rule', label: 'The transformation flow', ok: 'RHN_HA_TF_PAYMENTS is deployed in RHN_HARM and loads RHN_HA_T_PAYMENTS by delta.',
+        test: ({ tenant }) => {
+          const f = findObject(tenant, TF_PAYMENTS);
+          if (!f) {
+            const elsewhere = tenant.objects.find((x) => x.name === 'RHN_HA_TF_PAYMENTS');
+            return elsewhere ? `RHN_HA_TF_PAYMENTS is in ${elsewhere.space}; it belongs in RHN_HARM, the harmonization layer.` : 'There is no transformation flow RHN_HA_TF_PAYMENTS in RHN_HARM yet.';
+          }
+          const d = f.deployed?.transform;
+          if (!d) return 'RHN_HA_TF_PAYMENTS is not deployed.';
+          if (f.status === 'changes') return 'RHN_HA_TF_PAYMENTS has saved changes that are not deployed.';
+          if (d.target !== 'RHN_HA_T_PAYMENTS') return `The flow writes ${d.target}; Petra needs RHN_HA_T_PAYMENTS.`;
+          if (d.loadType !== 'Initial and Delta') return 'Load type Initial Only: every night reads all payments again and replaces the target. Switch to Initial and Delta, so later runs read only the changes.';
+          return null;
+        },
+      },
+      {
+        type: 'rule', label: 'Today\'s bank message', ok: 'PAY-0096 added, PAY-0012 corrected, PAY-0007 deleted, and deployed.',
+        test: ({ tenant }) => {
+          const o = findObject(tenant, PAYMENTS);
+          const rows = o?.deployed?.table?.rows ?? [];
+          const byId = new Map(rows.map((r) => [r[0].trim(), r]));
+          const saved = new Map((o?.table?.rows ?? []).map((r) => [r[0].trim(), r]));
+          const ok = (m: Map<string, string[]>) => {
+            const add = m.get(BANK.add[0]);
+            if (!add) return `${BANK.add[0]} is missing: add the new payment (invoice ${BANK.add[1]}, ${BANK.add[2]}, ${BANK.add[3]}).`;
+            if (add[1].trim() !== BANK.add[1] || add[2].trim() !== BANK.add[2] || Number(add[3]) !== Number(BANK.add[3])) return `${BANK.add[0]} has other values than the bank message (${BANK.add.slice(1).join(', ')}).`;
+            if (Number(m.get(BANK.fix[0])?.[3]) !== Number(BANK.fix[1])) return `${BANK.fix[0]} still has the old amount; the bank says ${BANK.fix[1]}.`;
+            if (m.has(BANK.drop)) return `${BANK.drop} is still there: the direct debit was returned, delete the row.`;
+            return null;
+          };
+          const live = ok(byId);
+          if (!live) return null;
+          return ok(saved) ? live : 'The bank message is in the Data Editor but not deployed. Deploy RHN_IN_T_PAYMENTS: only deployed changes reach the delta table.';
+        },
+      },
+      {
+        type: 'rule', label: 'The second night', ok: 'After the initial load, the last run processed only the changes.',
+        test: ({ tenant }) => {
+          const runs = tenant.runs.filter((r) => r.object === TF_PAYMENTS && r.status === 'Completed');
+          if (!runs.length) return 'The flow has not run yet. Deploy it, then Run: the first run is the initial load.';
+          const last = runs[0];
+          if (!isDeltaRun(last.messages)) {
+            return last.messages[0]?.startsWith('Initial load') ? 'The last run was the initial load. Enter the bank message, deploy the table, then Run the flow again: that run reads only the changes.'
+              : 'The last run was a full load (Initial Only). With Initial and Delta deployed, the first run loads everything and the next one reads only the changes.';
+          }
+          if (!last.records) return 'The last run found no change records. Either nothing changed since the run before, or the changes went in before the initial load, which already had them. Change rows after an initial load, deploy the table, Run again.';
+          return null;
+        },
+      },
+      {
+        type: 'result', label: 'The payments in harmonization', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
+      },
+      {
+        type: 'question', id: 'delta-run', label: 'What the second night reads',
+        prompt: 'The flow runs every night with Initial and Delta. What does the run of the second night read from RHN_IN_T_PAYMENTS?',
+        options: [
+          'All payments again, but it writes only the changed ones',
+          'The change records since the last run, including deletions, and only the rows of those keys',
+          'Only new payments: corrections and deletions wait for the next full load',
+          'Nothing, unless someone resets the delta first',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Look at the messages of your second run: how many records did it read, and of which kinds?',
+      },
+    ],
+    xp: 55,
+    realTenant: `In a real tenant: switch on <i>Delta Capture</i> in the table editor of a local table (Handbuch 6.4.2); the system adds the delta table
+      with <i>Change_Type</i> and <i>Change_Date</i>. Then Data Builder › New Transformation Flow, model the view transform graphically or in SQL,
+      add the target table and set the load type <i>Initial and Delta</i> (6.7.3, 6.12.4). Deploy, run, and add it to a task chain; runs are in the
+      Data Integration Monitor › Flows, where the delta can be reset. Simplified in the game: SQL only, one delta source per flow, Initial Only replaces
+      the target, and a changed flow starts over with an initial load.`,
+    debrief: `<p>95 payments, the returned direct debit is gone and the partial payment shows the right amount. The second run touched three keys, not all of them.</p>
+      <p><i>Calin adds:</i> Add the flow to the nightly chain of RHN_HARM after the inbound load. When the table holds a hundred thousand payments, the night still processes only the day's changes.</p>`,
   },
 ];
