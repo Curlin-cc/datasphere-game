@@ -9,7 +9,7 @@ import { MAX_ROWS } from './dataflow';
 /**
  * Transformation flows (excursion c12-m11, Handbuch 6.7.3, 6.12.4): a view transform (here: SQL only, as the game builds no
  * graphical views) writes its result into one target table. Load type Initial Only: every run replaces the target with the
- * full result (simplified, not verified). Initial and Delta: the first run loads everything and remembers how far the delta
+ * full result (= target option Delete All Before Loading: Yes, SAP help; with No it would append/UPSERT). Initial and Delta: the first run loads everything and remembers how far the delta
  * table of the source has been read; every later run reads only the change records since then (inserts, updates, deletes),
  * runs the transform on the changed rows and updates the target by key. The source must be a local table with Delta Capture,
  * the flow carries its key into the target. Simplified: exactly one delta source per flow (other sources, e.g. a view to join,

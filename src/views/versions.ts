@@ -6,7 +6,8 @@ import { esc, openDialog, toast } from '../ui';
 /**
  * Versions of a SQL view (excursions, Handbuch 11.4.9): "Versions" in the editor toolbar opens the version history.
  * Every deployment is a version. A version can be viewed, compared with the deployed one, and restored; a restored version
- * is the design-time state and must be deployed (simplified: the handbook marks this as not verified).
+ * is the design-time state and is completed with Save or Deploy (SAP help). SAP has no compare: a version opens read-only in a new
+ * tab. The line diff is a game aid.
  */
 
 /** Line diff (longest common subsequence): which lines of `a` are gone and which of `b` are new. */
@@ -46,7 +47,8 @@ export function openVersions(o: RepoObject, canRestore: boolean, onRestored: () 
   let selected: ObjectVersion | undefined = list[0];
   ctx.track(`versions:${key}`);
   const { form, close } = openDialog(`Version History: ${o.name}`, `
-    <p class="guide-lead">Every deployment is a version. Compare a version with what runs now, and restore it if a change went wrong.
+    <p class="guide-lead">Every deployment is a version (a real tenant lists up to the last 500). Restore one if a change went wrong, then deploy it.
+      The comparison with what runs now is a game aid: a real tenant opens a version read-only in a new tab instead.
       Versions stay in this tenant; other tenants get changes by transport.</p>
     <div class="ver-wrap">
       <ul class="ver-list" id="version-list"></ul>

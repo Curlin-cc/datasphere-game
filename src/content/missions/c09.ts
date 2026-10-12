@@ -273,7 +273,7 @@ export const CHAPTER_9: Mission[] = [
     ],
     xp: 50,
     realTenant: `SAP documents the limit in "Persisted Views and Data Access Control": a view that consumes a view with a data access control
-      cannot be persisted (Handbuch 9.3.7). Whether a protected view itself can be persisted is not verified in the handbook; the game allows it.
+      cannot be persisted (Handbuch 9.3.7). A view with its own data access control can be persisted; the control still filters when users read it. A redeploy with structural changes may delete the persistence (Data Access back to Virtual).
       Small views on small tables are cheap to compute; their snapshot only adds runs and memory.`,
     debrief: `<p>Fair enough. I would rather wait two seconds than see Aylin's numbers.</p>
       <p><i>Calin adds:</i> That is chapter 9: measure, analyze, persist where the work is, schedule it, and know the limits. Next: operations,

@@ -165,10 +165,10 @@ function importDialog(main: HTMLElement, p: ContentPackage) {
   const { form, close } = openDialog(`Import ${p.title}`, `
     <p class="guide-lead">Imports into the space <b>${esc(p.space.id)}</b>. A missing space is created with the storage the package needs.</p>
     <fieldset class="question"><legend>Import options</legend>
-      <label><input type="checkbox" name="overwrite"> Overwrite objects that already exist <small class="muted">your changes to them are lost</small></label>
-      <label><input type="checkbox" name="deploy" checked> Deploy after import</label>
+      <p class="muted"><b>Import Schedule</b>: None <small>(a real tenant can also notify you of new content)</small></p>
+      <label><input type="checkbox" name="overwrite"> <b>Overwrite Preferences</b>: overwrite objects and data <small class="muted">otherwise existing objects stay; your changes to them would be lost</small></label>
+      <label><input type="checkbox" name="deploy" checked> <b>Deployment Preference</b>: Deploy after import <small class="muted">with no overwrite only the new objects are deployed</small></label>
     </fieldset>
-    <p class="muted">The exact options of a real tenant are not verified (Handbuch 8.6.2); the game keeps these two.</p>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button>
       <button class="btn primary" type="submit">Import</button></div>`);
   form.addEventListener('submit', async (e) => {

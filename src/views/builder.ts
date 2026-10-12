@@ -423,9 +423,9 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
   // Chapter 8: a deployed view with data access controls can be previewed as one of the users.
   const protectedView = !!o && chapter >= 8 && isView && !!o.deployed?.dacs?.length;
   const asBar = protectedView ? `<div class="preview-as" id="preview-as-bar">${icon(ICONS.lock)}<label>View as
-      <select id="preview-as"><option value="">You, modeling: the SQL in the editor, no data access control</option>
+      <select id="preview-as"><option value="">You, modeling: the SQL in the editor, unfiltered (game simplification)</option>
         ${DAC_USERS.map((u) => `<option value="${esc(u.id)}" ${previewAs === u.id ? 'selected' : ''}>${esc(u.id)} · ${esc(u.name)}, ${esc(u.title)}</option>`).join('')}
-      </select></label><span class="muted">A user sees the deployed view, filtered by its data access controls.</span></div>` : '';
+      </select></label><span class="muted">A user sees the deployed view, filtered by its data access controls. In a real tenant your own preview is filtered too: without a row in the permissions table you see nothing.</span></div>` : '';
 
   main.innerHTML = `
     <div class="editor-page ${isView ? 'is-view' : 'is-table'}">

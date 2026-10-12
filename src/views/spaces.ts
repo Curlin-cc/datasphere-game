@@ -198,7 +198,8 @@ function openDbAccess(space: string) {
   const readable = readableByDbUser(t, space);
   const { form, close } = openDialog(`Database Access · ${space}`, `
     <p class="guide-lead">Database users let tools outside SAP, such as Power BI or Excel via ODBC, log on to the database of this space.
-      They read only the views of ${esc(space)} that are <b>exposed for consumption</b> and deployed${readable.length ? `: ${readable.map((o) => `<code>${esc(o.name)}</code>`).join(', ')}` : ' (none yet)'}.</p>
+      They read only the views of ${esc(space)} that are <b>exposed for consumption</b> and deployed${readable.length ? `: ${readable.map((o) => `<code>${esc(o.name)}</code>`).join(', ')}` : ' (none yet)'}.
+      If such a view has a data access control, the database user counts as a user too: it sees only the rows its name (${esc(space)}#SUFFIX) has in the permissions table, and no rows without an entry.</p>
     <h3>Database Users (${users.length})</h3>
     ${users.length ? `<table class="grid compact" id="db-users"><thead><tr><th>Database User Name</th><th>Read Access</th><th>Write Access</th><th></th></tr></thead><tbody>
       ${users.map((u) => `<tr><td class="mono">${esc(dbUserName(u))}</td><td>${u.read ? 'Yes' : 'No'}</td><td>${u.write ? 'Yes' : 'No'}</td>

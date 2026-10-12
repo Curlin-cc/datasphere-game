@@ -575,8 +575,8 @@ export const CHAPTER_12: Mission[] = [
     review: ['no_select_star'],
     xp: 45,
     realTenant: `In a real tenant: open the object in the Data Builder, <b>Versions</b> (version history) in the toolbar; each deployment is a version.
-      You can view and restore an earlier version (Handbuch 11.4.9, SAP: "Reviewing and Restoring Object Versions"). Whether a restored version must be deployed
-      again and how many versions are kept is not verified; the game asks for a deployment and keeps the last 15.`,
+      The list shows up to the last 500 versions. <i>More › Open in New Tab</i> shows a version read-only (there is no compare; the diff in the game is a help),
+      <i>Versions › Restore</i> makes it editable, and <b>Save</b> or <b>Deploy</b> completes the restore (SAP: "Reviewing and Restoring Object Versions").`,
     debrief: `<p>1,178 contracts again, and region West is back where it was. Thank you, and please tell me before the next clean-up.</p>
       <p><i>Calin adds:</i> Tim's version is still in the history, so nothing is lost. Next time a change like that goes through the test tenant first.</p>`,
   },
@@ -696,8 +696,9 @@ export const CHAPTER_12: Mission[] = [
     ],
     xp: 40,
     realTenant: `In a real tenant: Semantic Onboarding › Content Network, choose the package, read its description and prerequisites, import it
-      (Handbuch 8.6.2). Then check the created spaces and objects and add the connections (Handbuch chapter 5). Package names and import options in the
-      game are invented or simplified; the handbook marks the options as not verified.`,
+      (Handbuch 8.6.2). Then check the created spaces and objects and add the connections (Handbuch chapter 5). Import Options: <i>Import Schedule</i> (None or notify for new
+      content), <i>Overwrite Preferences</i> and <i>Deployment Preference › Deploy after import</i>; the import job only completes when the deployment is done.
+      Package names in the game are invented.`,
     debrief: `<p>Good: five objects we did not have to build, in a space of their own, and we know exactly what is missing to run them.</p>
       <p><i>Calin adds:</i> I will compare their billing fact with ours. Where SAP models something better, we copy the idea into our own spaces;
       we do not build our reports on top of content that a re-import could overwrite.</p>`,
@@ -1018,7 +1019,7 @@ export const CHAPTER_12: Mission[] = [
       },
     ],
     xp: 50,
-    realTenant: `In a real tenant: Data Integration Monitor › Flows, select the transformation flow; <b>Reset Watermark</b> makes the next run load
+    realTenant: `In a real tenant: Data Integration Monitor › Flows, open the transformation flow, tab <i>Delta Capture Settings</i>; <b>Reset Watermark</b> makes the next run load
       everything again (Handbuch 6.7.3; SAP release 2024.2: the watermark tracks how far a delta flow has read, resetting it transfers all data on the next run). Task chains run transformation flows as steps (6.8);
       the chain's schedule then runs the flow every night.`,
     debrief: `<p>The report is complete again, and tonight the flow runs after the inbound load. If it fails, I get the email.</p>

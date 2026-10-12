@@ -33,7 +33,7 @@ export function newTransformDraft() {
 }
 
 const LOAD_TEXT: Record<TfLoad, string> = {
-  'Initial Only': 'Every run reads all source rows and replaces the target. Simple, but the whole source is processed each night.',
+  'Initial Only': 'Every run reads all source rows. With Delete All Before Loading = Yes on the target (the game\'s setting) it replaces the target; with No it appends and updates rows by key (UPSERT). Simple, but the whole source is processed each night.',
   'Initial and Delta': 'The first run loads everything. Later runs read only what changed in the source since the last run (inserts, updates, deletes) and update the target by key. Needs a source table with Delta Capture.',
 };
 
@@ -141,6 +141,7 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
         <input class="mono" id="tf-target" list="tf-target-list" value="${esc(def.target)}" ${readOnly ? 'readonly' : ''} spellcheck="false" autocomplete="off">
         <datalist id="tf-target-list">${tables.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       ${target && target.kind !== 'Local Table' ? `<p class="tf-warn">${esc(target.kind)}: not a valid target.</p>` : ''}
+      <dl class="kv"><dt>Delete All Before Loading</dt><dd>${def.loadType === 'Initial Only' ? 'Yes: each run empties the target, then loads' : 'No: a target with Delta Capture cannot be emptied before loading'}</dd></dl>
       <p class="muted">Columns are mapped by name. With Initial and Delta, the target needs the key of the delta source.</p>`;
   }
 

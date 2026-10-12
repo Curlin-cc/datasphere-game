@@ -562,7 +562,7 @@ export const CHAPTER_3: Mission[] = [
     realTenant: `A space that exceeds its storage is <b>locked</b> until someone deletes data or an administrator assigns more storage; then a space
       administrator presses <b>Unlock</b> in Space Management. The <b>Data Integration Monitor</b> shows each run with its messages; the
       <b>System Monitor</b> shows storage and failed tasks across all spaces. Email notifications for failed replication flows and task chains
-      are set up per object.`,
+      are set up per object: for a replication flow in Monitor › Flows › its details › <i>Runtime Email Notification</i> (per replicated object).`,
     debrief: `<p>Saved the morning. Lena's flow asked for the full history, which was more than the pilot ever loaded, and the space ran full at 2 a.m.</p>
       <p>That closes chapter 3: three sources connected, each loaded the way that fits it. Next we look closely at what arrived:
       the inbound layer, with SQL.</p>`,

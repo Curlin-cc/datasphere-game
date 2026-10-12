@@ -8,7 +8,8 @@ import type { TableDef } from './localtable';
  * Semantic Onboarding › Content Network (excursion c12-m09, Handbuch 8.6): packages from SAP and partners bring their own space
  * and objects. Importing creates the space (if missing), the objects, and deploys them if asked. Remote tables need a connection
  * in the new space; until it exists they have no data access, and views on them cannot be deployed.
- * Package names, CDS names and import options are invented for the game; the handbook marks the options as not verified.
+ * Package names and CDS names are invented for the game. Import options follow SAP help (Import Schedule, Overwrite Preferences,
+ * Deployment Preference › Deploy after import); Import Schedule is fixed to None.
  */
 
 export type ContentArea = 'samples' | 'business' | 'partner';

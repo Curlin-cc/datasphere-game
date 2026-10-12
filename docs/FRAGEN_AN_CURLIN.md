@@ -16,20 +16,22 @@
 
 ## Fachliche Prüfpunkte, noch offen
 
-- [ ] *Expose for Consumption*: in welcher Sektion des Properties-Panels (Output-Knoten) sitzt der Schalter? (🟡 Name stimmt, Position offen)
-- [ ] Wirken **DACs für Datenbankbenutzer** (Power BI über `SPACE#SUFFIX`)? Test: eine View mit DAC per DB-User abfragen: gefiltert, alles oder nichts? (❌)
-- [ ] Analytic Model: dürfen **Restricted Measures auf Calculated Measures** aufsetzen? (❌, Spiel: ja)
-- [ ] Wendet die **Data Preview im Data Builder die DAC des Modellierers** an? (🟡 wahrscheinlich ja, bitte gegenprüfen)
-- [ ] Persistenz: (🟡) View mit eigener DAC persistierbar, DAC greift beim Lesen? Verwirft ein **erneutes Deploy** die persistierten Daten?
-- [ ] Versionshistorie („Reviewing and Restoring Object Versions“): Name des Knopfs (Spiel: **Versions**), muss nach dem Wiederherstellen neu deployt werden, wie viele Versionen bleiben, gibt es einen Vergleich? Screenshot ideal (❌)
-- [ ] Semantic Onboarding › Import Options: gibt es neben *Import Schedule* und *Overwrite Preferences* eine Option **Deploy after import**? (❌)
-- [ ] Data Flow: heißen die Zielmodi **Append / Truncate / Delete** (mit Option *Update Records by Primary Key (UPSERT)* bei Append)? (🟡)
-- [ ] Transformation Flow: ersetzt oder hängt **Initial Only** bei jedem Lauf an? Darf die Delta-Quelle eine **geteilte Tabelle eines anderen Space** sein (Spiel: ja)? (❌) Heißt die Aktion im Monitor wirklich **Reset Watermark**? (🟡 von Curlin vermutet; SAP-Release 2024.2 spricht vom Zurücksetzen des Watermarks – seit 12.10.2026 im Spiel so benannt)
-- [ ] **E-Mail bei Fehlern eines Replication Flows** (c03-m06, richtige Antwort im Spiel): gibt es die im Monitor › Flows? Handbuch 10.3.5 sagt ja, in der SAP Community hieß es im Januar 2025 „noch nicht vorhanden“ (nur Task Chains).
-- [ ] **Analytic Model mit mehreren Facts**: inzwischen möglich? Stand Mitte 2025 bei SAP „Roadmap“; c07-m05 fragt nach „genau ein Fact“.
+_Keine. Alle am 12.10.2026 aus der SAP-Hilfe geklärt (Quelle: SAP veröffentlicht die Help-Texte als Markdown im öffentlichen GitHub-Repo
+`SAP-docs/sap-datasphere`, Stand 08.10.2026; Dateinamen unten in Klammern)._
 
 ## Erledigt
 
+- [x] **Expose for Consumption, Position** (12.10.2026, ✅ SAP-Hilfe *Creating an SQL View*): allgemeine Eigenschaften im Seitenpanel, Reihenfolge … *Semantic Usage* · *Dimension Type* · **Expose for Consumption** · *Run in Analytical Mode* (nur mit Expose) · *Status*. Spiel passt.
+- [x] **DAC für Datenbankbenutzer** (12.10.2026, ✅ *Create a "Single Values" Data Access Control*): Die ID-Spalte der Berechtigungstabelle darf DB-User im Format `SPACEID#DBUSER` enthalten; wer keine ID in der Tabelle hat, sieht **keine** Zeilen. → gefiltert. Im Spiel als Hinweis in *Database Access*.
+- [x] **Restricted Measure auf Calculated Measure** (12.10.2026, ✅ *Create a Restricted Measure*): Feld heißt *Source Measure*; die Aggregation lässt sich nur überschreiben, „wenn die Quelle eine Fact-Source-Measure ist“ – andere Measures (calculated, restricted) sind also als Quelle erlaubt (SAP-Blog: „measure stacking“). Spiel: ja, passt.
+- [x] **Data Preview mit DAC** (12.10.2026, ✅ *Securing Data with Data Access Controls*): jede geschützte View filtert ihre Data Preview auf die Zeilen des aktuellen Users – auch für Modellierer. Spiel vereinfacht („You, modeling … unfiltered“), jetzt mit Hinweis.
+- [x] **Persistenz und DAC/Redeploy** (12.10.2026, ✅ *Persisted Views and Data Access Control*, *Persisting and Monitoring Views*): View mit eigener DAC **ist** persistierbar, Views darauf nicht. Redeploy mit Strukturänderung kann die Persistenz löschen (Data Access wieder *Virtual*); ändert sich die DAC einer Quell-View, verliert die persistierte View darüber beim Redeploy ihre Persistenz. c09-Text angepasst.
+- [x] **Versionshistorie** (12.10.2026, ✅ *Reviewing and Restoring Object Versions*): Knopf **Versions** in der Toolbar, Dialog *Version History* mit bis zu **500** Versionen; *More › Open in New Tab* zeigt eine Version schreibgeschützt, *Versions › Restore* macht sie editierbar, **Save oder Deploy** schließt ab. **Kein Vergleich** (im Spiel als Lernhilfe gekennzeichnet). Spiel hält jetzt 500 Versionen.
+- [x] **Content Network: Deploy after import** (12.10.2026, ✅ *Importing SAP and Partner Business Content from the Content Network*): ja, unter *Deployment Preference*; ohne Overwrite werden nur neue Objekte deployt; der Importjob endet erst nach dem Deploy. Import-Dialog im Spiel nach SAP benannt.
+- [x] **Data-Flow-Zielmodi** (12.10.2026, ✅ *Add or Create a Target Table in a Data Flow*): *Append* / *Truncate* / *Delete*, bei Append Option *Update Records By Primary Key (UPSERT)*. Spiel passt.
+- [x] **Transformation Flow** (12.10.2026, ✅ *Creating a Transformation Flow*, *Create or Add a Target Table…*, *Watermarks*): Initial Only lädt den vollen Bestand; ob ersetzt oder angehängt wird, steuert die Zieloption **Delete All Before Loading** (Yes = leeren und laden, No = anhängen, UPSERT per Schlüssel; bei Delta-Capture-Zielen nicht möglich). Geteilte Quellen sind erlaubt (Monitor-Kennzahl *Shared Source*). **Reset Watermark** heißt genau so: Monitor › Transformation Flow › Reiter *Delta Capture Settings*. Spiel zeigt die Option jetzt am Ziel.
+- [x] **E-Mail bei Replication-Flow-Fehlern** (12.10.2026, ✅ *Working With Existing Replication Flow Runs*): ja, Monitor › Flows › Details › **Runtime Email Notification**, je repliziertem Objekt. c03-m06 passt.
+- [x] **Analytic Model mit mehreren Facts** (12.10.2026, ✅ *Add a Fact to an Analytic Model*, *Replace the Fact Source…*): weiterhin genau **eine** Fact-Quelle (oder ein Analytic Model als Quelle). c07-m05 passt.
 - [x] **Standardrollen** (Antwort 12.10.2026, ✅): Vorlagen System Owner, DW Administrator; DW Space Administrator, DW Integrator, DW Modeler, DW Viewer, DW Consumer, zu diesen fünf je eine vordefinierte „DW Scoped …“-Variante; DW Metadata Graph Consumer, Catalog Administrator, Catalog User. Standardrollen sind nicht änderbar/löschbar, nur Vorlage; Security › Roles mit Filtern *License Type = SAP Datasphere*, *Role Type = Standard Role*. DW Administrator hat **keinen Zugriff auf die Apps** (z. B. Data Builder), DW Consumer kann sich **nicht an Datasphere anmelden**. → Nächster Schritt in `AI_CONTEXT.md`.
 - [x] **Expose for Consumption** (12.10.2026, ✅ Name): Schalter heißt genau so; Datenbankbenutzer lesen nur Views mit aktivem Schalter. Position siehe offener Punkt oben.
 - [x] **Transport über mehrere Spaces** (12.10.2026, 🟡): nein, ein Paket gehört zu einem Space, andere Spaces über *Required Packages* – wie im Spiel. ✅ Exportieren darf DW Administrator oder scoped DW Space Administrator plus globales Lifecycle-Recht.

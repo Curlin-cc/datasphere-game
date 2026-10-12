@@ -65,7 +65,7 @@ export interface Semantics {
 
 /**
  * One deployed version of a SQL view (excursions, Handbuch 11.4.9): every deployment adds one. Kept inside the tenant only;
- * the game keeps the last MAX_VERSIONS. Other object types have no version history in the game.
+ * like SAP (Version History lists up to the last 500) the game keeps the last MAX_VERSIONS. Other object types have no version history in the game.
  */
 export interface ObjectVersion {
   no: number;
@@ -76,7 +76,7 @@ export interface ObjectVersion {
   sql: string;
   semantics: Semantics;
 }
-export const MAX_VERSIONS = 15;
+export const MAX_VERSIONS = 500;
 export const ME = 'DATA_ARCHITECT';
 
 export interface RepoObject {
@@ -257,7 +257,8 @@ export function addVersion(o: RepoObject, by: string, at: string) {
 
 /**
  * Restore (Handbuch 11.4.9): the version becomes the design-time state of the view (status Changes to Deploy).
- * Whether a restored version must be deployed again is "nicht verifiziert"; the game asks for a deployment.
+ * SAP help "Reviewing and Restoring Object Versions": after Versions › Restore the version is editable and is completed with Save or Deploy;
+ * the game asks for a deployment.
  */
 export function restoreVersion(o: RepoObject, v: ObjectVersion) {
   o.sql = v.sql;
