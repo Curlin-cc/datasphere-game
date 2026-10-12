@@ -227,11 +227,14 @@ Umgebaut am 12.10.2026 nach Bild 22–46:
 - [x] **Tabelle** (Bild 30): Feld *Storage* (Disk)
 
 Noch offen:
-- [ ] Shellbar rechts: im Original Glocke, Feedback, Support, Hilfe; im Spiel Rang/XP, Glossar, „How to play“ (spielspezifisch, bleibt)
-- [ ] Tabellen- und DAC-Editor sind im Original **ganze Seiten mit Reitern** (General · Columns · … bzw. General · Criteria, Bild 30/38), im Spiel Mitte + Seitenpanel
-- [ ] Analytic Model: Umschalter *Model · Preview* und „Analytic Model Properties“ (Bild 37); Replication Flow: Kopf „Select Source/Target Connection“ und
-      Panel-Abschnitte Settings/Run Settings (Bild 41)
-- [ ] Analytic Model / Replication Flow / Tabellen- und DAC-Editor: siehe oben
+- [x] (bewusste Abweichung) Shellbar rechts: im Original Glocke, Feedback, Support, Hilfe; im Spiel Rang/XP, Glossar, „How to play“ (spielspezifisch, bleibt)
+- [x] Tabellen- und DAC-Editor als **Objektseite** wie Bild 30/38 (12.10.2026): Kopf mit Name und technischem Namen, Sprung-Reiter General · Columns ·
+      Associations · Business Purpose · Partitions · Dependent Objects (+ Data Editor, im Original ein Werkzeug) bzw. General · Criteria, Abschnitte auf grauem
+      Grund, kein Seitenpanel; DAC: *Structure* als Dropdown, Owner, Schalter *Allow IdP User Attributes* (aus), Criteria als Tabelle
+- [x] Analytic Model: Umschalter *Model · Preview* rechts in der Werkzeugleiste, Panel „Analytic Model Properties“, Layout-Feld über dem Canvas (Bild 37);
+      im Modus *Model* bleibt die Datenvorschau unten sichtbar (Spielzusatz), *Preview* gibt ihr die ganze Seite
+- [x] Replication Flow (Bild 41): oben Quelle (Source Connection, Add Source Objects) → Ziel (SAP Datasphere), Leerzustand „It looks like you haven’t added
+      any data yet.“, rechts Panel „Replication Flow Properties“ mit General · Settings (Skip Unmapped Columns) · Run Status · Run Settings
 
 Nach SAP-Hilfe gebaut (kein Screenshot möglich, 12.10.2026):
 - [x] Security › Users / Roles / Authorization Overview: links „Filter By“, Liste rechts mit Search, Sort, Spalten-Zahnrad; Roles mit `+ ⌄` (Create a Custom Role

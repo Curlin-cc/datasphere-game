@@ -1513,7 +1513,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
       {
         title: 'Source connection',
-        target: '.flow-source',
+        target: '.flow-end',
         body: `<p>A replication flow has exactly one source connection.</p>`,
         action: { do: 'Choose <code>RHN_S4U</code> as source connection.', check: () => val('#flow-conn') === 'RHN_S4U' },
       },
@@ -1617,7 +1617,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
       {
         title: 'Source',
-        target: '.flow-source',
+        target: '.flow-end',
         body: `<p>The bucket connection.</p>`,
         action: { do: 'Choose <code>RHN_CRM</code>, then add the export file with <b>Add Source Objects</b>.', check: () => val('#flow-conn') === 'RHN_CRM' && !!$('#flow-objects [data-target]') },
       },

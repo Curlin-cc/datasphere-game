@@ -1807,3 +1807,70 @@ td.actions { white-space: nowrap; text-align: right; }
 [data-for][hidden] { display: none !important; }
 .onb-tabs { margin: 0 24px 0; padding-top: 4px; }
 .onb-logs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+
+/* Object page (Bild 30 table, Bild 38 DAC): head, anchor tabs, stacked sections on grey */
+.editor-page.is-objpage .ed-body { grid-template-columns: minmax(0, 1fr); }
+.obj-page { min-height: 0; overflow: auto; background: var(--bg); }
+.obj-head { display: flex; align-items: flex-start; gap: 10px; padding: 18px 48px 6px; background: var(--surface); }
+.obj-head > svg { width: 20px; height: 20px; margin-top: 4px; color: var(--ink); }
+.obj-head h1 { margin: 0; font-size: 20px; font-weight: 800; }
+.obj-tech { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+.obj-tabs { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 6px 32px 0; background: var(--surface);
+  border-bottom: 1px solid var(--line); box-shadow: 0 2px 4px rgba(34, 53, 72, .06); }
+.obj-tabs button { font: inherit; font-weight: 700; font-size: 13.5px; padding: 10px 16px; border: 0; background: none; color: var(--ink); cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.obj-tabs button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+.obj-sec { padding: 20px 32px 4px; }
+.obj-sec-head { display: flex; align-items: center; gap: 12px; margin: 0 16px 10px; }
+.obj-sec-head h2 { margin: 0; font-size: 18px; font-weight: 700; flex: 1; }
+.obj-panel { background: var(--surface); border-radius: var(--radius-m); padding: 14px 28px 18px; box-shadow: var(--tile-shadow); }
+.obj-panel .obj-form { display: grid; gap: 12px; max-width: 760px; }
+.obj-panel .obj-form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-soft); }
+.obj-panel .obj-form label small { color: var(--ink-faint); font-size: 11.5px; }
+.obj-panel .obj-form input:not([type=checkbox]), .obj-panel .obj-form select, .obj-panel .obj-form textarea { font: inherit; color: var(--ink); padding: 5px 8px;
+  min-height: 32px; border: 1px solid var(--line-strong); border-bottom-color: var(--field-line); border-radius: 6px; background: var(--surface); box-sizing: border-box; width: 100%; }
+.obj-panel .obj-form input[readonly], .obj-panel .obj-form select:disabled, .obj-panel .obj-form textarea:disabled { background: var(--surface-sunk); color: var(--ink-soft); }
+.obj-panel .obj-form .switch-line { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.obj-panel .tbl-section { border: 0; padding: 0; margin: 0; box-shadow: none; }
+.obj-panel .tbl-section + .tbl-section { margin-top: 18px; }
+.obj-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 40px; }
+@media (max-width: 1400px) { .obj-sec { padding: 16px 16px 4px; } .obj-head { padding: 16px 24px 6px; } .obj-panel { padding: 12px 16px 16px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.inline-field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.inline-field select { font: inherit; padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 6px; }
+.dep-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.obj-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.editor-page.is-objpage { grid-template-rows: auto minmax(0, 1fr) auto; }
+.editor-page.is-objpage .results { max-height: 36vh; min-height: 52px; overflow: auto; }
+.editor-page.is-objpage .results .placeholder { padding: 14px 16px; }
+.obj-page { position: relative; }
+.obj-tabs button { padding: 10px 12px; }
+.ed-body.dac-center { padding: 0; overflow: hidden; }
+.obj-panel .obj-form { align-content: start; }
+.obj-two { align-items: start; }
+.obj-form .link-btn { font-size: 11.5px; }
+.obj-form p { margin: 0; }
+/* Model · Preview switch (Bild 37) */
+.seg { display: inline-flex; border: 1px solid var(--accent); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-weight: 700; font-size: 13px; padding: 4px 10px; border: 0; background: var(--surface); color: var(--accent); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--accent); }
+.seg button[aria-pressed='true'] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.editor-page.is-model.am-mode-preview { grid-template-rows: auto minmax(0, 1fr); }
+.editor-page.is-model.am-mode-preview .ed-body { display: none; }
+.am-canvas-bar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px 14px 0; font-size: 13px; }
+.am-canvas-bar select { font: inherit; padding: 2px 6px; border: 1px solid var(--line-strong); border-radius: 6px; }
+/* Replication flow (Bild 41): source and target at the top, properties panel with sections */
+.is-flow .ed-body { grid-template-columns: minmax(0, 1fr) 300px; }
+.is-flow.no-props .ed-body { grid-template-columns: minmax(0, 1fr); }
+.flow-ends { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: stretch; margin: -14px -16px 14px; border-bottom: 1px solid var(--line); }
+.flow-end { display: grid; gap: 6px; align-content: start; padding: 12px 16px; font-size: 13px; }
+.flow-end label { display: grid; gap: 4px; font-weight: 600; }
+.flow-end select { font: inherit; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); max-width: 320px; }
+.flow-end .btn { justify-self: start; }
+.flow-end.target { border-left: 1px solid var(--line); }
+.flow-arrow { align-self: center; color: var(--ink-faint); font-size: 20px; }
+.flow-empty { text-align: center; padding: 40px 16px 10px; }
+.flow-empty h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; }
+.flow-props.props { margin-top: 0; padding-top: 0; border-top: 0; }
+.props-sec { margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; color: var(--ink); }
+.flow-center input.mono { width: 128px; } .flow-center select { max-width: 120px; }

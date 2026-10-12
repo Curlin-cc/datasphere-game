@@ -10,7 +10,7 @@ import { accessError, isShared } from '../tenant';
 import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
 import { openImportRemote, renderFlowEditor } from './flow';
 import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
-import { renderModelEditor, newModelDraft } from './analytic';
+import { renderModelEditor, newModelDraft, resetModelMode } from './analytic';
 import { renderTableEditor, newTableDraft } from './table';
 import { renderDacEditor, newDacDraft } from './dac';
 import { renderChainEditor, newChainDraft } from './chain';
@@ -79,6 +79,7 @@ export function openObjectInBuilder(key: string) {
   ctx.tenant().activeSpace = o.space;
   spaceChosen = true;
   page = { kind: 'object', key };
+  resetModelMode();
   ctx.save();
 }
 
@@ -136,6 +137,7 @@ export async function renderBuilder(main: HTMLElement) {
 }
 
 function go(p: Page) {
+  resetModelMode();
   page = p;
   ctx.renderView();
 }

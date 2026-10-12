@@ -187,6 +187,7 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 5. **Umbauten aus Curlins Antworten vom 12.10.2026** sind alle gebaut (12.10.2026, zweite Session): Delta Capture nur vor dem ersten Deploy
    (c12-m11 übergibt die Tabelle gespeichert; Missions-Hook `setupAgain` gibt sie nach dem Löschen neu), OAuth-Dialog mit *Technical User* und
    Lifetimes, Content-Network-Meldungen im Paket (*Import Overview*), *Open Import Logs* nur für Import Entities, Data Flow mit *Calculated Column*.
+   Optik: alle Punkte aus `docs/design/README.md` Abschnitt 4 sind erledigt (12.10.2026); Tabellen-/DAC-Editor sind Objektseiten (`objectPage` in `toolbar.ts`).
    **Back-Pfeil** der Shellbar geht seitenweise zurück (`src/nav.ts`: Apps mit Unterseiten melden ihren Ort mit `registerLocation`; neue Seiten dort eintragen)
 6. **Testlauf 12.10.2026** (Bericht als Doc an Curlin): `tests/playtest/chain.sh` spielt das ganze Spiel ab leerem Spielstand durch (alle Kapitel-Skripte
    verkettet); vor größeren Änderungen mitlaufen lassen. Alle 60 Hands-on-Tutorials ließen sich am echten Spielstand durchspielen

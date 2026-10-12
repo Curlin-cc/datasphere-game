@@ -1,13 +1,13 @@
 import { ctx } from '../ctx';
 import { runSql } from '../db';
 import {
-  STATUS_LABEL, STATUS_HELP, SEMANTIC_USAGES, objectKey, objectNameError, suggestTechnicalName, touch, deploy,
+  STATUS_LABEL, STATUS_HELP, SEMANTIC_USAGES, objectKey, usedBy, findObject, objectNameError, suggestTechnicalName, touch, deploy,
   type RepoObject, type SemanticUsage,
 } from '../repo';
 import { COL_TYPES, emptyTable, tableError, type TableDef, type ColType } from '../localtable';
 import { lockError } from '../integration';
 import { esc, spaceChip, icon, ICONS, toast, resultTable } from '../ui';
-import { objectToolbar, bindDetails, propsHead } from './toolbar';
+import { objectToolbar, objectPage, bindObjectPage } from './toolbar';
 import { EXCURSIONS } from '../content/chapters';
 
 /**
@@ -45,8 +45,52 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
 
   const draw = () => {
     keep();
+    const key = o ? objectKey(o) : '';
+    const deps = o ? usedBy(key, t) : [];
+    const columnsHtml = `<div class="tbl-section">
+              <div class="tbl-head"><h3 class="sr-only">Columns</h3><span class="spacer"></span>
+                <button class="btn small" type="button" id="tbl-add-col">${icon(ICONS.plus)} Add Column</button>
+                <label class="inline-field muted">Index Type: <select disabled title="Not part of the game"><option>None</option></select></label></div>
+              <table class="grid compact" id="tbl-columns">
+                <thead><tr><th>Key</th><th>Technical Name</th><th>Data Type</th><th></th></tr></thead>
+                <tbody>${def.columns.map((c, i) => `<tr>
+                  <td><input type="checkbox" data-col-key="${i}" ${c.key ? 'checked' : ''} aria-label="${esc(c.name)} is a key column"></td>
+                  <td><input class="mono" data-col-name="${i}" value="${esc(c.name)}" maxlength="50" spellcheck="false" aria-label="Column name"></td>
+                  <td><select data-col-type="${i}" aria-label="Data type of ${esc(c.name)}">${COL_TYPES.map((ty) => `<option ${ty === c.type ? 'selected' : ''}>${ty}</option>`).join('')}</select></td>
+                  <td><button class="btn small link" type="button" data-del-col="${i}" aria-label="Remove column ${esc(c.name)}">Remove</button></td>
+                </tr>`).join('') || '<tr><td colspan="4" class="empty-row">No columns yet. Press Add Column.</td></tr>'}</tbody>
+              </table>
+            </div>`;
+    const dataHtml = `<div class="tbl-section">
+              <div class="tbl-head"><h3>${def.rows.length} ${def.rows.length === 1 ? 'row' : 'rows'}</h3>
+                <button class="btn small" type="button" id="tbl-add-row">${icon(ICONS.plus)} Add Row</button></div>
+              <div class="table-scroll"><table class="grid compact" id="tbl-data">
+                <thead><tr>${def.columns.map((c) => `<th>${esc(c.name)}${c.key ? ' <span class="key-mark" title="Key">●</span>' : ''}<small>${c.type}</small></th>`).join('')}<th></th></tr></thead>
+                <tbody>${def.rows.length ? def.rows.map((r, ri) => `<tr>${def.columns.map((c, ci) => `<td><input data-cell="${ri}:${ci}" value="${esc(r[ci] ?? '')}"
+                    ${c.type === 'Date' ? 'placeholder="YYYY-MM-DD"' : ''} spellcheck="false" aria-label="Row ${ri + 1}, ${esc(c.name)}"></td>`).join('')}
+                    <td><button class="btn small link" type="button" data-del-row="${ri}" aria-label="Delete row ${ri + 1}">Delete</button></td></tr>`).join('')
+                  : `<tr><td colspan="${def.columns.length + 1}" class="empty-row">No rows yet. Press Add Row.</td></tr>`}</tbody>
+              </table></div>
+              <p class="muted tbl-note">In the tenant the Data Editor opens from the toolbar (Tools). Rows are part of the design: Save keeps them, Deploy writes them into the table.${o?.deployed?.table?.deltaCapture
+                ? ' Delta Capture records what each deployment changed.' : ''}</p>
+            </div>
+            ${o?.deployed?.table?.deltaCapture ? deltaHtml(o) : ''}`;
+    const general = `<div class="obj-form" id="properties">
+            <label>Business Name:<input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
+            <label>Technical Name: * <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
+              <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
+            <label>Semantic Usage:
+              <select id="prop-semantic" ${chapter >= 6 ? '' : 'disabled'}>${SEMANTIC_USAGES.map((u) => `<option ${u === usage ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+            <label>Storage: <small>Disk by default; In-Memory keeps it in memory (more speed, more memory). The game keeps every table on disk.</small>
+              <select disabled><option>Disk</option><option>In-Memory</option></select></label>
+            ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture: <small>${!lockedDelta ? 'records inserts, updates and deletes in a delta table, for delta loads. Choose it before the first deploy: it cannot be changed later'
+                : def.deltaCapture ? 'on: the table records its changes; it cannot be switched off after deployment' : 'off: it can only be switched on before the first deploy'}</small>
+              <span class="switch"><input type="checkbox" id="prop-delta" ${def.deltaCapture ? 'checked' : ''} ${lockedDelta ? 'disabled' : ''}></span></label>` : ''}
+            <div class="obj-status"><span class="muted">Status:</span> ${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span> <small class="muted">${STATUS_HELP[o.status]}</small>` : 'New, not saved'}
+              <span class="muted">· Space</span> ${spaceChip(space)}</div>
+          </div>`;
     main.innerHTML = `
-      <div class="editor-page is-tableed">
+      <div class="editor-page is-tableed is-objpage">
         ${objectToolbar({
           space,
           title: business || 'New Table',
@@ -58,56 +102,23 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
               { id: 'ed-deploy', icon: ICONS.deploy, label: 'Deploy', title: 'Deploy: create the table with its rows' },
             ] },
             { label: 'View', buttons: [{ id: 'run', icon: ICONS.preview, label: 'Data Preview', title: o?.deployed ? 'Data Preview' : 'Deploy first' }] },
+            { label: 'Tools', buttons: [{ id: 'tbl-data-editor', icon: ICONS.table, label: 'Data Editor', title: 'Data Editor: the rows of the table' }] },
           ],
+          details: false,
         })}
         <div class="ed-body">
-          <section class="ed-center tbl-center">
-            <div class="tbl-section">
-              <div class="tbl-head"><h3>Columns <small class="muted">${def.columns.length}</small></h3>
-                <button class="btn small" type="button" id="tbl-add-col">${icon(ICONS.plus)} Add Column</button></div>
-              <table class="grid compact" id="tbl-columns">
-                <thead><tr><th>Key</th><th>Technical Name</th><th>Data Type</th><th></th></tr></thead>
-                <tbody>${def.columns.map((c, i) => `<tr>
-                  <td><input type="checkbox" data-col-key="${i}" ${c.key ? 'checked' : ''} aria-label="${esc(c.name)} is a key column"></td>
-                  <td><input class="mono" data-col-name="${i}" value="${esc(c.name)}" maxlength="50" spellcheck="false" aria-label="Column name"></td>
-                  <td><select data-col-type="${i}" aria-label="Data type of ${esc(c.name)}">${COL_TYPES.map((ty) => `<option ${ty === c.type ? 'selected' : ''}>${ty}</option>`).join('')}</select></td>
-                  <td><button class="btn small link" type="button" data-del-col="${i}" aria-label="Remove column ${esc(c.name)}">Remove</button></td>
-                </tr>`).join('')}</tbody>
-              </table>
-            </div>
-            <div class="tbl-section">
-              <div class="tbl-head"><h3>Data Editor <small class="muted">${def.rows.length} ${def.rows.length === 1 ? 'row' : 'rows'}</small></h3>
-                <button class="btn small" type="button" id="tbl-add-row">${icon(ICONS.plus)} Add Row</button></div>
-              <div class="table-scroll"><table class="grid compact" id="tbl-data">
-                <thead><tr>${def.columns.map((c) => `<th>${esc(c.name)}${c.key ? ' <span class="key-mark" title="Key">●</span>' : ''}<small>${c.type}</small></th>`).join('')}<th></th></tr></thead>
-                <tbody>${def.rows.length ? def.rows.map((r, ri) => `<tr>${def.columns.map((c, ci) => `<td><input data-cell="${ri}:${ci}" value="${esc(r[ci] ?? '')}"
-                    ${c.type === 'Date' ? 'placeholder="YYYY-MM-DD"' : ''} spellcheck="false" aria-label="Row ${ri + 1}, ${esc(c.name)}"></td>`).join('')}
-                    <td><button class="btn small link" type="button" data-del-row="${ri}" aria-label="Delete row ${ri + 1}">Delete</button></td></tr>`).join('')
-                  : `<tr><td colspan="${def.columns.length + 1}" class="empty-row">No rows yet. Press Add Row.</td></tr>`}</tbody>
-              </table></div>
-              <p class="muted tbl-note">Rows are part of the design: Save keeps them, Deploy writes them into the table.${o?.deployed?.table?.deltaCapture
-                ? ' Delta Capture records what each deployment changed.' : ''}</p>
-            </div>
-            ${o?.deployed?.table?.deltaCapture ? deltaHtml(o) : ''}
-          </section>
-          <aside class="props" id="properties" aria-label="Properties">
-            ${propsHead('Model Properties', ICONS.table, `Local Table ${technical || ''}`)}
-            <label>Business Name <small>for people</small><input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
-            <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
-              <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
-            <label>Semantic Usage <small>what kind of data this is</small>
-              <select id="prop-semantic" ${chapter >= 6 ? '' : 'disabled'}>${SEMANTIC_USAGES.map((u) => `<option ${u === usage ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
-            <label>Storage <small>Disk by default; In-Memory keeps it in memory (more speed, more memory)</small>
-              <select disabled title="The game keeps every table on disk"><option>Disk</option><option>In-Memory</option></select></label>
-            ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture <small>${!lockedDelta ? 'records inserts, updates and deletes in a delta table, for delta loads. Choose it before the first deploy: it cannot be changed later'
-                : def.deltaCapture ? 'on: the table records its changes; it cannot be switched off after deployment' : 'off: it can only be switched on before the first deploy'}</small>
-              <span class="switch"><input type="checkbox" id="prop-delta" ${def.deltaCapture ? 'checked' : ''} ${lockedDelta ? 'disabled' : ''}></span></label>` : ''}
-            <dl class="props-list">
-              <dt>Type</dt><dd>Local Table</dd>
-              <dt>Space</dt><dd>${spaceChip(space)}</dd>
-              <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'New, not saved'}</dd>
-            </dl>
-          </aside>
+          ${objectPage(ICONS.table, business || 'New Table', technical || '…', [
+            { id: 'tsec-general', label: 'General', html: general },
+            { id: 'tsec-columns', label: `Columns (${def.columns.length})`, html: columnsHtml },
+            { id: 'tsec-assoc', label: 'Associations (0)', html: '<p class="muted">Associations of a local table point to other tables or views. In the game, associations live on the views (chapter 6).</p>' },
+            { id: 'tsec-purpose', label: 'Business Purpose', html: `<div class="obj-form"><label>Description:<textarea rows="2" disabled placeholder="Not part of the game"></textarea></label>
+                <label>Business Contacts:<input disabled></label><label>Responsible Team:<input disabled></label><label>Tags:<input disabled></label></div>` },
+            { id: 'tsec-partitions', label: 'Partitions (0)', html: '<p class="muted">Partitions split a large table by a column, e.g. by year, for faster loads. Not used in the game.</p>' },
+            { id: 'tsec-deps', label: 'Dependent Objects', html: deps.length
+              ? `<ul class="dep-list" id="tbl-deps">${deps.map((k) => `<li><code>${esc(k)}</code> <small class="muted">${esc(findObject(t, k)?.kind ?? '')}</small></li>`).join('')}</ul>`
+              : '<p class="muted" id="tbl-deps">No object reads this table yet.</p>' },
+            { id: 'tsec-data', label: 'Data Editor', html: dataHtml },
+          ])}
         </div>
         <div class="results" id="results"><div class="placeholder"><b>Data Preview</b> shows the deployed table. Deploy it, then press the button above.</div></div>
       </div>`;
@@ -126,7 +137,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
   };
 
   function bind() {
-    bindDetails(main);
+    bindObjectPage(main);
+    main.querySelector('#tbl-data-editor')!.addEventListener('click', () => main.querySelector<HTMLButtonElement>('[data-anchor="tsec-data"]')!.click());
     const bn = main.querySelector<HTMLInputElement>('#prop-business')!;
     const tn = main.querySelector<HTMLInputElement>('#prop-technical')!;
     bn.addEventListener('input', () => {

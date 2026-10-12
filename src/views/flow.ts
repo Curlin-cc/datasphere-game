@@ -7,7 +7,7 @@ import {
 } from '../integration';
 import { startFlowRun } from './monitor';
 import { monitorTo } from './monitor';
-import { objectToolbar, bindDetails } from './toolbar';
+import { objectToolbar, bindDetails, propsHead } from './toolbar';
 import { esc, spaceChip, ICONS, openDialog, toast, ask } from '../ui';
 
 /**
@@ -95,6 +95,7 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
   let techTouched = !!o;
 
   const draw = () => {
+    const lastRun = o ? t.runs.find((r) => r.object === objectKey(o)) : undefined;
     const conn = findConnection(t, space, draft.connection);
     const src = conn ? sourceOf(conn) : undefined;
     main.innerHTML = `
@@ -113,34 +114,26 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
           ],
         })}
         <div class="ed-body">
-          <aside class="objects flow-source" aria-label="Source">
-            <h3>Source</h3>
-            <label>Source Connection
-              <select id="flow-conn"><option value="">Select</option>
-                ${conns.map((c) => `<option value="${esc(c.name)}" ${c.name === draft.connection ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-            ${conn ? `<p class="muted">${esc(connType(conn.type)?.label ?? '')}${supports(conn, 'Replication Flows') ? '' : conn.validation?.ok ? ' · <b>does not support replication flows</b>' : ' · not validated'}</p>` : ''}
-            <button class="btn small" type="button" id="flow-add" ${src ? '' : 'disabled'}>Add Source Objects</button>
-            <h3 class="target-head">Target</h3>
-            <p><b>SAP Datasphere</b><br><span class="muted">Local tables in ${esc(space)}</span></p>
-          <div class="flow-props" aria-label="Properties">
-            <h3>General</h3>
-            <label>Business Name <small>for people</small><input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
-            <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
-              <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
-            <dl class="props-list">
-              <dt>Type</dt><dd>Replication Flow</dd>
-              <dt>Space</dt><dd>${spaceChip(space)}</dd>
-              <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'New, not saved'}</dd>
-              <dt>Delta Load Interval</dt><dd>60 minutes</dd>
-            </dl>
-            ${o?.deployed ? `<button class="btn small" type="button" id="to-monitor">Open in Data Integration Monitor</button>` : ''}
-          </div>
-          </aside>
           <section class="ed-center flow-center">
-            <h3>Replication Objects <small class="muted">${draft.objects.length}</small></h3>
-            <div class="table-scroll"><table class="grid" id="flow-objects">
+            <div class="flow-ends">
+              <div class="flow-end" aria-label="Source">
+                <label>Source Connection
+                  <select id="flow-conn"><option value="">Select Source Connection</option>
+                    ${conns.map((c) => `<option value="${esc(c.name)}" ${c.name === draft.connection ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+                ${conn ? `<small class="muted">${esc(connType(conn.type)?.label ?? '')}${supports(conn, 'Replication Flows') ? '' : conn.validation?.ok ? ' · <b>does not support replication flows</b>' : ' · not validated'}</small>` : ''}
+                <button class="btn small" type="button" id="flow-add" ${src ? '' : 'disabled'}>Add Source Objects</button>
+              </div>
+              <span class="flow-arrow" aria-hidden="true">→</span>
+              <div class="flow-end target" aria-label="Target">
+                <span class="muted">Target Connection</span><b>SAP Datasphere</b><small class="muted">Local tables in ${esc(space)}</small>
+              </div>
+            </div>
+            ${draft.objects.length ? `<h3>Replication Objects <small class="muted">${draft.objects.length}</small></h3>` : `<div class="flow-empty">
+              <h2>It looks like you haven’t added any data yet.</h2>
+              <p class="muted">To start your replication flow, select a connection and a source object above on the left side.</p></div>`}
+            <div class="table-scroll" ${draft.objects.length ? '' : 'hidden'}><table class="grid" id="flow-objects">
               <thead><tr><th>Source Object</th><th>Target Table</th><th>Load Type</th><th>Truncate</th><th>Projection</th><th></th></tr></thead>
-              <tbody>${draft.objects.length ? draft.objects.map((fo, i) => {
+              <tbody>${draft.objects.map((fo, i) => {
                 const so = src?.objects.find((s) => s.name === fo.source);
                 const exists = localTables.includes(fo.target);
                 return `<tr>
@@ -153,12 +146,34 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
                   <td><input type="checkbox" data-truncate="${i}" ${fo.truncate ? 'checked' : ''} aria-label="Truncate ${esc(fo.target)}"></td>
                   <td><button class="btn small" type="button" data-proj="${i}">${fo.extra.length ? `${fo.extra.length} added column${fo.extra.length > 1 ? 's' : ''}` : 'Edit'}</button></td>
                   <td><button class="btn small link" type="button" data-remove="${i}" aria-label="Remove ${esc(fo.source)}" title="Remove">✕</button></td></tr>`;
-              }).join('') : `<tr><td colspan="6" class="muted">Choose a source connection and add source objects.</td></tr>`}</tbody>
+              }).join('')}</tbody>
             </table></div>
             <datalist id="flow-tables">${localTables.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
             <p class="muted flow-note"><b>Initial Only</b> loads everything once. <b>Initial and Delta</b> loads everything once, then keeps checking the source
               for changes and transfers only those; it needs a delta-capable source. <b>Truncate</b> empties the target table before the initial load.</p>
           </section>
+          <aside class="props flow-props" id="properties" aria-label="Properties">
+            ${propsHead('Replication Flow Properties', ICONS.flow, technical || 'New Replication Flow')}
+            <h4 class="props-sec">General</h4>
+            <label>Business Name <small>for people</small><input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
+            <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
+              <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
+            <dl class="props-list">
+              <dt>Space</dt><dd>${spaceChip(space)}</dd>
+              <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'Not Deployed'}</dd>
+            </dl>
+            <h4 class="props-sec">Settings</h4>
+            <label class="switch-line">Skip Unmapped Columns <small>target columns without a source column stay empty; not changeable in the game</small>
+              <span class="switch"><input type="checkbox" checked disabled></span></label>
+            <h4 class="props-sec">Run Status</h4>
+            <dl class="props-list">
+              <dt>Status</dt><dd>${lastRun ? esc(lastRun.status) : 'Not Run Yet'}</dd>
+              <dt>Frequency</dt><dd>${draft.objects.some((fo) => fo.loadType === 'Initial and Delta') ? 'Delta Load Interval: 60 minutes' : '–'}</dd>
+            </dl>
+            ${o?.deployed ? `<button class="btn small" type="button" id="to-monitor">Open in Data Integration Monitor</button>` : ''}
+            <h4 class="props-sec">Run Settings</h4>
+            <label>Thread Limit for Initial Load <small>parallel transfers of the initial load; fixed in the game</small><input value="10" disabled></label>
+          </aside>
         </div>
       </div>`;
     bind();

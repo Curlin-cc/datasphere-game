@@ -75,7 +75,7 @@ with sync_playwright() as p:
     pg.fill('#prop-business', 'Region Access'); pg.fill('#prop-technical', 'RHN_REP_DAC_REGION')
     deploy()
     g.check('m06 single values')
-    pg.check('input[name="dac-type"][value="Hierarchy"]'); pg.wait_for_selector('#dac-hierarchy')
+    pg.select_option('#dac-structure', 'Hierarchy'); pg.wait_for_selector('#dac-hierarchy')
     pg.select_option('#dac-hierarchy', H); pg.check('[data-criterion="NODE_ID"]')
     pg.click('#run'); pg.wait_for_selector('#results .result-status')
     print('   DAC preview:', [r.replace('\t', ' | ') for r in pg.locator('#results tbody tr').all_inner_texts()])

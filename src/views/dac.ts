@@ -7,7 +7,7 @@ import { dacError, entityCandidates, hierarchyCandidates, hierarchyColumns, type
 import { EXCURSIONS } from '../content/chapters';
 import { lockError } from '../integration';
 import { esc, spaceChip, icon, ICONS, toast, resultTable, openDialog } from '../ui';
-import { objectToolbar, bindDetails, propsHead } from './toolbar';
+import { objectToolbar, objectPage, bindObjectPage } from './toolbar';
 
 /**
  * Data Access Control editor (chapter 8, Handbuch 9.3): criteria type, permissions entity, identifier column (user IDs)
@@ -54,7 +54,7 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
     keep();
     const cols = columns ?? [];
     main.innerHTML = `
-      <div class="editor-page is-dac">
+      <div class="editor-page is-objpage is-dac">
         ${objectToolbar({
           space,
           title: business || 'New Data Access Control',
@@ -67,63 +67,52 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
             ] },
             { label: 'View', buttons: [{ id: 'run', icon: ICONS.preview, label: 'Data Preview', title: 'Who may see which values' }] },
           ],
+          details: false,
         })}
-        <div class="ed-body">
-          <section class="ed-center dac-center">
-            <div class="tbl-section">
-              <h3>Criteria Type</h3>
-              <div class="dac-types" id="dac-type">
-                <label class="dac-type ${def.type === 'Single Values' ? 'on' : ''}"><input type="radio" name="dac-type" value="Single Values" ${def.type === 'Single Values' ? 'checked' : ''}> <b>Single Values</b>
-                  <small>A user sees the rows that match one of the values listed for him, e.g. his grid areas.</small></label>
-                <button type="button" class="dac-type off" data-dac-info="operator"><b>Operator and Values</b><small>Ranges and patterns, like BW analysis authorizations. Not in this game.</small></button>
-                ${hierarchyOn
-                  ? `<label class="dac-type ${def.type === 'Hierarchy' ? 'on' : ''}"><input type="radio" name="dac-type" value="Hierarchy" ${def.type === 'Hierarchy' ? 'checked' : ''}> <b>Hierarchy</b>
-                      <small>An entry names a node; the user sees that node and everything below it, e.g. a region with all its grid areas.</small></label>`
-                  : `<button type="button" class="dac-type off" data-dac-info="hierarchy"><b>Hierarchy</b><small>A node and everything below it. You use it in the excursions.</small></button>`}
+        <div class="ed-body dac-center">
+          ${objectPage(ICONS.lock, business || 'New Data Access Control', technical || '…', [
+            { id: 'dsec-general', label: 'General', html: `<div class="obj-two">
+              <div class="obj-form" id="properties">
+                <label>Business Name:<input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
+                <label>Technical Name: * <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
+                  <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
+                <label>Owner:<input disabled placeholder="Enter the Owner of This Data Access Control"></label>
+                <div class="obj-status"><span class="muted">Status:</span> ${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span> <small class="muted">${STATUS_HELP[o.status]}</small>` : 'New, not saved'}
+                  <span class="muted">· Space</span> ${spaceChip(space)}</div>
               </div>
-            </div>
-            ${def.type === 'Hierarchy' ? `<div class="tbl-section">
-              <h3>Hierarchy</h3>
-              <p class="muted">A deployed view with semantic usage <b>Hierarchy</b>: its Parent and Child columns decide what lies below a node.</p>
-              <div class="form-grid"><label>Hierarchy
-                <select id="dac-hierarchy"><option value="">Select a hierarchy…</option>
-                  ${hierarchies.map((h) => `<option value="${esc(objectKey(h))}" ${objectKey(h) === def.hierarchy ? 'selected' : ''}>${esc(h.name)}${h.space !== space ? ` · ${esc(h.space)}` : ''}</option>`).join('')}
-                </select></label></div>
-              ${hierarchies.length ? '' : `<p class="form-error">No deployed hierarchy in ${esc(space)} yet. Build a view with semantic usage Hierarchy first.</p>`}
-            </div>` : ''}
-            <div class="tbl-section">
-              <h3>Permissions Entity</h3>
-              <p class="muted">The table or view that says which user may see which values: one row per user and value.</p>
-              <div class="form-grid">
-                <label>Permissions Entity
-                  <select id="dac-entity"><option value="">Select a table or view…</option>
+              <div class="obj-form">
+                <label>Structure: <small>how an entry describes what a user may see
+                  <button type="button" class="link-btn" data-dac-info="operator">Operator and Values?</button>${hierarchyOn ? '' : ' · <button type="button" class="link-btn" data-dac-info="hierarchy">Hierarchy?</button>'}</small>
+                  <select id="dac-structure">
+                    <option value="Single Values" ${def.type === 'Single Values' ? 'selected' : ''}>Single Values</option>
+                    <option disabled>Operator and Values</option>
+                    <option value="Hierarchy" ${def.type === 'Hierarchy' ? 'selected' : ''} ${hierarchyOn ? '' : 'disabled'}>Hierarchy</option>
+                  </select></label>
+                <p class="muted dac-type-help">${def.type === 'Hierarchy'
+                  ? 'An entry names a node; the user sees that node and everything below it, e.g. a region with all its grid areas.'
+                  : 'A user sees the rows that match one of the values listed for him, e.g. his grid areas.'}</p>
+                ${def.type === 'Hierarchy' ? `<label>Hierarchy: * <small>a deployed view with semantic usage Hierarchy; its Parent and Child columns decide what lies below a node</small>
+                  <select id="dac-hierarchy"><option value="">Select a hierarchy…</option>
+                    ${hierarchies.map((h) => `<option value="${esc(objectKey(h))}" ${objectKey(h) === def.hierarchy ? 'selected' : ''}>${esc(h.name)}${h.space !== space ? ` · ${esc(h.space)}` : ''}</option>`).join('')}
+                  </select></label>
+                  ${hierarchies.length ? '' : `<p class="form-error">No deployed hierarchy in ${esc(space)} yet. Build a view with semantic usage Hierarchy first.</p>`}` : ''}
+                <label>Permissions Entity: * <small>the table or view that says which user may see which values: one row per user and value</small>
+                  <select id="dac-entity"><option value="">Select a Table or View Containing User IDs and Criteria</option>
                     ${entities.map((e) => `<option value="${esc(objectKey(e))}" ${objectKey(e) === def.entity ? 'selected' : ''}>${esc(e.name)} · ${esc(e.kind)}${e.space !== space ? ` · ${esc(e.space)}` : ''}</option>`).join('')}
                   </select></label>
-                <label>Identifier Column <small>holds the user IDs</small>
+                ${!entities.length ? `<p class="form-error">No deployed table or view in ${esc(space)} yet. Build the permissions table first.</p>` : ''}
+                <label class="switch-line">Allow IdP User Attributes as Identifiers <small>not part of the game</small><span class="switch"><input type="checkbox" disabled></span></label>
+                <p class="muted">The permissions entity must include an identifier column with the user IDs your identity provider knows (here: the user IDs from Security › Users).</p>
+                <label>Identifier Column: *
                   <select id="dac-identifier" ${cols.length ? '' : 'disabled'}><option value="">Select…</option>
                     ${cols.map((c) => `<option ${c === def.identifier ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
-              </div>
-              ${!entities.length ? `<p class="form-error">No deployed table or view in ${esc(space)} yet. Build the permissions table first.</p>` : ''}
-            </div>
-            <div class="tbl-section">
-              <h3>Criteria</h3>
-              <p class="muted">The columns whose values decide what a user sees. They are mapped to columns of the protected view later.</p>
-              ${def.type === 'Hierarchy' ? '<p class="muted">Hierarchy: exactly one criterion, the column with the node a user may see.</p>' : ''}
-              <div class="am-chips" id="dac-criteria">${cols.filter((c) => c !== def.identifier).map((c) => `<label><input type="${def.type === 'Hierarchy' ? 'radio' : 'checkbox'}" name="dac-crit" data-criterion="${esc(c)}" ${def.criteria.includes(c) ? 'checked' : ''}> ${esc(c)}</label>`).join('') || '<span class="muted">Choose the permissions entity first.</span>'}</div>
-            </div>
-          </section>
-          <aside class="props" id="properties" aria-label="Properties">
-            ${propsHead('Model Properties', ICONS.lock, `Data Access Control ${technical || ''}`)}
-            <label>Business Name <small>for people</small><input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off"></label>
-            <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
-              <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
-            <dl class="props-list">
-              <dt>Type</dt><dd>Data Access Control</dd>
-              <dt>Space</dt><dd>${spaceChip(space)}</dd>
-              <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'New, not saved'}</dd>
-            </dl>
-            <p class="muted">Assign it to a view in the view's properties (section Data Access Controls). Users without an entry see no rows.</p>
-          </aside>
+              </div></div>` },
+            { id: 'dsec-criteria', label: 'Criteria', html: `<p class="muted">The columns whose values decide what a user sees. They are mapped to columns of the protected view when you assign the control.${def.type === 'Hierarchy' ? ' Hierarchy: exactly one criterion, the column with the node a user may see.' : ''}</p>
+                <table class="grid compact" id="dac-criteria"><thead><tr><th></th><th>Business Name</th><th>Technical Name</th></tr></thead>
+                  <tbody>${cols.filter((c) => c !== def.identifier).map((c) => `<tr><td><input type="${def.type === 'Hierarchy' ? 'radio' : 'checkbox'}" name="dac-crit" data-criterion="${esc(c)}" ${def.criteria.includes(c) ? 'checked' : ''} aria-label="${esc(c)} is a criterion"></td>
+                    <td>${esc(c)}</td><td class="mono">${esc(c)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Choose the permissions entity and the identifier column first.</td></tr>'}</tbody></table>
+                <p class="muted">Assign the control to a view in the view's properties (section Data Access Controls). Users without an entry see no rows.</p>` },
+          ])}
         </div>
         <div class="results" id="results"><div class="placeholder"><b>Data Preview</b> lists, per user, the values this control lets him see.</div></div>
       </div>`;
@@ -131,7 +120,7 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
   };
 
   function bind() {
-    bindDetails(main);
+    bindObjectPage(main);
     const bn = main.querySelector<HTMLInputElement>('#prop-business')!;
     const tn = main.querySelector<HTMLInputElement>('#prop-technical')!;
     bn.addEventListener('input', () => {
@@ -165,15 +154,15 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
         keep();
       }),
     );
-    main.querySelectorAll<HTMLInputElement>('input[name="dac-type"]').forEach((r) =>
-      r.addEventListener('change', () => {
-        def.type = r.value as DacDef['type'];
+    main.querySelector<HTMLSelectElement>('#dac-structure')?.addEventListener('change', (e) => {
+      {
+        def.type = (e.target as HTMLSelectElement).value as DacDef['type'];
         if (def.type === 'Hierarchy') def.criteria = def.criteria.slice(0, 1);
         else delete def.hierarchy;
         ctx.track(`dac-type:${def.type}`);
         draw();
-      }),
-    );
+      }
+    });
     main.querySelector<HTMLSelectElement>('#dac-hierarchy')?.addEventListener('change', (e) => {
       def.hierarchy = (e.target as HTMLSelectElement).value;
       ctx.track(`dac-hierarchy:${def.hierarchy}`);
@@ -184,7 +173,7 @@ export async function renderDacEditor(main: HTMLElement, o: RepoObject | null, n
         const text = b.dataset.dacInfo === 'operator'
           ? 'Operator and Values: each entry is a pair of operator and value (for example between, contains pattern), combined with AND and OR, like analysis authorizations in SAP BW. The handbook marks the details as not verified, so the game leaves it out.'
           : 'Hierarchy: an entry names a node of a hierarchy; the user sees that node and everything below it, for example a region and all its grid areas. It needs a hierarchy view; you build one in the excursions (chapter 12).';
-        const d = openDialog(b.querySelector('b')!.textContent!, `<p class="guide-lead">${esc(text)}</p><div class="guide-actions"><button class="btn primary" type="submit">Got it</button></div>`);
+        const d = openDialog(b.dataset.dacInfo === 'operator' ? 'Operator and Values' : 'Hierarchy', `<p class="guide-lead">${esc(text)}</p><div class="guide-actions"><button class="btn primary" type="submit">Got it</button></div>`);
         d.form.addEventListener('submit', (ev) => {
           ev.preventDefault();
           d.close();

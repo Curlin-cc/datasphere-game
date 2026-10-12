@@ -175,7 +175,7 @@ function regionControl({ tenant }: RuleContext): string | null {
   if (!o) return 'There is no data access control RHN_REP_DAC_REGION in RHN_REP yet.';
   const d = o.deployed?.dac;
   if (!d) return 'RHN_REP_DAC_REGION is saved, but not deployed.';
-  if (d.type !== 'Hierarchy') return 'RHN_REP_DAC_REGION has the criteria type Single Values. A region node only covers its grid areas with the type Hierarchy.';
+  if (d.type !== 'Hierarchy') return 'RHN_REP_DAC_REGION has the structure Single Values. A region node only covers its grid areas with the structure Hierarchy.';
   if (d.entity !== T_NODES) return `RHN_REP_DAC_REGION reads ${d.entity.split('.')[1] ?? 'nothing'}. Its permissions entity is RHN_REP_T_PERMISSION_NODES.`;
   if (d.identifier !== 'USER_ID' || d.criteria.join() !== 'NODE_ID') return 'Identifier USER_ID, criterion NODE_ID.';
   return d.hierarchy === H_GRID ? null : 'Choose RHN_REP_H_GRID_AREA as the hierarchy.';
@@ -469,7 +469,7 @@ export const CHAPTER_12: Mission[] = [
       Same people, same numbers, three rows.</p>`,
     tasks: [
       'Create the table <code>RHN_REP_T_PERMISSION_NODES</code> with one row per user and node. Deploy it.',
-      'Create the data access control <code>RHN_REP_DAC_REGION</code>: type Hierarchy, hierarchy <code>RHN_REP_H_GRID_AREA</code>. Deploy it.',
+      'Create the data access control <code>RHN_REP_DAC_REGION</code>: structure Hierarchy, hierarchy <code>RHN_REP_H_GRID_AREA</code>. Deploy it.',
       'Assign it to <code>RHN_REP_F_INVOICES</code> in place of <code>RHN_REP_DAC_GRID_AREA</code> and deploy. Check the invoice model as MBRANDT.',
       'Answer the question below.',
     ],

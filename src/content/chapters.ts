@@ -459,6 +459,6 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Hierarchy data access control',
     chapter: 12,
     text: 'A data access control of type Hierarchy: each entry names a node, and the user sees the rows of that node and all its descendants. A new leaf below a granted node is covered without a new entry.',
-    realTenant: 'Data Builder > New Data Access Control > criteria type Hierarchy, with a hierarchy view.',
+    realTenant: 'Data Builder > New Data Access Control > Structure Hierarchy, with a hierarchy view.',
   },
 ];

@@ -33,6 +33,10 @@ let fresh: { space: string; def: AnalyticModelDef | null; business: string; tech
 /** Preview settings per model (key or 'draft'). */
 const previews = new Map<string, { rows: string[]; measures: string[] | null; vars: Record<string, VariableValue>; user?: string }>();
 let selected: Selected = 'model';
+/** Model · Preview switch of the editor (Bild 37). Preview gives the data preview the whole page. */
+let amMode: 'model' | 'preview' = 'model';
+/** A model opens in Model mode (called when the Data Builder leaves or opens an object). */
+export const resetModelMode = () => (amMode = 'model');
 let lastKey = '';
 
 /** The New Analytic Model tile: start over with the fact picker. */
@@ -49,6 +53,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
   if (key !== lastKey) {
     selected = 'model';
     lastKey = key;
+    amMode = 'model';
   }
   let def: AnalyticModelDef | null = o ? (o.model ? structuredClone(o.model) : null) : fresh!.def;
   let business = o?.businessName ?? fresh!.business;
@@ -107,11 +112,12 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
   const draw = () => {
     keepFresh();
     main.innerHTML = `
-      <div class="editor-page is-model">
+      <div class="editor-page is-model ${amMode === 'preview' ? 'am-mode-preview' : ''}">
         ${toolbar()}
         <div class="ed-body">
-          <section class="ed-center am-canvas" id="am-canvas" aria-label="Canvas">${canvas()}</section>
-          <aside class="props" id="properties" aria-label="Properties">${propsHead('Model Properties', ICONS.cube, `Analytic Model ${technical || ''}`)}${properties()}</aside>
+          <section class="ed-center am-canvas" id="am-canvas" aria-label="Canvas"><div class="am-canvas-bar"><span class="muted">Layout</span>
+            <select disabled title="The game draws the fact on the left and its dimensions on the right"><option>Left-Right</option><option>Top-Bottom</option></select></div>${canvas()}</section>
+          <aside class="props" id="properties" aria-label="Properties">${propsHead('Analytic Model Properties', ICONS.cube, `Analytic Model ${technical || ''}`)}${properties()}</aside>
         </div>
         <div class="results am-preview" id="results">${previewControls()}<div class="am-out" id="am-out">
           <div class="placeholder"><b>Data Preview</b> shows the model the way SAP Analytics Cloud users see it: pick attributes for the rows,
@@ -119,6 +125,15 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
       </div>`;
     bind();
   };
+
+  /** Switches Model · Preview without redrawing, so preview choices and results stay. */
+  function setMode(m: 'model' | 'preview') {
+    amMode = m;
+    main.querySelector('.editor-page')?.classList.toggle('am-mode-preview', m === 'preview');
+    main.querySelector('#ed-mode-model')?.setAttribute('aria-pressed', String(m === 'model'));
+    main.querySelector('#ed-mode-preview')?.setAttribute('aria-pressed', String(m === 'preview'));
+    ctx.track(`am-mode:${m}`);
+  }
 
   function toolbar() {
     return objectToolbar({
@@ -133,6 +148,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
         ] },
         { label: 'View', buttons: [{ id: 'run', icon: ICONS.preview, label: 'Data Preview', disabled: !def }] },
       ],
+      mode: def ? amMode : undefined,
     });
   }
 
@@ -436,7 +452,12 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
       draw();
     }));
     main.querySelector('#am-pivot')?.addEventListener('change', readPreview);
-    main.querySelector('#run')!.addEventListener('click', runPreview);
+    main.querySelector('#run')!.addEventListener('click', () => {
+      if (amMode !== 'preview') setMode('preview');
+      void runPreview();
+    });
+    main.querySelector('#ed-mode-model')?.addEventListener('click', () => setMode('model'));
+    main.querySelector('#ed-mode-preview')?.addEventListener('click', () => setMode('preview'));
     main.querySelector('#ed-save')!.addEventListener('click', () => {
       if (save()) ctx.renderView();
     });
