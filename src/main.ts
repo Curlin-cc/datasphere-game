@@ -11,7 +11,7 @@ import type { QuestionCheck } from './missions/types';
 import { startTour, TRACK_EVENT, type TourStep } from './tutorial';
 import {
   loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
-  exportProgress, importProgress, freshProgress, CLEAN_BONUS,
+  exportProgress, importProgress, freshProgress, sandboxProgress, CLEAN_BONUS,
 } from './progress';
 import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
 import { restorePersistence } from './perf';
@@ -561,6 +561,7 @@ function renderHome(main: HTMLElement) {
             <div class="save-actions">
               <button class="btn" type="button" id="save-export">Export save</button>
               <button class="btn" type="button" id="save-import">Import save</button>
+              <button class="btn" type="button" id="save-sandbox" title="Load a save with every mission solved, to explore all apps">Sandbox</button>
               <button class="btn link" type="button" id="save-reset">Start over</button>
             </div>
           </div>
@@ -590,6 +591,11 @@ function renderHome(main: HTMLElement) {
     } catch (err) {
       note.textContent = err instanceof Error ? err.message : String(err);
     }
+  });
+  main.querySelector('#save-sandbox')!.addEventListener('click', async () => {
+    if (!confirm('Load the sandbox? It replaces your progress with a save in which every mission is solved. Export your save first if you want to keep it.')) return;
+    ctx.progress = sandboxProgress();
+    await afterProgressReplaced();
   });
   main.querySelector('#save-reset')!.addEventListener('click', async () => {
     if (!confirm('Start over? Your XP and all solved missions are deleted. Export your save first if you want to keep it.')) return;

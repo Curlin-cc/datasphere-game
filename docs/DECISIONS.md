@@ -4,6 +4,7 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-12 | Sandbox als fertiger Spielstand im Bundle (`sandbox.json`, ~100 KB), erzeugt durch die Playtests statt von Hand | Objekte entstehen über die echte UI, bleiben also mit dem Spiel konsistent; kein Sondermodus im Code nötig |
 | 2026-10-09 | Hierarchie-Missionen als c12-m05/m06 an die Exkurse angehängt statt in Kapitel 6/8 eingefügt | Eingefügte Missionen würden weiter fortgeschrittene Spielstände zurücksetzen (Freischaltung „alle vorherigen gelöst“); als Vertiefung passt das Ende |
 | 2026-10-09 | DAC-Typ Hierarchy: genau ein Kriterium (Knotenspalte), Hierarchie = deployter View mit Parent/Child-Rollen, Auflösung per rekursiver CTE in `securedFrom` | Handbuch 9.3.4 beschreibt Knoten + Nachfahren; Details der Oberfläche nicht belegt |
 | 2026-10-09 | Badges werden aus dem Spielstand berechnet statt gespeichert; Glossar schaltet je Kapitel frei (Kapitel = erster Kontakt) | Alte Spielstände bekommen ihre Badges sofort, keine Migration; „beim ersten Kontakt“ als Kapitel genau genug |

@@ -1,7 +1,11 @@
 """Helpers for the headless playtests (Playwright, Python). Dev server: npx vite --port 5199 --strictPort"""
 import json
+import os
+import sys
 
 URL = 'http://localhost:5199/'
+# Chain mode (sandbox.sh): each script starts from the save the previous one left in this file and stops after its first pass.
+CHAIN = os.environ.get('DSG_CHAIN')
 SPACES = [
     {"id": "RHN_IN", "name": "Rheinau Inbound", "diskGB": 40, "memoryGB": 8, "priority": 3},
     {"id": "RHN_HARM", "name": "Rheinau Harmonization", "diskGB": 36, "memoryGB": 8, "priority": 3},
@@ -42,6 +46,11 @@ class Game:
         self.pg.on('dialog', lambda d: d.accept())
 
     def start(self, save=None):
+        if CHAIN and save is not None and os.path.exists(CHAIN):
+            current = save['currentMission']
+            with open(CHAIN) as f:
+                save = json.load(f)
+            save['currentMission'] = current
         if save is not None:
             self.pg.add_init_script(
                 "if(!sessionStorage.getItem('seeded')){localStorage.setItem('dsg-progress-v3', %s);sessionStorage.setItem('seeded','1')}"
@@ -165,4 +174,9 @@ class Game:
     def done(self):
         real = [e for e in self.errors if 'TUNNEL' not in e]
         print('ERRORS', real)
+        if CHAIN:
+            with open(CHAIN, 'w') as f:
+                f.write(self.pg.evaluate("localStorage.getItem('dsg-progress-v3')"))
+            self.b.close()
+            sys.exit(0)
         self.b.close()
