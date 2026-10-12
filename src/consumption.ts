@@ -56,17 +56,34 @@ export function sanitizeDbUsers(data: unknown, spaceIds: Set<string>): DbUser[] 
  * grant Authorization Code, and the redirect URI of the calling tool (SAP KBA 3563695, Handbuch 12.7.3). API Access uses
  * Client Credentials and has no user. Field names, the secret shown once, and the URLs are simplified (not verified in the handbook).
  */
-export type OAuthPurpose = 'Interactive Usage' | 'API Access';
+export type OAuthPurpose = 'Interactive Usage' | 'API Access' | 'Technical User';
 export const OAUTH_PURPOSES: { id: OAuthPurpose; grant: string; text: string }[] = [
-  { id: 'Interactive Usage', grant: 'Authorization Code', text: 'A person signs in; the tool acts in that user\'s name. For SAP Analytics Cloud import connections and other OData clients.' },
-  { id: 'API Access', grant: 'Client Credentials', text: 'A program acts as itself, without a user. For administration APIs such as user provisioning.' },
+  { id: 'Interactive Usage', grant: 'Authorization Code', text: 'A person signs in; the tool acts in that user\'s name. For SAP Analytics Cloud import connections and other OData clients. Issues refresh tokens.' },
+  { id: 'API Access', grant: 'Client Credentials', text: 'A program acts as itself, without a user. For administration APIs such as user provisioning (SCIM).' },
+  { id: 'Technical User', grant: 'Client Credentials', text: 'A program acts as a technical user of the tenant with exactly the roles you select here, for example a metadata or catalog tool. Needs a user ID, roles and an expiry date.' },
 ];
+/** Lifetime limits from the SAP Help (OAuth client): token 60 s to 1 day (default 60 min), refresh token 60 s to 180 days (default 30 days). */
+export const TOKEN_LIMITS = { min: 60, max: 86400, def: 3600 };
+export const REFRESH_LIMITS = { min: 60, max: 180 * 86400, def: 30 * 86400 };
+export const TIME_UNITS: { id: string; s: number }[] = [
+  { id: 'Seconds', s: 1 }, { id: 'Minutes', s: 60 }, { id: 'Hours', s: 3600 }, { id: 'Days', s: 86400 },
+];
+/** 3600 → "60 Minutes", 2592000 → "30 Days". */
+export function formatLifetime(sec: number) {
+  const u = [...TIME_UNITS].reverse().find((x) => sec % x.s === 0 && sec >= x.s) ?? TIME_UNITS[0];
+  const n = sec / u.s;
+  return `${n} ${n === 1 ? u.id.slice(0, -1) : u.id}`;
+}
 export interface OAuthClient {
   name: string;
   purpose: OAuthPurpose;
   redirectUri: string;
-  /** Token lifetime in hours. */
-  lifetimeH: number;
+  /** Access token lifetime in seconds. */
+  lifetimeS: number;
+  /** Refresh token lifetime in seconds; only Interactive Usage (Authorization Code) gets refresh tokens. */
+  refreshS?: number;
+  /** Purpose Technical User: the user the program acts as, its roles and when the client expires. */
+  technical?: { userId: string; roles: string[]; expires: string };
   clientId: string;
   createdAt: string;
 }
@@ -86,10 +103,20 @@ export const SAC_PLANNING = {
 export const odataUrl = (o: Pick<RepoObject, 'space' | 'name' | 'kind'>) =>
   `https://${TENANT_HOST}/api/v1/dwc/consumption/${o.kind === 'Analytic Model' ? 'analytical' : 'relational'}/${o.space}/${o.name}/${o.name}`;
 
-export function oauthClientError(name: string, redirectUri: string, purpose: OAuthPurpose, t: TenantState): string | null {
-  if (!name.trim()) return 'Enter a name for the client.';
-  if (t.oauthClients.some((c) => c.name.toLowerCase() === name.trim().toLowerCase())) return `A client named ${name.trim()} already exists.`;
-  if (purpose === 'Interactive Usage' && !/^https:\/\/\S+$/.test(redirectUri.trim())) return 'Interactive Usage needs a redirect URI starting with https://: where the tool receives the code after the user signs in.';
+export function oauthClientError(c: Pick<OAuthClient, 'name' | 'redirectUri' | 'purpose' | 'lifetimeS' | 'refreshS' | 'technical'>, t: TenantState, today = new Date()): string | null {
+  const name = c.name.trim();
+  if (!name) return 'Enter a name for the client.';
+  if (t.oauthClients.some((x) => x.name.toLowerCase() === name.toLowerCase())) return `A client named ${name} already exists.`;
+  if (c.purpose === 'Interactive Usage' && !/^https?:\/\/\S+$/.test(c.redirectUri.trim())) return 'Interactive Usage needs a redirect URI (https://…, or http://localhost:… for the command line): where the tool receives the code after the user signs in.';
+  if (!(c.lifetimeS >= TOKEN_LIMITS.min && c.lifetimeS <= TOKEN_LIMITS.max)) return 'Token Lifetime must be between 60 seconds and 1 day.';
+  if (c.refreshS !== undefined && !(c.refreshS >= REFRESH_LIMITS.min && c.refreshS <= REFRESH_LIMITS.max)) return 'Refresh Token Lifetime must be between 60 seconds and 180 days.';
+  if (c.purpose === 'Technical User') {
+    const tu = c.technical;
+    if (!tu?.userId.trim()) return 'Technical User needs a user ID, e.g. CATALOG_TECH_USER.';
+    if (!/^[A-Za-z][A-Za-z0-9_]{2,40}$/.test(tu.userId.trim())) return 'The user ID uses letters, digits and underscores and starts with a letter.';
+    if (!tu.roles.length) return 'Select at least one role: the technical user can do exactly what its roles allow.';
+    if (!tu.expires || new Date(tu.expires) <= today) return 'Choose an expiry date in the future.';
+  }
   return null;
 }
 
@@ -111,7 +138,7 @@ export async function odataRequest(t: TenantState, clientName: string, key: stri
   const c = t.oauthClients.find((x) => x.name === clientName);
   if (!c) return { status: 401, message: 'invalid_client: the tenant does not know this client ID.' };
   if (c.purpose !== 'Interactive Usage')
-    return { status: 401, message: 'unauthorized_client: the client has purpose API Access (Client Credentials). OData consumption needs a signed-in user: purpose Interactive Usage, grant Authorization Code.' };
+    return { status: 401, message: `unauthorized_client: the client has purpose ${c.purpose} (Client Credentials). The SAP Analytics Cloud import connection signs a person in: purpose Interactive Usage, grant Authorization Code.` };
   if (c.redirectUri.trim() !== toolRedirect)
     return { status: 400, message: `invalid_request: redirect_uri mismatch. The tool asks to return to ${toolRedirect}, the client allows ${c.redirectUri || '(none)'}. The sign-in never completes.` };
   const o = findObject(t, key);
@@ -134,8 +161,16 @@ export function sanitizeOAuthClients(data: unknown): OAuthClient[] {
   for (const d of Array.isArray(data) ? data.slice(0, 20) : []) {
     if (!d || typeof d.name !== 'string' || !d.name.trim() || out.some((c) => c.name === d.name)) continue;
     if (!OAUTH_PURPOSES.some((p) => p.id === d.purpose)) continue;
+    const clamp = (v: number, l: { min: number; max: number }) => Math.min(l.max, Math.max(l.min, Math.round(v)));
+    // Saves before 12.10.2026 kept the lifetime in hours (lifetimeH).
+    const lifetimeS = Number.isFinite(d.lifetimeS) ? clamp(d.lifetimeS, TOKEN_LIMITS) : Number.isFinite(d.lifetimeH) ? clamp(d.lifetimeH * 3600, TOKEN_LIMITS) : TOKEN_LIMITS.def;
+    const tu = d.purpose === 'Technical User' && d.technical && typeof d.technical.userId === 'string'
+      ? { userId: d.technical.userId.slice(0, 40), roles: Array.isArray(d.technical.roles) ? d.technical.roles.filter((r: unknown) => typeof r === 'string').slice(0, 20) : [], expires: String(d.technical.expires ?? '').slice(0, 10) }
+      : undefined;
     out.push({ name: d.name.slice(0, 60), purpose: d.purpose, redirectUri: typeof d.redirectUri === 'string' ? d.redirectUri.slice(0, 300) : '',
-      lifetimeH: Number.isFinite(d.lifetimeH) ? Math.min(720, Math.max(1, Math.round(d.lifetimeH))) : 12,
+      lifetimeS,
+      ...(d.purpose === 'Interactive Usage' ? { refreshS: Number.isFinite(d.refreshS) ? clamp(d.refreshS, REFRESH_LIMITS) : REFRESH_LIMITS.def } : {}),
+      ...(tu ? { technical: tu } : {}),
       clientId: typeof d.clientId === 'string' ? d.clientId.slice(0, 80) : '', createdAt: typeof d.createdAt === 'string' ? d.createdAt.slice(0, 40) : '' });
   }
   return out;

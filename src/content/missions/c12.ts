@@ -624,10 +624,10 @@ export const CHAPTER_12: Mission[] = [
       },
       {
         type: 'question', id: 'purpose', label: 'Why this purpose',
-        prompt: 'Why does the planners\' client need the purpose Interactive Usage and not API Access?',
+        prompt: 'Why does the planners\' client need the purpose Interactive Usage and not API Access or Technical User?',
         options: [
           'API Access is only for SAP-internal tools',
-          'OData consumption needs a signed-in user (Authorization Code with a redirect URI); API Access signs in as a program without a user (Client Credentials)',
+          'The SAC import connection signs a person in (Authorization Code with a redirect URI); API Access and Technical User sign in as a program (Client Credentials)',
           'Interactive Usage tokens never expire',
           'Interactive Usage bypasses Expose for Consumption',
         ],

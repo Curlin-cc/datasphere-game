@@ -6,8 +6,10 @@ import { THRESHOLDS, simulateStories } from '../perf';
 import { EXCURSIONS } from '../content/chapters';
 import { objectKey } from '../repo';
 import {
-  OAUTH_PURPOSES, OAUTH_ENDPOINTS, SAC_PLANNING, oauthClientError, newClientId, odataRequest, odataUrl, type OAuthPurpose,
+  OAUTH_PURPOSES, OAUTH_ENDPOINTS, SAC_PLANNING, oauthClientError, newClientId, odataRequest, odataUrl, type OAuthPurpose, type OAuthClient,
+  TIME_UNITS, formatLifetime,
 } from '../consumption';
+import { GLOBAL_ADMIN, TEMPLATES, TEMPLATE_ORDER } from '../security';
 import { registerLocation } from '../nav';
 
 /**
@@ -161,13 +163,13 @@ function appIntegration() {
       <div class="sys-content">
         <p class="sys-lead">Tools that call the tenant's APIs, for example an OData client or an SAP Analytics Cloud import connection, sign in through an OAuth client.</p>
         <div class="table-head"><h4>OAuth Clients (${t.oauthClients.length})</h4><span class="spacer"></span><button class="btn small primary" type="button" id="oauth-add">Add a New OAuth Client</button></div>
-        <table class="grid" id="oauth-list"><thead><tr><th>Name</th><th>Purpose</th><th>Grant</th><th>Redirect URI</th><th>Client ID</th><th></th></tr></thead>
+        <table class="grid" id="oauth-list"><thead><tr><th>Name</th><th>Purpose</th><th>Grant</th><th>Redirect URI / User ID</th><th>Token Lifetime</th><th>Client ID</th><th></th></tr></thead>
           <tbody>${t.oauthClients.length ? t.oauthClients.map((c) => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.purpose)}</td>
-              <td>${esc(OAUTH_PURPOSES.find((p) => p.id === c.purpose)!.grant)}</td><td class="mono wrap">${esc(c.redirectUri || '–')}</td>
-              <td class="mono wrap">${esc(c.clientId)}</td>
+              <td>${esc(OAUTH_PURPOSES.find((p) => p.id === c.purpose)!.grant)}</td><td class="mono wrap">${esc(c.technical ? c.technical.userId : c.redirectUri || '–')}</td>
+              <td>${esc(formatLifetime(c.lifetimeS))}</td><td class="mono wrap">${esc(c.clientId)}</td>
               <td class="row-actions"><button class="btn small" type="button" data-oauth-test="${esc(c.name)}" title="Simulated: call the OData API the way a tool would">Test</button>
                 <button class="btn small link" type="button" data-oauth-delete="${esc(c.name)}">Delete</button></td></tr>`).join('')
-            : '<tr><td colspan="6" class="muted">No OAuth clients yet.</td></tr>'}</tbody></table>
+            : '<tr><td colspan="7" class="muted">No OAuth clients yet.</td></tr>'}</tbody></table>
       </div></section>
     <section class="sys-section"><h2>OAuth Endpoints</h2><div class="sys-content panel">
       <dl class="props-list wide-dl"><dt>Authorization URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.authorization)}</dd>
@@ -179,53 +181,78 @@ function appIntegration() {
 
 function oauthDialog(main: HTMLElement) {
   const t = ctx.tenant();
+  const unitSel = (name: string, units: string[], cur: string) =>
+    `<select name="${name}">${units.map((u) => `<option ${u === cur ? 'selected' : ''}>${u}</option>`).join('')}</select>`;
+  const roleNames = [GLOBAL_ADMIN, ...TEMPLATE_ORDER.map((tp) => TEMPLATES[tp].name), ...t.roles.map((r) => r.id)];
+  const inYear = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
   const { form, close } = openDialog('Add a New OAuth Client', `
     <div class="form-grid">
       <label>Name <small>who uses it, e.g. the tool</small><input name="name" maxlength="60" autocomplete="off"></label>
+      <label>OAuth Client ID <small>generated when you add the client</small><input name="clientid" readonly placeholder="(after Add)"></label>
       <label>Purpose
         <select name="purpose">${OAUTH_PURPOSES.map((p) => `<option value="${esc(p.id)}">${esc(p.id)}</option>`).join('')}</select></label>
       <label>Authorization Grant <small>follows from the purpose</small><input name="grant" readonly></label>
-      <label>Token Lifetime <small>hours</small><input name="lifetime" type="number" min="1" max="720" value="12"></label>
     </div>
     <p class="muted" id="oauth-purpose-text"></p>
-    <label class="wide-field">Redirect URI <small>where the tool receives the sign-in result; copy it exactly from the tool</small>
+    <label class="wide-field" data-for="Interactive Usage">Redirect URI <small>where the tool receives the sign-in result; copy it exactly from the tool</small>
       <input name="redirect" class="mono" autocomplete="off" spellcheck="false" placeholder="https://…"></label>
+    <div class="form-grid" data-for="Technical User">
+      <label>User ID <small>the technical user the program acts as</small><input name="userid" class="mono" maxlength="40" autocomplete="off" placeholder="CATALOG_TECH_USER"></label>
+      <label>Expiry Date <small>Expiry Details</small><input name="expires" type="date" value="${inYear}"></label>
+    </div>
+    <fieldset class="wide-field oauth-roles" data-for="Technical User"><legend>Roles <small>Select Roles: the user can do exactly this</small></legend>
+      ${roleNames.map((r) => `<label class="check"><input type="checkbox" name="role" value="${esc(r)}"> ${esc(r)}</label>`).join('')}</fieldset>
+    <div class="form-grid">
+      <label>Token Lifetime <small>60 seconds to 1 day</small><span class="input-unit"><input name="lifetime" type="number" min="1" value="60">${unitSel('lifetime-unit', ['Seconds', 'Minutes', 'Hours'], 'Minutes')}</span></label>
+      <label data-for="Interactive Usage">Refresh Token Lifetime <small>60 seconds to 180 days</small><span class="input-unit"><input name="refresh" type="number" min="1" value="30">${unitSel('refresh-unit', ['Seconds', 'Minutes', 'Hours', 'Days'], 'Days')}</span></label>
+    </div>
     <p class="form-error" role="alert"></p>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button>
       <button class="btn primary" type="submit">Add</button></div>`);
   const purpose = form.querySelector<HTMLSelectElement>('[name="purpose"]')!;
+  const val = (n: string) => form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${n}"]`)!.value;
+  const secs = (n: string) => (Number(val(n)) || 0) * TIME_UNITS.find((u) => u.id === val(`${n}-unit`))!.s;
   const sync = () => {
     const p = OAUTH_PURPOSES.find((x) => x.id === purpose.value)!;
     form.querySelector<HTMLInputElement>('[name="grant"]')!.value = p.grant;
     form.querySelector('#oauth-purpose-text')!.textContent = p.text;
+    form.querySelectorAll<HTMLElement>('[data-for]').forEach((el) => (el.hidden = el.dataset.for !== p.id));
   };
   purpose.addEventListener('change', sync);
   sync();
   form.querySelector<HTMLInputElement>('[name="name"]')!.focus();
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = form.querySelector<HTMLInputElement>('[name="name"]')!.value.trim();
-    const redirect = form.querySelector<HTMLInputElement>('[name="redirect"]')!.value.trim();
     const p = purpose.value as OAuthPurpose;
-    const err = oauthClientError(name, redirect, p, t);
+    const c: OAuthClient = {
+      name: val('name').trim(), purpose: p, redirectUri: p === 'Interactive Usage' ? val('redirect').trim() : '',
+      lifetimeS: secs('lifetime'),
+      ...(p === 'Interactive Usage' ? { refreshS: secs('refresh') } : {}),
+      ...(p === 'Technical User' ? { technical: {
+        userId: val('userid').trim().toUpperCase(), expires: val('expires'),
+        roles: [...form.querySelectorAll<HTMLInputElement>('[name="role"]:checked')].map((x) => x.value),
+      } } : {}),
+      clientId: newClientId(t), createdAt: new Date().toISOString(),
+    };
+    const err = oauthClientError(c, t);
     if (err) {
       form.querySelector('.form-error')!.textContent = err;
       return;
     }
-    const c = { name, purpose: p, redirectUri: redirect, lifetimeH: Math.min(720, Math.max(1, Number(form.querySelector<HTMLInputElement>('[name="lifetime"]')!.value) || 12)),
-      clientId: newClientId(t), createdAt: new Date().toISOString() };
     t.oauthClients.push(c);
-    ctx.track(`oauth-create:${name}:${p}`);
+    ctx.track(`oauth-create:${c.name}:${p}`);
     ctx.save();
     close();
     renderSystem(main);
-    const secret = `${c.clientId.slice(3, 9)}$${(c.name.length * 7919).toString(36)}Rh!${c.lifetimeH}`;
-    openDialog(`OAuth client ${name} added`, `
+    const secret = `${c.clientId.slice(3, 9)}$${(c.name.length * 7919).toString(36)}Rh!${c.lifetimeS % 97}`;
+    openDialog(`OAuth client ${c.name} added`, `
       <p class="guide-lead">Hand these to the developer of the tool. <b>Copy the secret now:</b> it is shown only once.</p>
       <dl class="props-list wide-dl"><dt>Client ID</dt><dd class="mono wrap">${esc(c.clientId)}</dd>
         <dt>Secret</dt><dd class="mono wrap">${esc(secret)}</dd>
         <dt>Authorization URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.authorization)}</dd>
-        <dt>Token URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.token)}</dd></dl>
+        <dt>Token URL</dt><dd class="mono wrap">${esc(OAUTH_ENDPOINTS.token)}</dd>
+        <dt>Token Lifetime</dt><dd>${esc(formatLifetime(c.lifetimeS))}${c.refreshS ? ` · refresh token ${esc(formatLifetime(c.refreshS))}` : ''}</dd>
+        ${c.technical ? `<dt>Technical User</dt><dd>${esc(c.technical.userId)} · ${esc(c.technical.roles.join(', '))} · expires ${esc(c.technical.expires)}</dd>` : ''}</dl>
       <div class="guide-actions"><button class="btn primary" type="button" data-act="cancel">Done</button></div>`);
   });
 }

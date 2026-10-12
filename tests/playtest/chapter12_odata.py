@@ -30,9 +30,13 @@ with sync_playwright() as p:
     def admin_apps():
         g.nav('system'); pg.click('.nav [data-sys="administration"]'); pg.click('[data-admin="apps"]'); pg.wait_for_selector('#oauth-list')
 
-    def add_client(name, purpose, redirect):
+    def add_client(name, purpose, redirect, extra=None):
         pg.click('#oauth-add'); pg.fill('.dialog [name="name"]', name); pg.select_option('.dialog [name="purpose"]', purpose)
-        pg.fill('.dialog [name="redirect"]', redirect); pg.click('.dialog [type="submit"]'); pg.wait_for_timeout(200)
+        if pg.locator('.dialog [name="redirect"]').is_visible():
+            pg.fill('.dialog [name="redirect"]', redirect)
+        if extra:
+            extra()
+        pg.click('.dialog [type="submit"]'); pg.wait_for_timeout(200)
         err = pg.locator('.form-error')
         if err.count() and err.inner_text().strip():
             print('   FORM ERROR:', err.inner_text()); pg.click('.dialog [data-act="cancel"]'); return
@@ -49,6 +53,17 @@ with sync_playwright() as p:
     admin_apps()
     add_client('Planning robot', 'API Access', '')
     test('Planning robot')
+    # Technical User: needs user ID, roles and expiry; token lifetime 60 s – 1 day
+    add_client('Catalog robot', 'Technical User', '')                     # refused: no user ID
+    def tech():
+        pg.fill('.dialog [name="userid"]', 'catalog_tech_user'); pg.check('.dialog [name="role"][value="DW Viewer"]')
+        pg.fill('.dialog [name="lifetime"]', '25'); pg.select_option('.dialog [name="lifetime-unit"]', 'Hours')
+    add_client('Catalog robot', 'Technical User', '', tech)              # refused: 25 hours
+    def tech_ok():
+        tech(); pg.fill('.dialog [name="lifetime"]', '12'); pg.select_option('.dialog [name="lifetime-unit"]', 'Hours')
+    add_client('Catalog robot', 'Technical User', '', tech_ok)
+    assert 'CATALOG_TECH_USER' in pg.inner_text('#oauth-list') and '12 Hours' in pg.inner_text('#oauth-list')
+    test('Catalog robot')
     add_client('SAC Planning', 'Interactive Usage', '')                 # refused: needs a redirect URI
     add_client('SAC Planning', 'Interactive Usage', REDIRECT.replace('planning', 'planing'))
     test('SAC Planning')

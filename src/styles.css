@@ -1796,3 +1796,12 @@ td.actions { white-space: nowrap; text-align: right; }
 .ds-tile:disabled { opacity: .5; cursor: default; }
 .ds-tile.chart { grid-row: span 2; cursor: default; }
 .props-sec { margin: 14px 0 6px; font-size: 13px; text-transform: none; color: var(--ink); border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* OAuth client dialog: number + unit, role checkboxes (Technical User) */
+.input-unit { display: flex; gap: 6px; }
+.input-unit input { flex: 1; min-width: 0; }
+.input-unit select { width: auto; }
+.oauth-roles { border: 1px solid var(--line); border-radius: var(--radius-s); padding: 8px 12px; margin: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.oauth-roles legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
+.oauth-roles label.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+[data-for][hidden] { display: none !important; }
