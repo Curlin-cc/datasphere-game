@@ -3158,11 +3158,11 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     ],
     [
       {
-        title: 'Open Import Logs',
-        view: 'semantic',
-        target: '#onb-logs',
-        body: `<p>Every import is logged with its messages.</p>`,
-        action: { do: 'Click <b>Open Import Logs</b>.', event: '^import-logs$' },
+        title: 'Import Overview',
+        view: 'semantic:pkg:SAP_UTIL_BILLING',
+        target: '#pkg-tab-imports',
+        body: `<p>Every import of a package is logged on the package, with its messages. (<b>Open Import Logs</b> on the start page is for importing entities from SAP systems.)</p>`,
+        action: { do: 'Open the tab <b>Import Overview</b>.', event: '^import-overview:SAP_UTIL_BILLING$' },
       },
       {
         title: 'Your import',

@@ -58,8 +58,8 @@ with sync_playwright() as p:
     tour(pg, 'Prerequisites'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'Import'); pg.click('#pkg-import'); pg.click('.dialog [type="submit"]'); pg.wait_for_timeout(900)
     print('   import →', g.toast())
-    tour(pg, 'Open Import Logs'); pg.click('#onb-logs')
-    tour(pg, 'Your import'); pg.click('#import-log-list [data-log="0"]')
+    tour(pg, 'Import Overview'); pg.click('#pkg-tab-imports')
+    tour(pg, 'Your import'); pg.locator('#import-log-list [data-log]').first.click()
     print('   log:', pg.inner_text('#import-log-detail').replace('\n', ' | ')[:500])
     g.shot('c12-import-log')
     tour(pg, 'Open Repository Explorer'); g.nav('repository')
@@ -73,6 +73,8 @@ with sync_playwright() as p:
 
     import_pkg('business', 'SAP_UTIL_BILLING')       # again, Overwrite off: everything skipped
     g.reload()
-    onb(); pg.click('#onb-logs'); pg.wait_for_selector('#import-log-list')
-    print('   logs after reload:', pg.locator('#import-log-list [data-log]').count(), '| spaces:', pg.evaluate("JSON.parse(localStorage.getItem('dsg-progress-v3')).tenant.spaces.map(s => s.id).join(',')"))
+    onb(); pg.click('#onb-logs'); pg.wait_for_selector('#entity-log-list')
+    print('   Open Import Logs (Import Entities):', pg.inner_text('#entity-log-list tbody'))
+    pg.click('#onb-back'); pg.click('[data-area="business"]'); pg.click('[data-pkg="SAP_UTIL_BILLING"]'); pg.click('#pkg-tab-imports')
+    print('   imports of the package after reload:', pg.locator('#import-log-list [data-log]').count(), '| spaces:', pg.evaluate("JSON.parse(localStorage.getItem('dsg-progress-v3')).tenant.spaces.map(s => s.id).join(',')"))
     g.done()

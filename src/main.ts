@@ -35,7 +35,7 @@ import { restoreIntegration } from './integration';
 import { renderTransport, transportTo, transportPage, TRANSPORT_PAGES, type TransportPage } from './views/transport';
 import { renderCatalog, catalogReset } from './views/catalog';
 import { renderBusiness, businessReset } from './views/business';
-import { renderOnboarding, onboardingReset } from './views/onboarding';
+import { renderOnboarding, onboardingReset, onboardingToPackage } from './views/onboarding';
 import { EXCURSIONS } from './content/chapters';
 import { locationOf, restoreLocation, sameLocation, isTransient, type Location } from './nav';
 import { BADGES, BADGE_ICON, earnedBadges, type Badge } from './badges';
@@ -392,6 +392,9 @@ function tourHooks(onFinish: () => void) {
       } else if (view === 'transport' && target) {
         transportTo(target as TransportPage);
         setView('transport', true);
+      } else if (view === 'semantic' && target === 'pkg' && space) {
+        onboardingToPackage(space);
+        setView('semantic', true);
       } else if (view === 'catalog' || view === 'business' || view === 'semantic') {
         if (view === 'catalog') catalogReset();
         else if (view === 'business') businessReset();

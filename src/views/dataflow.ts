@@ -105,6 +105,7 @@ export function renderDataFlowEditor(main: HTMLElement, o: RepoObject | null, na
               ${arrow}${box('join', 'Join', def.join ? `${def.join.type === 'LEFT' ? 'Left' : 'Inner'} · ${def.join.source.split('.')[1] || '…'}` : 'none', def.join ? 'on' : 'off')}
               ${arrow}<button type="button" class="df-node info" data-info="union"><small>Union</small><b>not used</b></button>
               ${arrow}${box('projection', 'Projection', `${def.columns.length} column${def.columns.length === 1 ? '' : 's'}${def.filter.trim() ? ' · filter' : ''}`)}
+              ${arrow}<button type="button" class="df-node info" data-info="calc"><small>Calculated Column</small><b>in Projection</b></button>
               ${arrow}${box('aggregation', 'Aggregation', def.aggregation ? `${def.aggregation.measures.length} measure${def.aggregation.measures.length === 1 ? '' : 's'}` : 'none', def.aggregation ? 'on' : 'off')}
               ${arrow}<button type="button" class="df-node info" data-info="script"><small>Script</small><b>not used</b></button>
               ${arrow}${box('target', 'Target', def.target.table ? `${def.target.table} · ${def.target.mode}` : 'choose')}
@@ -208,9 +209,12 @@ export function renderDataFlowEditor(main: HTMLElement, o: RepoObject | null, na
       node = 'general';
       void draw();
     });
-    main.querySelectorAll<HTMLButtonElement>('[data-info]').forEach((b) => b.addEventListener('click', () => toast(b.dataset.info === 'union'
-      ? 'Union stacks the rows of two inputs with the same columns. Not needed here; the game explains it only.'
-      : 'Script runs Python (NumPy, Pandas) on the rows. The game explains it only; use the projection for calculations.', 'info')));
+    const INFO: Record<string, string> = {
+      union: 'Union stacks the rows of two inputs with the same columns. Not needed here; the game explains it only.',
+      calc: 'Calculated Column is its own operator in the real tenant: it adds columns computed with SQL expressions. In the game you write such expressions directly in the Projection (e.g. QUANTITY * 1000 for kWh).',
+      script: 'Script runs Python (NumPy, Pandas) on the rows. The game explains it only; use the projection for calculations.',
+    };
+    main.querySelectorAll<HTMLButtonElement>('[data-info]').forEach((b) => b.addEventListener('click', () => toast(INFO[b.dataset.info!] ?? '', 'info')));
     if (readOnly) return;
     const val = (sel: string) => main.querySelector<HTMLInputElement | HTMLSelectElement>(sel)?.value ?? '';
     const on = (sel: string, ev: string, fn: () => void) => main.querySelector(sel)?.addEventListener(ev, fn);

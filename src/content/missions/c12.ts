@@ -655,12 +655,12 @@ export const CHAPTER_12: Mission[] = [
       does it not run yet?</p>`,
     tasks: [
       'Semantic Onboarding › Content Network › Business Content: open <b>Utilities – Billing Analysis</b>, read its prerequisites and import it.',
-      'Open Import Logs and read the messages of your import.',
+      'Open the package\'s Import Overview and read the messages of your import.',
       'Find <code>SAP_UTIL_V_BILLING</code> in the Repository Explorer and open it: what does it read?',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Semantic Onboarding is in the Apps group of the side navigation. Open Import Logs is on the right of the SAP Systems section.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Semantic Onboarding is in the Apps group of the side navigation. The messages of a package import are on the package: tab Import Overview.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A content package brings definitions, not data. Remote tables read through a connection of their own space, and the package cannot bring yours.' },
     ],
     checks: [
@@ -675,7 +675,7 @@ export const CHAPTER_12: Mission[] = [
       },
       {
         type: 'rule', label: 'You read the import log', ok: 'The log says what worked and what did not.',
-        test: ({ events }) => (events.has('import-log-open:SAP_UTIL_BILLING') ? null : 'Open Import Logs on the Semantic Onboarding page and click your import to read its messages.'),
+        test: ({ events }) => (events.has('import-log-open:SAP_UTIL_BILLING') ? null : 'Open the package (Content Network › Business Content), tab Import Overview, and click your import to read its messages.'),
       },
       {
         type: 'rule', label: 'You looked at the fact', ok: 'SAP_UTIL_V_BILLING reads the remote tables of the package.',

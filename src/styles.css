@@ -1805,3 +1805,5 @@ td.actions { white-space: nowrap; text-align: right; }
 .oauth-roles legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
 .oauth-roles label.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 [data-for][hidden] { display: none !important; }
+.onb-tabs { margin: 0 24px 0; padding-top: 4px; }
+.onb-logs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }

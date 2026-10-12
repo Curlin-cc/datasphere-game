@@ -5,21 +5,27 @@ import {
   PACKAGES, CONTENT_AREAS, importPackage, packageById, type ContentArea, type ContentPackage, type ImportLog,
 } from '../onboarding';
 import { registerLocation } from '../nav';
+import { spaceSelect } from './connections';
 
 /**
  * Semantic Onboarding (Bild 10, excursion c12-m09): hero banner, "SAP Systems" with one card per system type and its connections,
  * "Content Network" with Samples, Business Content and 3rd Party Business Content. A content area lists packages; a package shows
- * its description, prerequisites and objects and can be imported. "Open Import Logs" lists every import with its messages.
+ * its description, prerequisites and objects and can be imported; its tab Import Overview lists every import with its messages.
+ * "Open Import Logs" belongs to Import Entities (SAP systems) and stays empty in the game.
  * Import Entities from SAP systems is not part of the game (cards explain it).
  */
 
-type Page = { kind: 'home' } | { kind: 'area'; area: ContentArea } | { kind: 'pkg'; id: string } | { kind: 'logs'; open?: number };
+type Page = { kind: 'home' } | { kind: 'area'; area: ContentArea } | { kind: 'pkg'; id: string; tab?: 'overview' | 'imports'; open?: number } | { kind: 'logs' };
 let page: Page = { kind: 'home' };
 registerLocation('semantic', { get: () => page, set: (p: Page) => (page = p) });
 const openGroups = { systems: true, content: true };
 
 export function onboardingReset() {
   page = { kind: 'home' };
+}
+/** For tutorials: open one package. */
+export function onboardingToPackage(id: string) {
+  page = { kind: 'pkg', id };
 }
 
 const SYSTEMS: { label: string; type?: string; enabled?: boolean }[] = [
@@ -96,52 +102,74 @@ export function renderOnboarding(main: HTMLElement) {
     return;
   }
 
+  const status = (l: ImportLog) => !l.lines.some((x) => x.text.startsWith('Import of')) ? ['bad', 'FAILED']
+    : l.lines.some((x) => x.level === 'error') ? ['bad', 'COMPLETED WITH ERRORS'] : l.lines.some((x) => x.level === 'warn') ? ['run', 'COMPLETED WITH WARNINGS'] : ['ok', 'COMPLETED'];
+
   if (page.kind === 'pkg') {
-    const p = packageById(page.id)!;
-    const imported = t.importLogs.find((l) => l.pkg === p.id);
-    main.innerHTML = `<div class="onb-page"><div class="onb-sub">${back(CONTENT_AREAS.find((a) => a.id === p.area)!.label)}<h1 class="view-title">${esc(p.title)}</h1>
-        <span class="spacer"></span><button class="btn primary" type="button" id="pkg-import">Import</button></div>
-      <section class="onb-body">
-        <div class="panel onb-detail">
+    const pg = page;
+    const p = packageById(pg.id)!;
+    const tab = pg.tab ?? 'overview';
+    // The messages of a content import are on the package (Import Overview); Open Import Logs belongs to Import Entities.
+    const imports = t.importLogs.map((l, i) => ({ l, i })).filter((x) => x.l.pkg === p.id).reverse();
+    const imported = imports[0]?.l;
+    const sel = pg.open !== undefined ? t.importLogs[pg.open] : undefined;
+    const overview = `<div class="panel onb-detail">
           <dl class="props-list wide-dl"><dt>Provider</dt><dd>${esc(p.provider)}</dd><dt>Version</dt><dd>${esc(p.version)}</dd>
             <dt>Target space</dt><dd>${spaceChip(p.space.id)} ${esc(p.space.name)}</dd>
             <dt>Last import</dt><dd>${imported ? esc(when(imported.at)) : 'never'}</dd></dl>
           <p>${esc(p.description)}</p>
-          <h3>Prerequisites</h3><ul id="pkg-prereq">${p.prerequisites.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+          <h3>How to install this package</h3><ul id="pkg-prereq">${p.prerequisites.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
           <h3>Content (${p.objects.length})</h3>
           ${p.objects.length ? `<table class="grid" id="pkg-objects"><thead><tr><th>Technical Name</th><th>Business Name</th><th>Type</th></tr></thead>
             <tbody>${p.objects.map((o) => `<tr><td class="mono">${esc(o.name)}</td><td>${esc(o.businessName)}</td><td>${esc(o.kind)} <span class="muted">(${esc(o.semanticUsage)})</span></td></tr>`).join('')}</tbody></table>`
             : '<p class="muted">Shown after the license key is entered.</p>'}
-        </div></section></div>`;
+        </div>`;
+    const importsHtml = `<div class="panel mon-table"><div class="mon-table-head"><h3>Imports (${imports.length})</h3></div>
+        <div class="table-scroll"><table class="grid" id="import-log-list"><thead><tr><th>Started</th><th>Options</th><th>Status</th></tr></thead>
+          <tbody>${imports.length ? imports.map(({ l, i }) => `<tr class="${i === pg.open ? 'selected' : ''}">
+              <td><button type="button" class="link-btn" data-log="${i}">${esc(when(l.at))}</button></td>
+              <td class="muted">${l.options.overwrite ? 'Overwrite' : 'Keep existing'} · ${l.options.deploy ? 'Deploy' : 'No deploy'}</td>
+              <td><span class="st-text ${status(l)[0]}">${status(l)[1]}</span></td></tr>`).join('')
+            : '<tr><td colspan="3" class="muted">This package was not imported yet.</td></tr>'}</tbody></table></div></div>
+      ${sel ? `<div class="panel mon-table" id="import-log-detail"><div class="mon-table-head"><h3>Messages <small class="muted">${esc(when(sel.at))}</small></h3></div>
+        <ol class="run-log onb-log">${sel.lines.map((x) => `<li class="${x.level === 'error' ? 'err' : x.level}">${esc(x.text)}</li>`).join('')}</ol></div>` : ''}`;
+    main.innerHTML = `<div class="onb-page"><div class="onb-sub">${back(CONTENT_AREAS.find((a) => a.id === p.area)!.label)}<h1 class="view-title">${esc(p.title)}</h1>
+        <span class="spacer"></span><button class="btn primary" type="button" id="pkg-import">Import</button></div>
+      <div class="tabs onb-tabs" role="tablist">
+        <button type="button" role="tab" id="pkg-tab-overview" aria-selected="${tab === 'overview'}">Overview</button>
+        <button type="button" role="tab" id="pkg-tab-imports" aria-selected="${tab === 'imports'}">Import Overview (${imports.length})</button></div>
+      <section class="onb-body">${tab === 'overview' ? overview : importsHtml}</section></div>`;
     main.querySelector('#onb-back')!.addEventListener('click', () => go(main, { kind: 'area', area: p.area }));
     main.querySelector('#pkg-import')!.addEventListener('click', () => importDialog(main, p));
+    main.querySelector('#pkg-tab-overview')!.addEventListener('click', () => go(main, { kind: 'pkg', id: p.id }));
+    main.querySelector('#pkg-tab-imports')!.addEventListener('click', () => {
+      ctx.track(`import-overview:${p.id}`);
+      go(main, { kind: 'pkg', id: p.id, tab: 'imports' });
+    });
+    main.querySelectorAll<HTMLButtonElement>('[data-log]').forEach((b) => b.addEventListener('click', () => {
+      ctx.track(`import-log-open:${p.id}`);
+      go(main, { kind: 'pkg', id: p.id, tab: 'imports', open: Number(b.dataset.log) });
+    }));
     return;
   }
 
-  // Import logs
-  const logs = t.importLogs;
-  const openIdx = page.kind === 'logs' ? page.open : undefined;
-  const sel = openIdx !== undefined ? logs[openIdx] : undefined;
-  const status = (l: ImportLog) => !l.lines.some((x) => x.text.startsWith('Import of')) ? ['bad', 'FAILED']
-    : l.lines.some((x) => x.level === 'error') ? ['bad', 'COMPLETED WITH ERRORS'] : l.lines.some((x) => x.level === 'warn') ? ['run', 'COMPLETED WITH WARNINGS'] : ['ok', 'COMPLETED'];
-  main.innerHTML = `<div class="onb-page"><div class="onb-sub">${back('Semantic Onboarding')}<h1 class="view-title">Import Logs</h1></div>
-    <section class="onb-body">
-      <div class="panel mon-table"><div class="mon-table-head"><h3>Imports (${logs.length})</h3></div>
-        <div class="table-scroll"><table class="grid" id="import-log-list"><thead><tr><th>Started</th><th>Package</th><th>Options</th><th>Status</th></tr></thead>
-          <tbody>${logs.length ? logs.map((l, i) => `<tr class="${i === openIdx ? 'selected' : ''}">
-              <td><button type="button" class="link-btn" data-log="${i}">${esc(when(l.at))}</button></td>
-              <td>${esc(packageById(l.pkg)!.title)}</td><td class="muted">${l.options.overwrite ? 'Overwrite' : 'Keep existing'} · ${l.options.deploy ? 'Deploy' : 'No deploy'}</td>
-              <td><span class="st-text ${status(l)[0]}">${status(l)[1]}</span></td></tr>`).join('')
-            : '<tr><td colspan="4" class="muted">No imports yet.</td></tr>'}</tbody></table></div></div>
-      ${sel ? `<div class="panel mon-table" id="import-log-detail"><div class="mon-table-head"><h3>${esc(packageById(sel.pkg)!.title)} <small class="muted">messages</small></h3></div>
-        <ol class="run-log onb-log">${sel.lines.map((x) => `<li class="${x.level === 'error' ? 'err' : x.level}">${esc(x.text)}</li>`).join('')}</ol></div>` : ''}
+  // Import Logs of Import Entities (SAP systems): one space, imports on the left, messages on the right. Not part of the game, so empty.
+  main.innerHTML = `<div class="onb-page"><div class="onb-sub">${back('Semantic Onboarding')}<h1 class="view-title">Import Logs</h1>
+      <span class="spacer"></span>${spaceSelect('onb-log-space', t.activeSpace)}</div>
+    <section class="onb-body onb-logs-split">
+      <div class="panel mon-table"><div class="mon-table-head"><h3>Imports (0)</h3></div>
+        <table class="grid" id="entity-log-list"><thead><tr><th>Started</th><th>Duration</th><th>Result</th></tr></thead>
+          <tbody><tr><td colspan="3" class="muted">No imports from SAP systems in ${esc(t.activeSpace)}.</td></tr></tbody></table></div>
+      <div class="panel onb-detail"><h3>Messages</h3>
+        <p class="muted">These logs belong to <b>Import Entities</b>: importing entities with their semantics from an SAP system connection
+          (S/4HANA, BW/4HANA). That is not part of the game. The messages of a <b>Content Network</b> package are on the package itself,
+          tab <b>Import Overview</b>.</p></div>
     </section></div>`;
   main.querySelector('#onb-back')!.addEventListener('click', () => go(main, { kind: 'home' }));
-  main.querySelectorAll<HTMLButtonElement>('[data-log]').forEach((b) => b.addEventListener('click', () => {
-    const i = Number(b.dataset.log);
-    ctx.track(`import-log-open:${logs[i].pkg}`);
-    go(main, { kind: 'logs', open: i });
-  }));
+  main.querySelector<HTMLSelectElement>('#onb-log-space')!.addEventListener('change', (e) => {
+    t.activeSpace = (e.target as HTMLSelectElement).value;
+    renderOnboarding(main);
+  });
 }
 
 function go(main: HTMLElement, p: Page) {
@@ -183,7 +211,7 @@ function importDialog(main: HTMLElement, p: ContentPackage) {
     ctx.save();
     const errors = log.lines.filter((x) => x.level === 'error').length;
     const warns = log.lines.filter((x) => x.level === 'warn').length;
-    toast(errors || warns ? `Import finished with ${errors} error(s) and ${warns} warning(s). See Open Import Logs.` : 'Import finished.', errors ? 'error' : 'ok');
+    toast(errors || warns ? `Import finished with ${errors} error(s) and ${warns} warning(s). See Import Overview on the package.` : 'Import finished.', errors ? 'error' : 'ok');
     renderOnboarding(main);
   });
 }

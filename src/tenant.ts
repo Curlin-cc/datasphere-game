@@ -67,7 +67,7 @@ export interface TenantState {
   dbUsers: DbUser[];
   /** Excursions: OAuth clients for the OData Consumption API (System › Administration › App Integration). */
   oauthClients: OAuthClient[];
-  /** Excursions: logs of Content Network imports (Semantic Onboarding › Open Import Logs). */
+  /** Excursions: logs of Content Network imports (Semantic Onboarding › package › Import Overview). */
   importLogs: ImportLog[];
   packages: Package[];
   transportJobs: TransportJob[];
