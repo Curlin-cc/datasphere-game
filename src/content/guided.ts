@@ -758,7 +758,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       body: `<p>A <b>transformation flow</b> writes the result of a <b>view transform</b> into one target table. With load type <b>Initial and Delta</b> the first run
         loads everything; every later run reads only what changed in the source since the last run and updates the target by key.</p>
         <p>To know what changed, the source table needs <b>Delta Capture</b>: it records every insert, update and delete in a delta table.
-        So the order is: Delta Capture on, initial load, then the changes.</p>`,
+        Delta Capture is chosen <b>before a table's first deploy</b> and is fixed from then on. So the order is: Delta Capture on, first deploy, initial load, then the changes.</p>`,
     },
   ],
   'c12-m10': [
@@ -2965,19 +2965,19 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Open the payments',
         view: 'builder:landing:RHN_IN',
         target: '#object-list',
-        body: `<p>Accounts Receivable's table in the inbound layer: 95 payments, key PAYMENT_ID.</p>`,
+        body: `<p>Accounts Receivable's table in the inbound layer: 95 payments, key PAYMENT_ID. Status <b>Not Deployed</b>: Jonas only saved it.</p>`,
         action: { do: 'Open <b>RHN_IN_T_PAYMENTS</b>.', check: () => editorOf('RHN_IN.RHN_IN_T_PAYMENTS') },
       },
       {
         title: 'Delta Capture',
         target: '#prop-delta',
-        body: `<p>In the properties on the right. From now on the table records every change it gets deployed with.</p>`,
+        body: `<p>In the properties on the right. Only possible now, before the first deploy: afterwards the switch is fixed. From then on the table records every change it gets deployed with.</p>`,
         action: { do: 'Switch <b>Delta Capture</b> on.', event: '^table-delta:RHN_IN\\.RHN_IN_T_PAYMENTS:on$' },
       },
       {
         title: 'Deploy',
         target: '#ed-deploy',
-        body: `<p>The switch is part of the design, like the rows: it works once deployed.</p>`,
+        body: `<p>The first deploy creates the table with its 95 rows and the delta table <code>RHN_IN_T_PAYMENTS_Delta</code>.</p>`,
         action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_T_PAYMENTS$' },
       },
     ],

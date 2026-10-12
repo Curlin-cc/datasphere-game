@@ -149,4 +149,6 @@ export interface Mission {
   setup?: (tenant: TenantState) => void;
   /** Runs after `setup` once the database has the set-up objects, e.g. last night's scheduled run (chapter 10). */
   setupAsync?: (tenant: TenantState) => Promise<void>;
+  /** True when the starting situation is gone (e.g. the player deleted a handed-over table): `setup` runs again, with this note as a toast. */
+  setupAgain?: { when: (tenant: TenantState) => boolean; note: string };
 }

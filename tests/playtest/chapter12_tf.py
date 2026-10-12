@@ -1,5 +1,6 @@
-"""Chapter 12, transformation flow with delta (c12-m11): Initial and Delta without Delta Capture (deploy refused), Initial Only
-(full load each run), Delta Capture on, initial load, bank message only saved (not deployed), then deployed and the delta run.
+"""Chapter 12, transformation flow with delta (c12-m11): the handed-over table deployed without Delta Capture (switch locked
+afterwards, check explains), Initial and Delta without Delta Capture (deploy refused), Initial Only (full load each run), table deleted
+and handed over again, Delta Capture on before the first deploy, initial load, bank message only saved (not deployed), then deployed and the delta run.
 Reload keeps the delta table and the target; monitor and task logs list the flow. Second pass: the hands-on tutorial.
 Start state: chapter12_data.py with c12-m01..m10 solved."""
 import sys
@@ -40,7 +41,15 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1500)
     g.check('m11 nothing done')
 
-    # The flow first, with delta but without Delta Capture on the source
+    # Mistake: deploy the handed-over table without Delta Capture. Afterwards the switch is locked.
+    open_obj('RHN_IN', P)
+    print('   status before deploy:', pg.inner_text('#prop-delta').strip() or 'switch', '| locked:', pg.is_disabled('#prop-delta'))
+    assert not pg.is_disabled('#prop-delta')
+    deploy()
+    assert pg.is_disabled('#prop-delta'), 'Delta Capture must be locked after the first deploy'
+    g.check('m11 deployed without delta capture')
+
+    # The flow, with delta but without Delta Capture on the source
     g.space('RHN_HARM')
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)
@@ -59,8 +68,13 @@ with sync_playwright() as p:
     g.answer('delta-run', 1)
     g.check('m11 initial only')
 
-    # Delta Capture on the source
+    # Delete the table: Accounts Receivable hands it over again (saved, not deployed); now Delta Capture before the first deploy
+    g.space('RHN_IN')
+    pg.click(f'#object-list [data-delete="{P}"]'); pg.wait_for_timeout(1500)
+    print('   handed over again:', g.toast())
     open_obj('RHN_IN', P)
+    print('   rows again:', pg.locator('[data-del-row]').count(), '| locked:', pg.is_disabled('#prop-delta'))
+    assert not pg.is_disabled('#prop-delta')
     pg.check('#prop-delta'); pg.wait_for_timeout(200)
     deploy()
     print('   delta section:', pg.inner_text('#tbl-delta .tbl-head').replace('\n', ' '))

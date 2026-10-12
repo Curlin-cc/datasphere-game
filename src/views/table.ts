@@ -37,7 +37,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
   let techTouched = o ? true : fresh!.touched;
   let usage: SemanticUsage = o?.semanticUsage ?? 'Relational Dataset';
   const chapter = ctx.currentChapter();
-  const lockedDelta = !!o?.deployed?.table?.deltaCapture;
+  /** Delta Capture is chosen before the first deployment and fixed afterwards (SAP Help, Create a Local Table). */
+  const lockedDelta = !!o?.deployed?.table;
   const keep = () => {
     if (!o && fresh) Object.assign(fresh, { def, business, technical, touched: techTouched });
   };
@@ -98,7 +99,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
               <select id="prop-semantic" ${chapter >= 6 ? '' : 'disabled'}>${SEMANTIC_USAGES.map((u) => `<option ${u === usage ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
             <label>Storage <small>Disk by default; In-Memory keeps it in memory (more speed, more memory)</small>
               <select disabled title="The game keeps every table on disk"><option>Disk</option><option>In-Memory</option></select></label>
-            ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture <small>${lockedDelta ? 'on: the table records its changes; the game does not switch it off again' : 'records inserts, updates and deletes in a delta table, for delta loads'}</small>
+            ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture <small>${!lockedDelta ? 'records inserts, updates and deletes in a delta table, for delta loads. Choose it before the first deploy: it cannot be changed later'
+                : def.deltaCapture ? 'on: the table records its changes; it cannot be switched off after deployment' : 'off: it can only be switched on before the first deploy'}</small>
               <span class="switch"><input type="checkbox" id="prop-delta" ${def.deltaCapture ? 'checked' : ''} ${lockedDelta ? 'disabled' : ''}></span></label>` : ''}
             <dl class="props-list">
               <dt>Type</dt><dd>Local Table</dd>
@@ -185,7 +187,7 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
     });
     main.querySelector('#ed-deploy')!.addEventListener('click', async () => {
       readInputs();
-      const err = tableError(def);
+      const err = tableError(def, o?.deployed?.table);
       if (err) return toast(err, 'error');
       const saved = save(true);
       if (!saved) return;

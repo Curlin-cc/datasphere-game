@@ -75,8 +75,12 @@ function valueError(v: string, type: ColType): string | null {
 }
 
 /** Everything that must be right before a table can be deployed. Null if fine. */
-export function tableError(def: TableDef): string | null {
+export function tableError(def: TableDef, deployed?: TableDef): string | null {
   if (!def.columns.length) return 'Add at least one column.';
+  // SAP: Delta Capture is set before the first deployment and cannot be changed afterwards (Create a Local Table).
+  if (deployed && !!def.deltaCapture !== !!deployed.deltaCapture)
+    return deployed.deltaCapture ? 'Delta Capture cannot be switched off once the table is deployed.'
+      : 'Delta Capture can only be switched on before a table is deployed for the first time. Create a new table with Delta Capture on.';
   if (def.deltaCapture && !def.columns.some((c) => c.key)) return 'Delta Capture records changes per key: mark at least one key column.';
   const seen = new Set<string>();
   for (const c of def.columns) {

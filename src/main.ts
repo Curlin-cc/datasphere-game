@@ -20,7 +20,7 @@ import { renderSystemSpaces, renderCapacities } from './views/sysmon';
 import { renderEcnMonitor } from './views/ecn';
 import { renderMarketplace, renderTranslation, renderSharing, SHARING_PAGES, sharingPage, sharingTo, type SharingPage } from './views/exchange';
 import { ctx, type ViewId } from './ctx';
-import { esc, icon, ICONS, setCrumb, ask } from './ui';
+import { esc, icon, ICONS, setCrumb, ask, toast } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
@@ -70,7 +70,11 @@ const currentMission = () => missionById(ctx.progress.currentMission) ?? MISSION
 /** For unlocking apps and features. The learning path on Home uses reachedChapter. */
 const currentChapter = () => unlockedChapter(ctx.progress);
 
-ctx.save = save;
+ctx.save = () => {
+  save();
+  // A mission can hand its starting objects over again when the player deleted them (c12-m11).
+  if (missionById(ctx.progress.currentMission)?.setupAgain?.when(ctx.tenant())) setupMission(ctx.progress.currentMission);
+};
 ctx.currentChapter = currentChapter;
 ctx.track = (event: string) => {
   // Hands-on tutorial steps listen for every action, also repeated ones.
@@ -899,9 +903,12 @@ async function runCheck() {
 function setupMission(id: string) {
   const m = missionById(id);
   const t = ctx.tenant();
-  if (!m?.setup || t.scenarios.includes(m.id)) return;
+  if (!m?.setup) return;
+  const again = t.scenarios.includes(m.id);
+  if (again && !m.setupAgain?.when(t)) return;
   m.setup(t);
-  t.scenarios.push(m.id);
+  if (again) toast(m.setupAgain!.note, 'info');
+  else t.scenarios.push(m.id);
   // A set-up may add views or persisted data; create them in the database.
   void restoreViews(t).then(() => restorePersistence(t)).then(() => m.setupAsync?.(t)).then(() => {
     save();

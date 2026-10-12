@@ -777,18 +777,18 @@ export const CHAPTER_12: Mission[] = [
     chapter: 12,
     title: 'Only what changed',
     from: CFO,
-    ticket: `<p>Since February, Accounts Receivable types the bank's payment advice into <code>RHN_IN_T_PAYMENTS</code> in <code>RHN_IN</code>
-      (one row per payment, key <code>PAYMENT_ID</code>). For my cash report I need the payments in harmonization with their contract:
+    ticket: `<p>Accounts Receivable has collected the bank's payment advice since February in a new table <code>RHN_IN_T_PAYMENTS</code> in <code>RHN_IN</code>
+      (one row per payment, key <code>PAYMENT_ID</code>). Jonas saved it with all rows but has <b>not deployed</b> it yet. For my cash report I need the payments in harmonization with their contract:
       <code>RHN_HA_T_PAYMENTS</code> with <code>PAYMENT_ID</code>, <code>INVOICE_ID</code>, <code>CONTRACT_ID</code>, <code>PAID_ON</code> and <code>AMOUNT</code>, every night.</p>
       <p><i>Calin adds:</i> The table will grow to thousands of payments while only a handful change each day. Do not reload everything every night:
       a <b>transformation flow</b> <code>RHN_HA_TF_PAYMENTS</code> in <code>RHN_HARM</code> with load type <b>Initial and Delta</b>. For that the source has to record its
-      changes, so switch on <b>Delta Capture</b> first. Run the initial load, then enter today's bank message and run again: the second run must process the changes only.</p>
+      changes, so switch on <b>Delta Capture</b> in the table <b>before its first deploy</b>: once a table is deployed, Delta Capture can no longer be switched on or off. Run the initial load, then enter today's bank message and run again: the second run must process the changes only.</p>
       <p><b>Today's bank message</b></p>
       <ul><li>New payment <code>PAY-0096</code>: invoice <code>INV-4000080</code>, paid on <code>2026-07-15</code>, <code>874.39</code></li>
         <li>Correction: <code>PAY-0012</code> was a partial payment, the amount is <code>286.38</code></li>
         <li>Returned direct debit: <code>PAY-0007</code> did not go through. Delete the row.</li></ul>`,
     tasks: [
-      'In <code>RHN_IN</code>, open <code>RHN_IN_T_PAYMENTS</code>, switch on <b>Delta Capture</b> and deploy the table.',
+      'In <code>RHN_IN</code>, open <code>RHN_IN_T_PAYMENTS</code> (saved, not deployed), switch on <b>Delta Capture</b>, then deploy the table for the first time.',
       'In <code>RHN_HARM</code>, create a <b>New Transformation Flow</b>: a SQL view transform that adds <code>CONTRACT_ID</code> from <code>RHN_HA_V_INVOICES</code>, target <code>RHN_HA_T_PAYMENTS</code>, load type <b>Initial and Delta</b>.',
       'Name it <code>RHN_HA_TF_PAYMENTS</code>, deploy it and <b>Run</b> it: the initial load.',
       'Enter today\'s bank message in the Data Editor of <code>RHN_IN_T_PAYMENTS</code>, deploy the table, and <b>Run</b> the flow again.',
@@ -796,7 +796,7 @@ export const CHAPTER_12: Mission[] = [
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'Delta Capture is a switch in the properties of the table editor. New Transformation Flow is a tile of the Data Builder; the load type sits in the flow\'s own properties.' },
-      { label: 'Hint 2: the concept', cost: 15, text: 'Order matters: Delta Capture records only changes deployed after it is on, and the initial run loads everything up to then. The bank message belongs after the initial run, otherwise the second run finds nothing new.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Order matters: Delta Capture is fixed at the first deploy of a table and records only changes deployed after that; the initial run loads everything up to then. The bank message belongs after the initial run, otherwise the second run finds nothing new.' },
     ],
     setup: (t) => {
       if (findObject(t, PAYMENTS)) return;
@@ -805,9 +805,14 @@ export const CHAPTER_12: Mission[] = [
           { name: 'PAID_ON', type: 'Date' as const, key: false }, { name: 'AMOUNT', type: 'Decimal' as const, key: false }],
         rows: [] as string[][],
       };
+      // Handed over saved, not deployed: Delta Capture can still be chosen (SAP sets it at the first deployment).
       t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_T_PAYMENTS', kind: 'Local Table', businessName: 'Bank payments', semanticUsage: 'Relational Dataset',
-        table, status: 'deployed', changedAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(), deployed: { businessName: 'Bank payments', table: structuredClone(table) } });
+        table, status: 'not_deployed', changedAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString() });
       if (!t.shares.some((x) => x.object === PAYMENTS && x.to === 'RHN_HARM')) t.shares.push({ object: PAYMENTS, to: 'RHN_HARM' });
+    },
+    setupAgain: {
+      when: (t) => !findObject(t, PAYMENTS),
+      note: 'Accounts Receivable handed RHN_IN_T_PAYMENTS over again: saved with its rows, not deployed. Switch on Delta Capture before you deploy it.',
     },
     setupAsync: async (t) => {
       const o = findObject(t, PAYMENTS);
@@ -816,8 +821,6 @@ export const CHAPTER_12: Mission[] = [
       const res = await runSql(`SELECT INVOICE_ID, CAST(PAID_DATE AS VARCHAR), CAST(NET_AMOUNT + TAX_AMOUNT AS VARCHAR)
         FROM RHN_IN.BILLING_INVOICES WHERE PAID_DATE >= DATE '2026-02-12' ORDER BY PAID_DATE, INVOICE_ID`);
       o.table.rows = res.rows.map((r, i) => [`PAY-${String(i + 1).padStart(4, '0')}`, String(r[0]), String(r[1]), String(r[2])]);
-      o.deployed = { businessName: o.businessName, table: structuredClone(o.table) };
-      for (const stmt of tableStatements(o.space, o.name, o.table)) await exec(stmt);
     },
     checks: [
       {
@@ -826,8 +829,10 @@ export const CHAPTER_12: Mission[] = [
           const o = findObject(tenant, PAYMENTS);
           if (!o) return 'RHN_IN_T_PAYMENTS is missing in RHN_IN.';
           if (o.deployed?.table?.deltaCapture) return null;
-          return o.table?.deltaCapture ? 'Delta Capture is switched on but not deployed. Deploy RHN_IN_T_PAYMENTS.'
-            : 'RHN_IN_T_PAYMENTS records no changes. Open it in RHN_IN, switch on Delta Capture in its properties and deploy.';
+          if (o.deployed?.table)
+            return 'RHN_IN_T_PAYMENTS was deployed without Delta Capture, and it cannot be switched on afterwards. Delete the table in RHN_IN (Data Builder, Delete in its row): Accounts Receivable hands it over again, saved and not deployed. Then switch Delta Capture on before the first deploy.';
+          return o.table?.deltaCapture ? 'Delta Capture is switched on but the table is not deployed yet. Deploy RHN_IN_T_PAYMENTS.'
+            : 'RHN_IN_T_PAYMENTS is not deployed yet. Open it in RHN_IN, switch on Delta Capture in its properties first, then deploy.';
         },
       },
       {
@@ -897,7 +902,7 @@ export const CHAPTER_12: Mission[] = [
       },
     ],
     xp: 55,
-    realTenant: `In a real tenant: switch on <i>Delta Capture</i> in the table editor of a local table (Handbuch 6.4.2); the system adds the delta table
+    realTenant: `In a real tenant: switch on <i>Delta Capture</i> in the table editor of a local table before its first deployment; it cannot be changed afterwards (Handbuch 6.4.2, SAP Help); the system adds the delta table
       with <i>Change_Type</i> and <i>Change_Date</i>. Then Data Builder › New Transformation Flow, model the view transform graphically or in SQL,
       add the target table and set the load type <i>Initial and Delta</i> (6.7.3, 6.12.4). Deploy, run, and add it to a task chain; runs are in the
       Data Integration Monitor › Flows, where the delta can be reset. Simplified in the game: SQL only, one delta source per flow, Initial Only replaces

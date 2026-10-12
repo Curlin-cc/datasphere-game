@@ -76,7 +76,9 @@ export async function transformError(d: TransformFlowDef, space: string, t: Tena
       const tables = transformReads(sql, t).map((k) => findObject(t, k)!).filter((o) => o.kind === 'Local Table');
       const mine = tables.find((o) => o.table && !o.source);
       return mine
-        ? `Initial and Delta reads changes from a source with Delta Capture, and ${mine.name} records none. Switch on Delta Capture in its table editor (space ${mine.space}) and deploy the table.`
+        ? `Initial and Delta reads changes from a source with Delta Capture, and ${mine.name} records none. ${mine.deployed?.table
+          ? `It was deployed without Delta Capture, which can only be chosen before a table's first deploy: the table has to be created again with Delta Capture on.`
+          : `Switch on Delta Capture in its table editor (space ${mine.space}) before you deploy the table.`}`
         : 'Initial and Delta needs a source table with Delta Capture. None of the sources records changes.';
     }
     if (sources.length > 1) return `The view transform reads ${sources.length} tables with Delta Capture. The game supports one delta source per flow; join the others as views.`;
