@@ -79,6 +79,49 @@ export function openDialog(title: string, body: string, cls = '') {
   return { form: overlay.querySelector<HTMLFormElement>('form')!, close };
 }
 
+/**
+ * In-page replacement for confirm(): the claude.ai artifact host blocks browser dialogs (confirm returns false at once),
+ * so every question goes through our own dialog. Resolves true on OK, false on Cancel, Escape or a click outside.
+ */
+export function ask(text: string, ok = 'OK', title = 'Please confirm'): Promise<boolean> {
+  return new Promise((resolve) => {
+    let answer = false;
+    const { form, close } = openDialog(title, `
+      <p class="ask-text">${esc(text)}</p>
+      <div class="guide-actions">
+        <button class="btn link" type="button" data-act="cancel">Cancel</button>
+        <button class="btn primary" type="submit" data-act="ok">${esc(ok)}</button>
+      </div>`, 'ask-dlg');
+    const overlay = form.parentElement!;
+    new MutationObserver((_, obs) => {
+      if (!overlay.isConnected) {
+        obs.disconnect();
+        resolve(answer);
+      }
+    }).observe(document.body, { childList: true });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      answer = true;
+      close();
+    });
+    form.querySelector<HTMLButtonElement>('[data-act="ok"]')!.focus();
+  });
+}
+
+/** In-page replacement for alert() (see ask). */
+export function tell(text: string, title = 'Note'): Promise<void> {
+  return new Promise((resolve) => {
+    const { form, close } = openDialog(title, `
+      <p class="ask-text">${esc(text)}</p>
+      <div class="guide-actions"><button class="btn primary" type="submit">OK</button></div>`, 'ask-dlg');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      close();
+      resolve();
+    });
+  });
+}
+
 /** Content right of the app name in the shellbar (breadcrumb: space, object). Cleared on every view change. */
 export function setCrumb(html: string) {
   const el = document.querySelector<HTMLElement>('#shell-crumb');

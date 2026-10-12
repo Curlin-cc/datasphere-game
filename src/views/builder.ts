@@ -17,7 +17,7 @@ import { renderChainEditor, newChainDraft } from './chain';
 import { DAC_USERS, securedFrom, assignmentError } from '../dac';
 import { statements } from '../missions/engine';
 import { missionProgress } from '../progress';
-import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb, shownName } from '../ui';
+import { esc, spaceChip, icon, ICONS, openDialog, toast, resultTable, setCrumb, shownName, ask } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { objectToolbar, bindDetails, propsHead } from './toolbar';
 import { openVersions } from './versions';
@@ -318,7 +318,7 @@ function renderLanding(main: HTMLElement) {
   main.querySelectorAll<HTMLButtonElement>('[data-delete]').forEach((b) =>
     b.addEventListener('click', async () => {
       const o = findObject(t, b.dataset.delete!);
-      if (!o || !confirm(`Delete ${o.name}? Objects built on it stop working.`)) return;
+      if (!o || !await ask(`Delete ${o.name}? Objects built on it stop working.`)) return;
       await dropObject(o);
       t.objects = t.objects.filter((x) => x !== o);
       t.shares = t.shares.filter((s) => s.object !== objectKey(o));
@@ -531,7 +531,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         if (bad) return toast(`Deployment failed. ${bad}`, 'error');
       }
       if (saved.space.endsWith('_IN') &&
-        !confirm('Calin: "The inbound layer holds source data 1:1. A view with logic belongs in harmonization." Deploy it in the inbound space anyway?')) {
+        !await ask('Calin: "The inbound layer holds source data 1:1. A view with logic belongs in harmonization." Deploy it in the inbound space anyway?')) {
         ctx.renderView();
         return;
       }

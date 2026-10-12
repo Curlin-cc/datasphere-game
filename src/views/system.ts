@@ -1,7 +1,7 @@
 import { ctx } from '../ctx';
 import { CAPACITY, assigned } from '../tenant';
 import { CLOUD_CONNECTORS, CERTIFICATE_FILES } from '../integration';
-import { esc, openDialog, toast } from '../ui';
+import { esc, openDialog, toast, ask } from '../ui';
 import { THRESHOLDS, simulateStories } from '../perf';
 import { EXCURSIONS } from '../content/chapters';
 import { objectKey } from '../repo';
@@ -97,9 +97,9 @@ export function renderSystem(main: HTMLElement) {
   main.querySelector('#oauth-add')?.addEventListener('click', () => oauthDialog(main));
   main.querySelectorAll<HTMLButtonElement>('[data-oauth-test]').forEach((b) => b.addEventListener('click', () => odataDialog(b.dataset.oauthTest!)));
   main.querySelectorAll<HTMLButtonElement>('[data-oauth-delete]').forEach((b) =>
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const name = b.dataset.oauthDelete!;
-      if (!confirm(`Delete the OAuth client ${name}? Every tool that uses it stops working.`)) return;
+      if (!await ask(`Delete the OAuth client ${name}? Every tool that uses it stops working.`)) return;
       t.oauthClients = t.oauthClients.filter((c) => c.name !== name);
       ctx.track(`oauth-delete:${name}`);
       ctx.save();
@@ -131,8 +131,8 @@ export function renderSystem(main: HTMLElement) {
     renderSystem(main);
   });
   main.querySelectorAll<HTMLButtonElement>('[data-cert-delete]').forEach((b) =>
-    b.addEventListener('click', () => {
-      if (!confirm(`Delete the certificate ${b.dataset.certDelete}? TLS connections that rely on it stop validating.`)) return;
+    b.addEventListener('click', async () => {
+      if (!await ask(`Delete the certificate ${b.dataset.certDelete}? TLS connections that rely on it stop validating.`)) return;
       t.certificates = t.certificates.filter((c) => c !== b.dataset.certDelete);
       ctx.save();
       renderSystem(main);

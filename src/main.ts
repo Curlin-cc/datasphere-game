@@ -17,7 +17,7 @@ import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './r
 import { restorePersistence } from './perf';
 import { usedMB, fmtSize } from './views/welcome';
 import { ctx, type ViewId } from './ctx';
-import { esc, icon, ICONS, setCrumb } from './ui';
+import { esc, icon, ICONS, setCrumb, ask } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
@@ -593,12 +593,12 @@ function renderHome(main: HTMLElement) {
     }
   });
   main.querySelector('#save-sandbox')!.addEventListener('click', async () => {
-    if (!confirm('Load the sandbox? It replaces your progress with a save in which every mission is solved. Export your save first if you want to keep it.')) return;
+    if (!await ask('Load the sandbox? It replaces your progress with a save in which every mission is solved. Export your save first if you want to keep it.')) return;
     ctx.progress = sandboxProgress();
     await afterProgressReplaced();
   });
   main.querySelector('#save-reset')!.addEventListener('click', async () => {
-    if (!confirm('Start over? Your XP and all solved missions are deleted. Export your save first if you want to keep it.')) return;
+    if (!await ask('Start over? Your XP and all solved missions are deleted. Export your save first if you want to keep it.')) return;
     ctx.progress = freshProgress();
     await afterProgressReplaced();
   });

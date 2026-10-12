@@ -1,7 +1,7 @@
 import { ctx } from '../ctx';
 import { exec, listObjects } from '../db';
 import { CAPACITY, NEW_SPACE_DEFAULTS, assigned, spaceIdError, storageError, sharedWith, round1, type Space } from '../tenant';
-import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, icon, ICONS } from '../ui';
+import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, icon, ICONS, ask, tell } from '../ui';
 import { usedMB, fmtSize } from './welcome';
 import { EXCURSIONS } from '../content/chapters';
 import { dbUserError, dbUserName, readableByDbUser, DB_HOST, DB_PORT } from '../consumption';
@@ -170,10 +170,10 @@ function openSpaceDialog(existing?: Space) {
 
 async function deleteSpace(id: string, objectCount: number) {
   if (objectCount > 0) {
-    alert(`${id} still contains ${objectCount} objects. Delete them first.`);
+    await tell(`${id} still contains ${objectCount} objects. Delete them first.`);
     return;
   }
-  if (!confirm(`Delete space ${id}? Shares into this space are removed too.`)) return;
+  if (!await ask(`Delete space ${id}? Shares into this space are removed too.`)) return;
   const t = ctx.tenant();
   await exec(`DROP SCHEMA IF EXISTS "${id}"`);
   t.spaces = t.spaces.filter((s) => s.id !== id);

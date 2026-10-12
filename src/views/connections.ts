@@ -3,7 +3,7 @@ import { suggestTechnicalName } from '../repo';
 import {
   CONN_TYPES, FEATURES, connType, validateConnection, dependents, findConnection, type Connection, type ConnType,
 } from '../integration';
-import { esc, spaceChip, openDialog, toast, fmtDate } from '../ui';
+import { esc, spaceChip, openDialog, toast, fmtDate, ask } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 
 /**
@@ -98,11 +98,11 @@ export function renderConnections(main: HTMLElement) {
   main.querySelector('#conn-create')!.addEventListener('click', () => chooseType(main));
   main.querySelector('#conn-edit')!.addEventListener('click', () => sel && openForm(main, connType(sel.type)!, sel));
   main.querySelector('#conn-validate')!.addEventListener('click', () => sel && runValidation(main, sel));
-  main.querySelector('#conn-delete')!.addEventListener('click', () => {
+  main.querySelector('#conn-delete')!.addEventListener('click', async () => {
     if (!sel) return;
     const deps = dependents(t, sel);
     if (deps.length) return toast(`${sel.name} is used by ${deps.map((d) => d.name).join(', ')}. Delete those objects first.`, 'error');
-    if (!confirm(`Delete connection ${sel.name}?`)) return;
+    if (!await ask(`Delete connection ${sel.name}?`)) return;
     t.connections = t.connections.filter((c) => c !== sel);
     selected = '';
     ctx.save();

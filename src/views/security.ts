@@ -5,7 +5,7 @@ import { MISSIONS } from '../content/missions';
 import {
   GLOBAL_ADMIN, TEMPLATES, ADMIN_INFO, TEMPLATE_ORDER, roleIdError, templateLabel, type ScopedRole, type Template, type RoleInfo,
 } from '../security';
-import { esc, spaceChip, openDialog } from '../ui';
+import { esc, spaceChip, openDialog, ask } from '../ui';
 
 /**
  * Security app (Bild 1 style, page type D): in the real tenant, Security opens sub-pages in the side navigation
@@ -84,9 +84,9 @@ function renderRoles(main: HTMLElement) {
     b.addEventListener('click', () => openRoleDialog(t.roles.find((r) => r.id === b.dataset.roleEdit))),
   );
   main.querySelectorAll<HTMLButtonElement>('[data-role-delete]').forEach((b) =>
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const id = b.dataset.roleDelete!;
-      if (!confirm(`Delete role ${id}? Everyone loses it.`)) return;
+      if (!await ask(`Delete role ${id}? Everyone loses it.`)) return;
       t.roles = t.roles.filter((r) => r.id !== id);
       t.assignments = t.assignments.filter((a) => a.role !== id);
       ctx.save();

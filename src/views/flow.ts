@@ -8,7 +8,7 @@ import {
 import { startFlowRun } from './monitor';
 import { monitorTo } from './monitor';
 import { objectToolbar, bindDetails } from './toolbar';
-import { esc, spaceChip, ICONS, openDialog, toast } from '../ui';
+import { esc, spaceChip, ICONS, openDialog, toast, ask } from '../ui';
 
 /**
  * Data Builder, chapter 3: "Import Remote Tables" wizard and the replication flow editor.
@@ -177,9 +177,9 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
     });
     main.querySelector('#ed-back')!.addEventListener('click', nav.back);
     bindDetails(main);
-    main.querySelector<HTMLSelectElement>('#flow-conn')!.addEventListener('change', (e) => {
+    main.querySelector<HTMLSelectElement>('#flow-conn')!.addEventListener('change', async (e) => {
       const v = (e.target as HTMLSelectElement).value;
-      if (v !== draft.connection && draft.objects.length && !confirm('A flow has one source connection. Changing it removes the replication objects. Continue?')) return draw();
+      if (v !== draft.connection && draft.objects.length && !await ask('A flow has one source connection. Changing it removes the replication objects. Continue?')) return draw();
       if (v !== draft.connection) draft.objects = [];
       draft.connection = v;
       draw();

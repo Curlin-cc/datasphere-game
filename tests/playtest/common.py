@@ -44,6 +44,13 @@ class Game:
         self.pg = self.b.new_page(viewport={'width': 1500, 'height': 950})
         self.pg.on('pageerror', lambda e: self.errors.append(str(e)))
         self.pg.on('dialog', lambda d: d.accept())
+        # The game asks with its own dialog (ui.ts ask/tell, browser dialogs are blocked in the artifact): accept like before.
+        # Like the artifact host: browser dialogs do nothing, so a leftover confirm() shows up as a failing playtest.
+        self.pg.add_init_script("window.confirm = () => false; window.alert = () => {}; window.prompt = () => null;")
+        self.pg.add_init_script("""setInterval(() => {
+            const b = document.querySelector('.ask-dlg [type="submit"]');
+            if (b && !b.dataset.auto) { b.dataset.auto = '1'; b.click(); }
+        }, 50);""")
 
     def start(self, save=None):
         if CHAIN and save is not None and os.path.exists(CHAIN):
