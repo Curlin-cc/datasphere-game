@@ -3001,7 +3001,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Target table',
         target: '[data-node="target"]',
         body: `<p>A new name creates the table on the first run, with the columns of the transform and the key of the delta source.</p>`,
-        action: { do: 'Open <b>Target Table</b> and name it <b>RHN_HA_T_PAYMENTS</b>.', event: '^tf-target:RHN_HA_T_PAYMENTS$' },
+        action: { do: 'Open the <b>Target</b> node and name it <b>RHN_HA_T_PAYMENTS</b>.', event: '^tf-target:RHN_HA_T_PAYMENTS$' },
       },
       {
         title: 'Load type',

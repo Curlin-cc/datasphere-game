@@ -28,7 +28,7 @@ def solve_m11(g):
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)
     pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_HA_T_PAYMENTS'); pg.keyboard.press('Tab'); pg.wait_for_timeout(200)
-    pg.click('#tf-general'); pg.check('[name="tf-load"][value="Initial and Delta"]'); pg.wait_for_timeout(200)
+    pg.click('#tf-general'); pg.select_option('#tf-load', 'Initial and Delta'); pg.wait_for_timeout(200)
     pg.fill('#prop-business', 'Payments (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_TF_PAYMENTS')
     pg.click('#ed-deploy'); pg.wait_for_timeout(800)
     pg.click('#tf-run'); pg.wait_for_timeout(1000)

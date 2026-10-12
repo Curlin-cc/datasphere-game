@@ -96,6 +96,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
               <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
             <label>Semantic Usage <small>what kind of data this is</small>
               <select id="prop-semantic" ${chapter >= 6 ? '' : 'disabled'}>${SEMANTIC_USAGES.map((u) => `<option ${u === usage ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+            <label>Storage <small>Disk by default; In-Memory keeps it in memory (more speed, more memory)</small>
+              <select disabled title="The game keeps every table on disk"><option>Disk</option><option>In-Memory</option></select></label>
             ${chapter >= EXCURSIONS || def.deltaCapture ? `<label class="switch-line">Delta Capture <small>${lockedDelta ? 'on: the table records its changes; the game does not switch it off again' : 'records inserts, updates and deletes in a delta table, for delta loads'}</small>
               <span class="switch"><input type="checkbox" id="prop-delta" ${def.deltaCapture ? 'checked' : ''} ${lockedDelta ? 'disabled' : ''}></span></label>` : ''}
             <dl class="props-list">

@@ -95,6 +95,9 @@ export function renderDataFlowEditor(main: HTMLElement, o: RepoObject | null, na
             { label: 'Run', buttons: [{ id: 'df-run', icon: ICONS.flow, label: 'Run', title: o?.deployed ? 'Run the deployed data flow' : 'Deploy first', disabled: readOnly || !o?.deployed }] },
           ],
         })}
+        <div class="ed-banner" role="note" id="df-banner"><span class="ed-banner-i" aria-hidden="true">i</span>
+          Replication flows and transformation flows are now the recommended way to load and transform data in SAP Datasphere
+          (delta loads, more connectivity, scalable runs). Data flows stay supported for existing work.</div>
         <div class="ed-body">
           <section class="ed-center df-center">
             <div class="df-canvas" id="df-canvas" aria-label="Canvas">

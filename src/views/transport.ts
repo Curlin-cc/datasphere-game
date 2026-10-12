@@ -31,7 +31,7 @@ export function transportTo(p: TransportPage) {
 
 const YOU = 'You (Data Architect)';
 const statusHtml = (s: string) => {
-  const cls = s === 'Exported' || s === 'Success' ? 'ok' : s === 'Failed' ? 'bad' : s === 'Changes to Export' ? 'warn' : 'muted';
+  const cls = s === 'Exported' || s === 'Success' ? 'ok' : s === 'Failed' ? 'bad' : s === 'Changes To Export' ? 'warn' : 'muted';
   const ic = s === 'Exported' || s === 'Success' ? ICONS.check : s === 'Failed' ? '<path d="M4 4l8 8M12 4l-8 8"/>' : ICONS.info;
   return `<span class="tr-status ${cls}">${icon(ic)}${esc(s)}</span>`;
 };
@@ -58,26 +58,35 @@ function bindSearch(main: HTMLElement) {
 
 // ---------------------------------------------------------------- Packages
 
+let pkgFilter = '';
+
 function renderPackages(main: HTMLElement) {
   const t = ctx.tenant();
+  const shown = t.packages.filter((p) => !pkgFilter || p.space === pkgFilter);
   main.innerHTML = `
     <div class="tr-page">
-      <h1 class="view-title">Packages <span class="muted">(${t.packages.length})</span></h1>
+      <div class="tr-listhead"><label class="space-select">Space:
+          <select id="pkg-filter"><option value="">All Spaces</option>${t.spaces.map((s) => `<option value="${esc(s.id)}" ${pkgFilter === s.id ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}</select></label>
+        <h1 class="view-title">Packages (${shown.length})</h1></div>
       <p class="view-lead">A package bundles objects of one space for the move to another tenant. Add everything the objects need,
         or a required package that contains it; then export it in <b>Export</b>.</p>
       <section class="panel tr-panel">
         ${toolbar(`<button class="btn small primary" type="button" id="pkg-create">${icon(ICONS.plus)} Create</button>`)}
         <table class="grid" id="package-list"><thead><tr><th>Business Name</th><th>Technical Name</th><th>Space</th><th>Version</th><th>Objects</th>
-          <th>Required Packages</th><th>Status</th><th>Created By</th><th>Changed On</th></tr></thead><tbody>
-          ${t.packages.map((p) => `<tr data-row="${esc(p.name + ' ' + p.businessName)}">
+          <th>Required Packages</th><th>Changed On</th><th>Result</th></tr></thead><tbody>
+          ${shown.map((p) => `<tr data-row="${esc(p.name + ' ' + p.businessName)}">
             <td><button class="link-btn" type="button" data-pkg="${esc(p.name)}">${icon(ICONS.cube)} ${esc(p.businessName)}</button></td>
             <td class="mono">${esc(p.name)}</td><td>${spaceChip(p.space)}</td><td>${esc(p.version)}</td><td class="num">${p.objects.length}</td>
-            <td>${p.required.map((r) => `<code>${esc(r)}</code>`).join(', ') || '–'}</td><td>${statusHtml(packageStatus(p))}</td>
-            <td>${esc(p.createdBy)}</td><td>${fmtDate(p.changedAt)}</td></tr>`).join('') || '<tr><td colspan="9" class="placeholder">No packages yet.</td></tr>'}
+            <td>${p.required.map((r) => `<code>${esc(r)}</code>`).join(', ') || '–'}</td>
+            <td>${fmtDate(p.changedAt)}</td><td>${statusHtml(packageStatus(p))}</td></tr>`).join('') || '<tr><td colspan="8" class="placeholder">No packages yet.</td></tr>'}
         </tbody></table>
       </section>
     </div>`;
   bindSearch(main);
+  main.querySelector<HTMLSelectElement>('#pkg-filter')!.addEventListener('change', (e) => {
+    pkgFilter = (e.target as HTMLSelectElement).value;
+    renderPackages(main);
+  });
   main.querySelector('#pkg-create')!.addEventListener('click', () => {
     editing = 'new';
     draft = { name: '', businessName: '', space: 'RHN_REP', description: '', version: '1.0.0', objects: [], required: [], targets: [], createdBy: YOU, changedAt: '' };
@@ -100,7 +109,8 @@ function renderEditor(main: HTMLElement) {
   const problems = validationMessages(v, p);
   const objRows = p.objects.map((k) => {
     const o = findObject(t, k);
-    return `<tr><td class="mono">${esc(k.split('.')[1])}</td><td>${esc(o?.kind ?? 'missing')}</td><td>${esc(o?.businessName ?? '')}</td>
+    return `<tr><td>${esc(o?.businessName ?? '')}</td><td class="mono">${esc(k.split('.')[1])}</td><td>${esc(o?.kind ?? 'missing')}</td>
+      <td>${o ? (o.deployed ? 'Deployed' : 'Not Deployed') : ''}</td><td>${o ? `${icon(ICONS.check)} Added` : '<span class="bad">missing</span>'}</td>
       <td>${o ? dependencies(o, t).map((d) => `<code>${esc(d)}</code>`).join(' ') || '–' : ''}</td>
       <td>${own ? `<button class="btn small link" type="button" data-remove="${esc(k)}">Remove</button>` : ''}</td></tr>`;
   }).join('');
@@ -110,23 +120,26 @@ function renderEditor(main: HTMLElement) {
         <h1 class="view-title">${esc(p.businessName || 'New Package')}</h1>${isNew ? '' : statusHtml(packageStatus(t.packages.find((x) => x.name === p.name)!))}
         <span class="spacer"></span>
         ${own ? `<button class="btn small" type="button" id="pkg-validate">Validate</button><button class="btn small primary" type="button" id="pkg-save">${icon(ICONS.save)} Save</button>` : `<span class="muted">Created by ${esc(p.createdBy)} · read-only</span>`}</div>
-      <div class="tr-editor">
-        <section class="panel tr-props">
+      <div class="tabs pkg-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-pkgtab="pkg-general">General</button>
+        <button type="button" role="tab" aria-selected="false" data-pkgtab="pkg-required">Required Packages (${p.required.length})</button>
+        <button type="button" role="tab" aria-selected="false" data-pkgtab="pkg-objsec">Objects (${p.objects.length})</button>
+      </div>
+      <div class="tr-editor stacked">
+        <section class="panel tr-props" id="pkg-general">
           <label>Business Name <input id="pkg-business" value="${esc(p.businessName)}" maxlength="120" ${own ? '' : 'readonly'}></label>
-          <label>Technical Name <small>fixed once saved</small><input id="pkg-name" class="mono" value="${esc(p.name)}" maxlength="50" ${isNew ? '' : 'readonly'} spellcheck="false"></label>
+          <label>Technical Name * <small>fixed once saved</small><input id="pkg-name" class="mono" value="${esc(p.name)}" maxlength="50" ${isNew ? '' : 'readonly'} spellcheck="false"></label>
           <label>Space <small>a package holds objects of one space</small>
             <select id="pkg-space" ${isNew && !p.objects.length ? '' : 'disabled'}>${t.spaces.map((s) => `<option ${s.id === p.space ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}</select></label>
-          <label>Description <textarea id="pkg-desc" rows="3" maxlength="500" ${own ? '' : 'readonly'}>${esc(p.description)}</textarea></label>
-          <dl class="props-list"><dt>Version</dt><dd>${esc(p.version)}</dd><dt>Created By</dt><dd>${esc(p.createdBy)}</dd></dl>
+          <label>Business Purpose <textarea id="pkg-desc" rows="3" maxlength="500" ${own ? '' : 'readonly'}>${esc(p.description)}</textarea></label>
+          <label>Category <select disabled><option>My Content</option></select></label>
+          <label>Target Location <input value="My Content/" readonly></label>
+          <label>Version * <input value="${esc(p.version)}" readonly></label>
+          <dl class="props-list"><dt>Status</dt><dd>${isNew ? 'Not Exported' : esc(packageStatus(t.packages.find((x) => x.name === p.name)!))}</dd>
+            <dt>Current Exported Version</dt><dd>${esc(p.exported?.version ?? '–')}</dd><dt>Created By</dt><dd>${esc(p.createdBy)}</dd></dl>
         </section>
         <div class="tr-sections">
-          <section class="panel tr-panel">
-            <div class="tr-sechead"><h3>Objects (${p.objects.length})</h3><span class="spacer"></span>
-              ${own ? `<button class="btn small" type="button" id="pkg-add">${icon(ICONS.plus)} Add Objects</button>` : ''}</div>
-            <table class="grid compact" id="pkg-objects"><thead><tr><th>Technical Name</th><th>Type</th><th>Business Name</th><th>Needs</th><th></th></tr></thead>
-              <tbody>${objRows || '<tr><td colspan="5" class="placeholder">No objects yet. Add the objects you want to move.</td></tr>'}</tbody></table>
-          </section>
-          <section class="panel tr-panel">
+          <section class="panel tr-panel" id="pkg-required">
             <div class="tr-sechead"><h3>Required Packages (${p.required.length})</h3><span class="spacer"></span>
               ${own ? `<button class="btn small" type="button" id="pkg-req">${icon(ICONS.plus)} Add</button>` : ''}</div>
             ${p.required.length ? `<ul class="tr-req">${p.required.map((r) => {
@@ -134,6 +147,12 @@ function renderEditor(main: HTMLElement) {
               return `<li><code>${esc(r)}</code> ${rp ? `${spaceChip(rp.space)} ${rp.objects.length} objects · ${statusHtml(packageStatus(rp))}` : '<span class="bad">missing</span>'}
                 ${own ? `<button class="btn small link" type="button" data-unreq="${esc(r)}">Remove</button>` : ''}</li>`;
             }).join('')}</ul>` : '<p class="muted">None. Objects of other spaces that your objects read must come from a required package.</p>'}
+          </section>
+          <section class="panel tr-panel" id="pkg-objsec">
+            <div class="tr-sechead"><h3>Objects (${p.objects.length})</h3><span class="spacer"></span>
+              ${own ? `<button class="btn small" type="button" id="pkg-add">${icon(ICONS.plus)} Add</button>` : ''}</div>
+            <table class="grid compact" id="pkg-objects"><thead><tr><th>Business Name</th><th>Technical Name</th><th>Type</th><th>Status</th><th>Result</th><th>Needs</th><th></th></tr></thead>
+              <tbody>${objRows || '<tr><td colspan="7" class="placeholder">No objects yet. Add the objects you want to move.</td></tr>'}</tbody></table>
           </section>
           <section class="panel tr-panel" id="pkg-validation">
             <div class="tr-sechead"><h3>Validation</h3></div>
@@ -153,6 +172,10 @@ function renderEditor(main: HTMLElement) {
       p.space = main.querySelector<HTMLSelectElement>('#pkg-space')!.value;
     }
   };
+  main.querySelectorAll<HTMLButtonElement>('[data-pkgtab]').forEach((b) => b.addEventListener('click', () => {
+    main.querySelectorAll('[data-pkgtab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    main.querySelector(`#${b.dataset.pkgtab}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }));
   main.querySelector('#pkg-back')!.addEventListener('click', () => {
     transportTo('packages');
     renderTransport(main);

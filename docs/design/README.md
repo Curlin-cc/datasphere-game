@@ -212,9 +212,26 @@ Umgebaut am 09.10.2026 (Vergleich per `tests/playtest/look.py`, Screenshots hell
       Home Screen, Language & Region, Notifications, UI Settings, Privacy) und rechter Seite, „Close“ unten rechts. **Appearance** schaltet Horizon / Horizon Dark /
       System (ersetzt den Theme-Knopf der Shellbar), **UI Settings** wählt Business oder Technical Name in den Objektlisten. About aus System hierher verschoben
 
+Umgebaut am 12.10.2026 nach Bild 22–46:
+
+- [x] **Connections** (Bild 22, 46): Willkommenssatz wie im Original; Liste mit Reitern *Connections* · *SAP Open Connectors* (Space-Wahl rechts daneben),
+      Aktionen `+` · Edit · Delete · Validate · Pause · Restart, Spalten Business Name · Type · Created By · Created On · Real-Time Replication Status;
+      Validierung und Features als Leiste unter der Tabelle (Spielhilfe); Abschnitt SAP Open Connectors (deaktiviert)
+- [x] **Transport** (Bild 27, 28, 31): Packages mit „Space: All Spaces“-Filter und Spalte *Result*; Paket-Editor mit Reitern General · Required Packages · Objects
+      (springen zu den Abschnitten), Feldern Business Purpose, Category, Target Location, Version, Current Exported Version; Objekt-Spalten mit Status/Result.
+      Statuswert jetzt „Changes To Export“
+- [x] **Settings** (Bild 25, 29, 43–45): *Authorized Consent Settings*, Home-Screen-Schalter, Language & Region mit allen Feldern, UI Settings „Display Name“;
+      Avatar-Menü zeigt die E-Mail. Dunkles Theme bleibt als Spielzusatz (Original: High Contrast Black/White)
+- [x] **Data Flow** (Bild 33): Infobanner zur Empfehlung Replication + Transformation Flow
+- [x] **Transformation Flow** (Bild 40): Load Type als Dropdown, Runtime SAP HANA, Knoten „Target“
+- [x] **Tabelle** (Bild 30): Feld *Storage* (Disk)
+
 Noch offen:
 - [ ] Shellbar rechts: im Original Glocke, Feedback, Support, Hilfe; im Spiel Rang/XP, Glossar, „How to play“ (spielspezifisch, bleibt)
-- [ ] Echte Screenshots fehlen für Connections (Bild 12 zeigt Translation), Security › Users/Roles/Authorization Overview/Activities (Stil D angenommen)
+- [ ] Tabellen- und DAC-Editor sind im Original **ganze Seiten mit Reitern** (General · Columns · … bzw. General · Criteria, Bild 30/38), im Spiel Mitte + Seitenpanel
+- [ ] Analytic Model: Umschalter *Model · Preview* und „Analytic Model Properties“ (Bild 37); Replication Flow: Kopf „Select Source/Target Connection“ und
+      Panel-Abschnitte Settings/Run Settings (Bild 41); Data Sharing Cockpit als Kachel-Übersicht mit Unterpunkten in der Navigation (Bild 42)
+- [ ] Security › Users/Roles/Authorization Overview: kein Screenshot möglich (Curlins Rolle sieht nur Activities); Aufbau nach SAP-Hilfe
 
 ## 5. Arbeitsweise
 

@@ -42,7 +42,7 @@ export interface Package {
   /** Who created it, for the lists. */
   createdBy: string;
   changedAt: string;
-  /** Last successful export: version and time, and the content that was exported (to show "Changes to Export"). */
+  /** Last successful export: version and time, and the content that was exported (to show "Changes To Export"). */
   exported?: { version: string; at: string; fingerprint: string };
 }
 
@@ -56,13 +56,13 @@ export interface TransportJob {
   messages: string[];
 }
 
-export type PackageStatus = 'Not Exported' | 'Exported' | 'Changes to Export';
+export type PackageStatus = 'Not Exported' | 'Exported' | 'Changes To Export';
 
 const fingerprint = (p: Package) => JSON.stringify([p.objects.slice().sort(), p.required.slice().sort(), p.targets.slice().sort()]);
 
 export function packageStatus(p: Package): PackageStatus {
   if (!p.exported) return 'Not Exported';
-  return p.exported.fingerprint === fingerprint(p) ? 'Exported' : 'Changes to Export';
+  return p.exported.fingerprint === fingerprint(p) ? 'Exported' : 'Changes To Export';
 }
 
 /** The package an object belongs to, if any (shown as the field "Package" in the editors). */

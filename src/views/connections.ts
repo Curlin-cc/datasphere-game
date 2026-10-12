@@ -30,8 +30,8 @@ export function renderConnections(main: HTMLElement) {
   if (!spaceChosen) {
     main.innerHTML = welcomeSpacesHtml({
       title: 'Welcome to Connections',
-      text: 'Create and manage connections to source and target systems. Each connection belongs to one space.',
-      emptyTitle: 'Select a space',
+      text: 'Connect to your sources to make their data available for views, data flows, replication, or for importing models.',
+      emptyTitle: 'It looks like you haven’t selected a space.',
       emptyText: 'Connections are created and used inside a space. Only its members can use them in remote tables, flows and imports.',
       cardAttrs: (id) => `data-conn-card="${esc(id)}" ${id === t.activeSpace ? 'aria-current="true"' : ''}`,
       gridId: 'conn-spaces',
@@ -51,38 +51,51 @@ export function renderConnections(main: HTMLElement) {
   if (!list.some((c) => c.name === selected)) selected = '';
   const sel = list.find((c) => c.name === selected);
 
+  // Layout after Curlin's screenshot 22 (12.10.2026): tabs Connections | SAP Open Connectors, text actions, columns of the real list.
+  // The game adds one strip under the table with the validation result and the features (a real tenant shows them in a message).
   main.innerHTML = `
-    <div class="view-head">
-      <div><h1 class="view-title">Connections</h1>
-        <p class="view-lead">A connection links one space to a source or target system. Only the members of that space can use it,
-          in remote tables, flows and imports. Validate a connection to see which of these it supports.</p></div>
-      ${spaceSelect('conn-space', space)}
+    <div class="tabs conn-tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-conn-tab="list">Connections</button>
+      <button type="button" role="tab" aria-selected="false" data-conn-tab="open">SAP Open Connectors</button>
+      <span class="spacer"></span>${spaceSelect('conn-space', space)}
     </div>
+    <h2 class="section-title" id="conn-title">Connections</h2>
     <div class="panel">
       <div class="table-head">
-        <h3>Connections in ${esc(space)} <small class="muted">${list.length}</small></h3>
-        <div class="toolbar" id="conn-toolbar">
-          <button class="btn primary small" type="button" id="conn-create">Create</button>
-          <button class="btn small" type="button" id="conn-edit" ${sel ? '' : 'disabled'}>Edit</button>
-          <button class="btn small" type="button" id="conn-validate" ${sel ? '' : 'disabled'}>Validate</button>
+        <span class="muted">${list.length} in ${esc(space)}</span>
+        <div class="toolbar text-actions" id="conn-toolbar">
+          <button class="btn small icon-only" type="button" id="conn-create" title="Create Connection" aria-label="Create Connection">+</button>
+          <button class="btn small link" type="button" id="conn-edit" ${sel ? '' : 'disabled'}>Edit</button>
           <button class="btn small link" type="button" id="conn-delete" ${sel ? '' : 'disabled'}>Delete</button>
+          <button class="btn small link" type="button" id="conn-validate" ${sel ? '' : 'disabled'}>Validate</button>
+          <button class="btn small link" type="button" disabled title="Pauses real-time replication of remote tables; not in this game">Pause</button>
+          <button class="btn small link" type="button" disabled title="Restarts paused real-time replication; not in this game">Restart</button>
         </div>
       </div>
       <div class="table-scroll"><table class="grid" id="conn-list">
-        <thead><tr><th></th><th>Business Name</th><th>Technical Name</th><th>Connection Type</th><th>Validation</th><th>Features</th><th>Changed On</th></tr></thead>
+        <thead><tr><th></th><th>Business Name</th><th>Type</th><th>Created By</th><th>Created On</th><th>Real-Time Replication Status</th></tr></thead>
         <tbody>${list.length ? list.map((c) => `<tr class="${c.name === selected ? 'selected' : ''}">
             <td><input type="radio" name="conn-sel" value="${esc(c.name)}" ${c.name === selected ? 'checked' : ''} aria-label="Select ${esc(c.name)}"></td>
-            <td>${esc(c.businessName)}</td><td class="mono">${esc(c.name)}</td><td>${esc(connType(c.type)?.label ?? c.type)}</td>
-            <td>${c.validation ? `<span class="status" data-status="${c.validation.ok ? 'deployed' : 'failed'}">${c.validation.ok ? 'Valid' : 'Failed'}</span>` : '<span class="status" data-status="not_deployed">Not validated</span>'}</td>
-            <td>${c.validation?.ok ? featureList(c.validation.features) : '<span class="muted">Validate to see</span>'}</td>
-            <td class="muted">${fmtDate(c.changedAt)}</td></tr>`).join('')
-          : `<tr><td colspan="7" class="muted">No connections in this space yet. Create one to reach a source system.</td></tr>`}</tbody>
+            <td title="${esc(c.name)}">${esc(c.businessName)}</td><td>${esc(connType(c.type)?.label ?? c.type)}</td>
+            <td>DATA_ARCHITECT</td><td class="muted">${fmtDate(c.changedAt)}</td><td>Not Applicable</td></tr>`).join('')
+          : `<tr><td colspan="6" class="muted">No connections in this space yet. Create one with + to reach a source system.</td></tr>`}</tbody>
       </table></div>
+      ${sel ? `<div class="conn-detail" id="conn-detail"><b>${esc(sel.businessName)}</b> <span class="mono muted">${esc(sel.name)}</span> ·
+        ${sel.validation ? `<span class="status" data-status="${sel.validation.ok ? 'deployed' : 'failed'}">${sel.validation.ok ? 'Valid' : 'Failed'}</span>` : '<span class="status" data-status="not_deployed">Not validated</span>'}
+        ${sel.validation?.ok ? featureList(sel.validation.features) : '<span class="muted">Validate shows which features it supports.</span>'}</div>` : ''}
       ${sel?.validation && !sel.validation.ok ? `<p class="form-error conn-error" id="conn-message">${esc(sel.validation.message)}</p>` : ''}
+    </div>
+    <h2 class="section-title">SAP Open Connectors</h2>
+    <div class="panel conn-open" id="conn-open">
+      <p>Integrate SAP Open Connectors with SAP Datasphere to reach third-party sources through them.</p>
+      <button class="btn" type="button" disabled title="Not in this game">Integrate your SAP Open Connectors Account</button>
     </div>
     <p class="muted">Connectivity for on-premise sources (Cloud Connector, Data Provisioning Agent), the IP allowlist and certificates
       are set up tenant-wide by an administrator under <b>System › Configuration</b>.</p>`;
-
+  main.querySelectorAll<HTMLButtonElement>('[data-conn-tab]').forEach((b) => b.addEventListener('click', () => {
+    main.querySelectorAll('[data-conn-tab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    main.querySelector(b.dataset.connTab === 'open' ? '#conn-open' : '#conn-title')?.scrollIntoView({ block: 'start' });
+  }));
   main.querySelector<HTMLSelectElement>('#conn-space')!.addEventListener('change', (e) => {
     t.activeSpace = (e.target as HTMLSelectElement).value;
     ctx.track(`space:connections:${t.activeSpace}`);

@@ -4,15 +4,10 @@
 > Erledigte Punkte mit Antwort und Datum abhaken, nicht löschen. Wo eine Antwort das Spiel ändert, den Umbau in `AI_CONTEXT.md` („Nächster Schritt“) eintragen.
 > Legende der Antworten von Curlin: ✅ in der SAP-Doku nachgelesen · 🟡 sein Wissensstand, am Tenant noch zu bestätigen · ❌ nur am Tenant/per Screenshot.
 
-## Screenshots für das Design (`docs/design/screenshots/`, nächste Nummer ab 22)
+## Screenshots für das Design (`docs/design/screenshots/`, nächste Nummer ab 47)
 
-- [ ] **Connections**: Willkommensseite und Liste einer Space. Bild 12 zeigt in Wahrheit das Translation Dashboard.
-- [ ] **Security › Users** und **Security › Roles**: im Spiel im Listenstil von Task Logs (Typ D) angenommen.
-- [ ] **Security › Activities** und, falls vorhanden, **Authorization Overview**. Bild 20 zeigt nur Activities als Unterpunkt; welche Unterpunkte siehst du mit deiner Rolle?
-- [ ] **Transport › Packages** und **Transport › Export** (nur Import und Monitor liegen vor, Bild 13/16).
-- [ ] **Benutzermenü am Avatar**: heißen die Einträge Settings · About · Sign Out?
-- [ ] **Neue Apps (12.10.2026)**: Screenshots von *Elastic Compute Nodes*, *Marketplace Data Products*, *Data Sharing Cockpit* und einer Space in *Translation* (nach der Space-Wahl), falls dein Tenant sie zeigt; dazu Capacities › Reiter *Spaces* und System and Spaces › Reiter *Object Store*. Gebaut ist alles nur nach Handbuch + Bild 4/5/12.
-- [ ] **Editoren als Screenshot**: Data Flow (Canvas, Operatoren, Ziel-Eigenschaften), Transformation Flow (View Transform, Target Table, Eigenschaften), Tabellen-Editor mit dem Schalter **Delta Capture**.
+_Keine mehr offen. Curlin hat am 12.10.2026 Bild 22–46 geschickt; was sein Tenant nicht zeigt (ohne Inhalt oder nicht freigeschaltet),
+wird nach der SAP-Hilfe (GitHub `SAP-docs/sap-datasphere`) gebaut – Wunsch von Curlin._
 
 ## Fachliche Prüfpunkte, noch offen
 
@@ -21,6 +16,15 @@ _Keine. Alle am 12.10.2026 aus der SAP-Hilfe geklärt (Quelle: SAP veröffentlic
 
 ## Erledigt
 
+- [x] **Screenshots 12.10.2026** (Bild 22–46, Beschreibung in `docs/design/BILDBESCHREIBUNGEN.md`): Connections (Liste + Willkommensseite), Edit Connection,
+  Benutzermenü am Avatar (**Settings · About · Sign Out** bestätigt), Settings (User Account, Appearance, Home Screen, Language & Region, UI Settings,
+  *Authorized Consent Settings*), Transport › Packages, Paket (General / Required Packages / Objects), Export, Editoren Table (Delta Capture), Data Flow
+  (Banner), Graphical View, SQL View (*Expose for Consumption* bestätigt), E/R, Analytic Model, DAC, Intelligent Lookup, Transformation Flow,
+  Replication Flow, Data Sharing Cockpit.
+- [x] **Security › Users / Roles / Authorization Overview** (12.10.2026): in Curlins Tenant mit seiner Rolle nicht sichtbar (Security zeigt nur *Activities*).
+  Aufbau nach SAP-Hilfe.
+- [x] **Elastic Compute Nodes, Marketplace Data Products, Translation (Space), Capacities › Spaces, System and Spaces › Object Store, Data-Flow-/TF-Knoteneigenschaften**
+  (12.10.2026): in Curlins Tenant ohne Inhalt oder nicht freigeschaltet → nach SAP-Hilfe bauen.
 - [x] **Expose for Consumption, Position** (12.10.2026, ✅ SAP-Hilfe *Creating an SQL View*): allgemeine Eigenschaften im Seitenpanel, Reihenfolge … *Semantic Usage* · *Dimension Type* · **Expose for Consumption** · *Run in Analytical Mode* (nur mit Expose) · *Status*. Spiel passt.
 - [x] **DAC für Datenbankbenutzer** (12.10.2026, ✅ *Create a "Single Values" Data Access Control*): Die ID-Spalte der Berechtigungstabelle darf DB-User im Format `SPACEID#DBUSER` enthalten; wer keine ID in der Tabelle hat, sieht **keine** Zeilen. → gefiltert. Im Spiel als Hinweis in *Database Access*.
 - [x] **Restricted Measure auf Calculated Measure** (12.10.2026, ✅ *Create a Restricted Measure*): Feld heißt *Source Measure*; die Aggregation lässt sich nur überschreiben, „wenn die Quelle eine Fact-Source-Measure ist“ – andere Measures (calculated, restricted) sind also als Quelle erlaubt (SAP-Blog: „measure stacking“). Spiel: ja, passt.

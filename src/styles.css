@@ -1585,7 +1585,7 @@ td.wrap, dd.wrap, p.wrap { word-break: break-all; white-space: normal; overflow-
 .df-col input { font: inherit; font-size: 12.5px; min-width: 0; padding: 4px 6px; }
 .df-col-actions { display: flex; gap: 8px; margin-bottom: 8px; }
 .is-dataflow .props label { display: grid; gap: 4px; }
-.is-dataflow { grid-template-rows: auto minmax(0, 1fr); }
+.is-dataflow { grid-template-rows: auto auto minmax(0, 1fr); }
 .df-modes { display: grid; gap: 10px; border: 0; padding: 0; margin: 10px 0 0; }
 .df-modes legend { font-weight: 700; margin-bottom: 4px; }
 .df-modes label { display: grid !important; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; cursor: pointer; }
@@ -1719,3 +1719,29 @@ td.actions { white-space: nowrap; text-align: right; }
 #mon-body #view-list th, #mon-body #view-list td { padding-left: 8px; padding-right: 8px; }
 #view-list td:nth-child(4), #view-list td:nth-child(6) { white-space: normal; }
 #view-list .nw { white-space: nowrap; }
+
+/* Connections list after screenshot 22 (12.10.2026): tabs with the space select on the right, text actions, detail strip */
+.conn-tabs { align-items: center; margin-top: 0; }
+.conn-tabs .spacer { flex: 1; }
+.conn-tabs .space-select { margin-bottom: 6px; }
+.text-actions .btn.link { font-weight: 600; }
+.btn.icon-only { min-width: 30px; font-size: 18px; line-height: 1; padding: 2px 8px; }
+.conn-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.conn-open p { margin: 0 0 12px; }
+/* Information strip at the top of the data flow editor (screenshot 33) */
+.ed-banner { display: flex; gap: 10px; align-items: flex-start; margin: 8px 16px 0; padding: 8px 12px; border: 1px solid var(--accent);
+  border-radius: 8px; background: var(--accent-soft, #EBF8FF); color: var(--ink); font-size: 13px; }
+.ed-banner-i { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700;
+  font-size: 12px; display: grid; place-items: center; }
+/* Settings › Home Screen (screenshot 45): card names with ON pills */
+.set-toggles { list-style: none; margin: 8px 0 12px; padding: 0; max-width: 540px; }
+.set-toggles li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+.pill-toggle { display: inline-block; min-width: 40px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-align: right;
+  border: 1px solid var(--line-strong, #89919a); color: var(--ink-soft); }
+.pill-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Transport after screenshots 27, 28, 31 (12.10.2026): General on top, then Required Packages and Objects; tabs jump there */
+.tr-listhead { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.tr-listhead .view-title { margin: 0; }
+.tr-editor.stacked { grid-template-columns: 1fr; }
+.tr-editor.stacked .tr-props { max-width: 520px; }
+.pkg-tabs { margin-top: 0; }

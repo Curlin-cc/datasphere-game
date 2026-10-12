@@ -84,7 +84,7 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
             <div class="df-canvas" id="tf-canvas" aria-label="Canvas">
               ${box('transform', 'View Transform', reads.length ? `SQL · ${reads.map((k) => k.split('.')[1]).join(', ')}` : 'SQL · write it', reads.length ? 'on' : 'off')}
               <span class="df-arrow" aria-hidden="true">→</span>
-              ${box('target', 'Target Table', def.target || 'choose', def.target ? 'on' : 'off')}
+              ${box('target', 'Target', def.target || 'choose', def.target ? 'on' : 'off')}
               <span class="tf-load-chip" id="tf-load-chip">${esc(def.loadType)}</span>
             </div>
             ${node === 'transform' ? `<div class="tbl-section tf-sql-section"><div class="tbl-head"><h3>View Transform <small class="muted">SQL</small></h3>
@@ -117,9 +117,9 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
       return `<label>Business Name <small>for people</small><input id="prop-business" value="${esc(business)}" maxlength="120" autocomplete="off" ${readOnly ? 'readonly' : ''}></label>
         <label>Technical Name <small>${o ? 'fixed once saved' : 'A–Z, 0–9, _; fixed once saved'}</small>
           <input id="prop-technical" class="mono" value="${esc(technical)}" ${o ? 'readonly' : ''} maxlength="50" spellcheck="false" autocomplete="off"></label>
-        <fieldset class="df-modes" id="tf-load"><legend>Load Type</legend>${TF_LOADS.map((l) => `<label><input type="radio" name="tf-load" value="${l}" ${def.loadType === l ? 'checked' : ''} ${ro}> <b>${l}</b> <small class="muted">${esc(LOAD_TEXT[l])}</small></label>`).join('')}</fieldset>
-        <dl class="props-list"><dt>Type</dt><dd>Transformation Flow</dd><dt>Space</dt><dd>${spaceChip(space)}</dd>
-          <dt>Runtime</dt><dd>SAP HANA (standard space)</dd>
+        <label>Load Type <small>${esc(LOAD_TEXT[def.loadType])}</small>
+          <select id="tf-load" name="tf-load" ${ro}>${TF_LOADS.map((l) => `<option value="${l}" ${def.loadType === l ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <dl class="props-list"><dt>Runtime</dt><dd>SAP HANA</dd><dt>Type</dt><dd>Transformation Flow</dd><dt>Space</dt><dd>${spaceChip(space)}</dd>
           <dt>Delta source</dt><dd>${src ? `${esc(objectKey(src))} <small class="muted">Delta Capture on</small>` : '<span class="muted">none</span>'}</dd>
           ${o?.deployed?.transform?.loadType === 'Initial and Delta' ? `<dt>Watermark</dt><dd>${o.tfPointer === undefined ? 'Next run is the initial load' : o.tfPointer ? `Change records up to #${o.tfPointer} processed` : 'Initial load done; no change records processed yet'}</dd>` : ''}
           <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'New, not saved'}</dd></dl>
@@ -181,11 +181,11 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
       el.value = technical = el.value.toUpperCase();
       keep();
     });
-    main.querySelectorAll<HTMLInputElement>('[name="tf-load"]').forEach((r) => r.addEventListener('change', () => {
-      def.loadType = r.value as TfLoad;
+    on('#tf-load', 'change', () => {
+      def.loadType = main.querySelector<HTMLSelectElement>('#tf-load')!.value as TfLoad;
       ctx.track(`tf-load:${def.loadType}`);
       draw();
-    }));
+    });
     on('#tf-target', 'input', () => {
       const el = main.querySelector<HTMLInputElement>('#tf-target')!;
       el.value = def.target = el.value.toUpperCase();

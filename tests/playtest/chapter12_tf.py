@@ -29,7 +29,7 @@ with sync_playwright() as p:
     def load(lt):
         pg.click('#tf-general') if pg.locator('#tf-general').count() else None
         pg.wait_for_timeout(150)
-        pg.check(f'[name="tf-load"][value="{lt}"]'); pg.wait_for_timeout(200)
+        pg.select_option('#tf-load', lt); pg.wait_for_timeout(200)
 
     def run():
         pg.click('#tf-run'); pg.wait_for_timeout(1000)
@@ -126,7 +126,7 @@ with sync_playwright() as p:
     tour(pg, 'New Transformation Flow'); pg.click('[data-new="transformation"]')
     tour(pg, 'The view transform'); g.sql(SQL); pg.click('#tf-preview')
     tour(pg, 'Target table'); pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_HA_T_PAYMENTS'); pg.keyboard.press('Tab')
-    tour(pg, 'Load type'); pg.click('#tf-general'); pg.check('[name="tf-load"][value="Initial and Delta"]')
+    tour(pg, 'Load type'); pg.click('#tf-general'); pg.select_option('#tf-load', 'Initial and Delta')
     tour(pg, 'Name and deploy'); pg.fill('#prop-business', 'Payments (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_TF_PAYMENTS'); pg.click('#ed-deploy')
     tour(pg, 'The initial load'); pg.click('#tf-run')
     tour(pg, 'Back to the payments'); pg.click(f'#object-list [data-open="{P}"]')

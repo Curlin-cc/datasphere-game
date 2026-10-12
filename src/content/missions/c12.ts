@@ -102,7 +102,7 @@ function packageExported({ tenant }: RuleContext): string | null {
   if (!p) return 'Create the package first.';
   const st = packageStatus(p);
   if (st === 'Not Exported') return `${p.name} is not exported yet: Transport › Export.`;
-  if (st === 'Changes to Export') return `${p.name} changed after its last export. Export it again so that the targets get this version.`;
+  if (st === 'Changes To Export') return `${p.name} changed after its last export. Export it again so that the targets get this version.`;
   const missing = ['RHN-TEST', 'RHN-PROD'].filter((id) => !p.targets.includes(id));
   return missing.length ? `${p.name} is not shared with ${missing.join(' and ')}. Test first, then production: both need it.` : null;
 }
