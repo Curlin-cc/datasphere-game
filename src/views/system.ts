@@ -8,6 +8,7 @@ import { objectKey } from '../repo';
 import {
   OAUTH_PURPOSES, OAUTH_ENDPOINTS, SAC_PLANNING, oauthClientError, newClientId, odataRequest, odataUrl, type OAuthPurpose,
 } from '../consumption';
+import { registerLocation } from '../nav';
 
 /**
  * System app with its pages in the side navigation (System ›, Bild 20): Configuration (tenant-wide settings) and Administration. About sits in the user menu (src/views/settings.ts). In the game, Configuration > Security
@@ -31,6 +32,7 @@ export function systemArea(next?: SystemArea) {
 
 type AdminTab = 'system' | 'sources' | 'security' | 'apps' | 'notifications';
 let adminTab: AdminTab = 'system';
+registerLocation('system', { get: () => ({ area, tab, adminTab }), set: (l: { area: SystemArea; tab: Tab; adminTab: AdminTab }) => ({ area, tab, adminTab } = l) });
 /** Administration tabs as in the real tenant. Only explained in the game. */
 const ADMIN_TABS: { id: AdminTab; label: string; sections: [string, string][] }[] = [
   { id: 'system', label: 'System Configuration', sections: [

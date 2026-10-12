@@ -1,6 +1,7 @@
 import { ctx } from '../ctx';
 import { esc, icon, ICONS, setCrumb, spaceChip } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
+import { registerLocation } from '../nav';
 
 /**
  * Business Builder (excursion, Handbuch 7; design: Bild 8 "Welcome to the Business Builder (Deprecated)").
@@ -63,6 +64,7 @@ const LEGACY: BbObject[] = [
 let space: string | null = null;
 let openName: string | null = null;
 let tab = 'General';
+registerLocation('business', { get: () => ({ space, openName }), set: (l: { space: string | null; openName: string | null }) => ({ space, openName } = l) });
 
 export const businessReset = () => {
   space = null;

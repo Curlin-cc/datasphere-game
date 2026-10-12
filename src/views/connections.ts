@@ -5,6 +5,7 @@ import {
 } from '../integration';
 import { esc, spaceChip, openDialog, toast, fmtDate, ask } from '../ui';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
+import { registerLocation } from '../nav';
 
 /**
  * Connections app: one list per space. Create from a connection type, Edit, Validate, Delete.
@@ -14,6 +15,13 @@ import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 let selected = '';
 /** The space cards show once per visit (page type A, docs/design/README.md). */
 let spaceChosen = false;
+registerLocation('connections', {
+  get: () => ({ spaceChosen, space: ctx.tenant().activeSpace }),
+  set: (l: { spaceChosen: boolean; space: string }) => {
+    spaceChosen = l.spaceChosen;
+    if (ctx.tenant().spaces.some((s) => s.id === l.space)) ctx.tenant().activeSpace = l.space;
+  },
+});
 
 export function spaceSelect(id: string, current: string) {
   const t = ctx.tenant();

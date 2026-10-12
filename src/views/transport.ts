@@ -4,6 +4,7 @@ import {
   TARGET_TENANTS, packageStatus, validatePackage, validationMessages, exportPackage, packageNameError, dependencies, type Package,
 } from '../transport';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, setCrumb, fmtDate } from '../ui';
+import { registerLocation } from '../nav';
 
 /**
  * Transport app (excursion, Handbuch 11; design: Bild 13 Import, Bild 16 Monitor). Sub-pages as in the side navigation:
@@ -21,6 +22,15 @@ let editing: string | null = null;
 let draft: Package | null = null;
 let selectedJob: number | null = null;
 let selectedExport: string | null = null;
+registerLocation('transport', {
+  get: () => ({ page, editing }),
+  set: (l: { page: TransportPage; editing: string | null }) => {
+    page = l.page;
+    editing = l.editing === 'new' ? null : l.editing;
+    draft = null;
+  },
+  transient: (l: { editing: string | null }) => l.editing === 'new',
+});
 
 export const transportPage = () => page;
 export function transportTo(p: TransportPage) {

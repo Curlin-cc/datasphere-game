@@ -6,6 +6,7 @@ import {
   GLOBAL_ADMIN, TEMPLATES, ADMIN_INFO, TEMPLATE_ORDER, roleIdError, templateLabel, type ScopedRole, type Template, type RoleInfo,
 } from '../security';
 import { esc, spaceChip, openDialog, ask } from '../ui';
+import { registerLocation } from '../nav';
 
 /**
  * Security app. Curlin's role sees only Activities (Bild 20/27), so Users, Roles and Authorization Overview follow SAP help
@@ -23,6 +24,7 @@ export const SECURITY_PAGES: { id: SecurityPage; label: string }[] = [
   { id: 'activities', label: 'Activities' },
 ];
 let page: SecurityPage = 'roles';
+registerLocation('security', { get: () => page, set: (p: SecurityPage) => (page = p) });
 export const securityPage = () => page;
 export function securityTo(p: SecurityPage) {
   page = p;

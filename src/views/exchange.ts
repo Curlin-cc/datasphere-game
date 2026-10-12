@@ -6,6 +6,7 @@ import {
 import { objectKey, findObject, readsFrom } from '../repo';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { esc, openDialog, toast, ask } from '../ui';
+import { registerLocation } from '../nav';
 
 /**
  * Catalog & Marketplace › Marketplace Data Products (Handbuch 8.3), Translation (not in the Handbuch: simplified),
@@ -329,6 +330,7 @@ export const SHARING_PAGES: { id: SharingPage; label: string }[] = [
   { id: 'licenses', label: 'License Management' }, { id: 'context', label: 'Context Management' },
 ];
 let dsTab: SharingPage = 'overview';
+registerLocation('sharing', { get: () => dsTab, set: (p: SharingPage) => (dsTab = p) });
 export const sharingPage = () => dsTab;
 export function sharingTo(p: SharingPage) {
   dsTab = p;

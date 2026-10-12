@@ -25,6 +25,7 @@ import { renderDataFlowEditor, newDataFlowDraft } from './dataflow';
 import { renderTransformEditor, newTransformDraft } from './transformflow';
 import { EXCURSIONS } from '../content/chapters';
 import { packageOf } from '../transport';
+import { registerLocation } from '../nav';
 
 /**
  * Data Builder, modelled on SAP Datasphere:
@@ -53,6 +54,15 @@ let page: Page = { kind: 'spaces' };
 /** The space picker shows once per visit, like choosing a space when you open the Data Builder. */
 let spaceChosen = false;
 let listTab: ListTab = 'all';
+registerLocation('builder', {
+  get: () => ({ page, spaceChosen, space: ctx.tenant().activeSpace }),
+  set: (l: { page: Page; spaceChosen: boolean; space: string }) => {
+    page = l.page;
+    spaceChosen = l.spaceChosen;
+    if (ctx.tenant().spaces.some((s) => s.id === l.space)) ctx.tenant().activeSpace = l.space;
+  },
+  transient: (l: { page: Page }) => l.page.kind.startsWith('new-'),
+});
 const inTab = (o: RepoObject, tab: ListTab) =>
   tab === 'all' || (tab === 'tables' && (o.kind === 'Local Table' || o.kind === 'Remote Table')) || (tab === 'views' && o.kind === 'SQL View') || (tab === 'models' && o.kind === 'Analytic Model') || (tab === 'dac' && o.kind === 'Data Access Control') || (tab === 'flows' && (o.kind === 'Replication Flow' || o.kind === 'Data Flow' || o.kind === 'Transformation Flow')) || (tab === 'chains' && o.kind === 'Task Chain');
 

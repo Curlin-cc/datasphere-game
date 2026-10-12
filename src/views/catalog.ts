@@ -4,6 +4,7 @@ import {
   TAG_HIERARCHIES, GLOSSARY_NAME, catalogObjects, assetMeta, findAsset, assetType, matches, termSlug,
 } from '../catalog';
 import { esc, spaceChip, icon, ICONS, openDialog, toast, setCrumb } from '../ui';
+import { registerLocation } from '../nav';
 
 /**
  * Catalog & Marketplace › Search (excursion, Handbuch 8.2): the catalog search page with filters, asset details and
@@ -12,6 +13,7 @@ import { esc, spaceChip, icon, ICONS, openDialog, toast, setCrumb } from '../ui'
 
 type Filter = 'all' | 'assets' | 'terms';
 const state = { q: '', type: 'all' as Filter, status: 'all' as 'all' | 'published' | 'draft', tag: '', open: null as null | { kind: 'asset' | 'term'; id: string } };
+registerLocation('catalog', { get: () => state.open, set: (o: typeof state.open) => (state.open = o) });
 
 export const catalogReset = () => (state.open = null);
 

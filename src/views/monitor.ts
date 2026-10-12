@@ -11,6 +11,7 @@ import { runChain } from '../taskchain';
 import { runDataFlow } from '../dataflow';
 import { runTransformFlow } from '../transformflow';
 import { persistView, unpersistView, persistError, analyze, sizeMB, fmtSize, fmtMs, type PerfNode } from '../perf';
+import { registerLocation } from '../nav';
 
 /**
  * Data Integration Monitor: always one space. Monitors for remote tables, local tables, views, flows,
@@ -27,6 +28,13 @@ let selectedChain = '';
 let analyzed = '';
 /** The space cards show once per visit, like in the real monitor (Bild 7). */
 let spaceChosen = false;
+registerLocation('monitor', {
+  get: () => ({ spaceChosen, tab, space: ctx.tenant().activeSpace }),
+  set: (l: { spaceChosen: boolean; tab: Tab; space: string }) => {
+    ({ spaceChosen, tab } = l);
+    if (ctx.tenant().spaces.some((s) => s.id === l.space)) ctx.tenant().activeSpace = l.space;
+  },
+});
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'remote', label: 'Remote Tables' },

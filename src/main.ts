@@ -37,6 +37,7 @@ import { renderCatalog, catalogReset } from './views/catalog';
 import { renderBusiness, businessReset } from './views/business';
 import { renderOnboarding, onboardingReset } from './views/onboarding';
 import { EXCURSIONS } from './content/chapters';
+import { locationOf, restoreLocation, sameLocation, isTransient, type Location } from './nav';
 import { BADGES, BADGE_ICON, earnedBadges, type Badge } from './badges';
 
 /** Business names of the tables IT loaded. BILLING_CONTRACTS has none on purpose (mission c00-m04). */
@@ -57,8 +58,10 @@ const state = {
   navCollapsed: readPref('dsg-nav') === 'collapsed',
   /** Closed navigation groups. Monitoring and Catalog start closed, Apps and Utilities open, as in the tenant (Bild 3, 17). */
   closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog,transport').split(',').filter(Boolean)),
-  /** Views visited before, for the Back button in the shellbar. */
-  history: [] as ViewId[],
+  /** Locations (app + page) visited before, for the Back button in the shellbar. */
+  history: [] as Location[],
+  /** The location shown now. */
+  here: null as Location | null,
 };
 
 ctx.progress = loadProgress();
@@ -134,7 +137,10 @@ function renderFrame() {
   });
   app.querySelector('#shell-back')!.addEventListener('click', () => {
     const prev = state.history.pop();
-    if (prev) setView(prev, true, false);
+    if (!prev) return;
+    restoreLocation(prev);
+    state.here = prev;
+    setView(prev.view as ViewId, true);
   });
   app.querySelectorAll('#brand-home, #shell-apps').forEach((b) => b.addEventListener('click', () => setView('home')));
   app.querySelector<HTMLElement>('#shell-user')!.addEventListener('click', (e) => openUserMenu(e.currentTarget as HTMLElement));
@@ -271,17 +277,28 @@ function refreshNav() {
 }
 
 /** Switches the app. `force` re-renders even when the app is already open (e.g. back to the Data Builder start). */
-function setView(view: ViewId, force = false, remember = true) {
+function setView(view: ViewId, force = false) {
   if (ctx.view === view && !force) return;
   rememberEditor();
-  if (remember && ctx.view !== view) state.history = [...state.history.slice(-20), ctx.view];
   ctx.view = view;
   ctx.track(`app:${view}`);
   refreshNav();
   renderView();
 }
 
+/** Records where the player is. A new location pushes the previous one onto the Back history. */
+function noteLocation() {
+  const now = locationOf(ctx.view);
+  const prev = state.here;
+  state.here = now;
+  if (!prev || sameLocation(prev, now) || isTransient(prev)) return;
+  const top = state.history[state.history.length - 1];
+  if (top && sameLocation(top, prev)) return;
+  state.history = [...state.history.slice(-40), prev];
+}
+
 function renderView() {
+  noteLocation();
   const main = document.querySelector<HTMLElement>('#main');
   if (!main) return;
   main.classList.remove('flush', 'bleed');
@@ -636,6 +653,8 @@ async function afterProgressReplaced() {
   state.solved = null;
   ctx.sql = '';
   ctx.sqlOwner = 'draft';
+  state.history = [];
+  state.here = null;
   await prepareTenant();
   save();
   renderFrame();
@@ -904,6 +923,8 @@ async function prepareTenant() {
 
 async function boot() {
   app.innerHTML = `<div class="boot">Starting the training tenant…</div>`;
+  // Some apps redraw their own pages without renderView (Catalog, Transport, …): note the location after every click.
+  for (const type of ['click', 'change'] as const) app.addEventListener(type, () => queueMicrotask(noteLocation));
   try {
     await initDb();
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.

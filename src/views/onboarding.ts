@@ -4,6 +4,7 @@ import { CONN_TYPES } from '../integration';
 import {
   PACKAGES, CONTENT_AREAS, importPackage, packageById, type ContentArea, type ContentPackage, type ImportLog,
 } from '../onboarding';
+import { registerLocation } from '../nav';
 
 /**
  * Semantic Onboarding (Bild 10, excursion c12-m09): hero banner, "SAP Systems" with one card per system type and its connections,
@@ -14,6 +15,7 @@ import {
 
 type Page = { kind: 'home' } | { kind: 'area'; area: ContentArea } | { kind: 'pkg'; id: string } | { kind: 'logs'; open?: number };
 let page: Page = { kind: 'home' };
+registerLocation('semantic', { get: () => page, set: (p: Page) => (page = p) });
 const openGroups = { systems: true, content: true };
 
 export function onboardingReset() {
