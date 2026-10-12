@@ -14,6 +14,7 @@ import { sanitizePackages, sanitizeJobs, type Package, type TransportJob } from 
 import { sanitizeImportLogs, type ImportLog } from './onboarding';
 import { sanitizeDbUsers, sanitizeOAuthClients, type DbUser, type OAuthClient } from './consumption';
 import { defaultCatalog, sanitizeCatalog, type CatalogState } from './catalog';
+import { emptyExtras, sanitizeExtras, type ExtrasState } from './extras';
 import { sanitizeSecurity, type ScopedRole, type Assignment } from './security';
 import { sanitizeObjects, type RepoObject } from './repo';
 import {
@@ -71,6 +72,8 @@ export interface TenantState {
   packages: Package[];
   transportJobs: TransportJob[];
   catalog: CatalogState;
+  /** System and Spaces, Capacities, Elastic Compute Nodes, Marketplace, Translation, Data Sharing Cockpit (src/extras.ts). */
+  extras: ExtrasState;
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
@@ -98,6 +101,7 @@ export function defaultTenant(): TenantState {
     packages: [],
     transportJobs: [],
     catalog: defaultCatalog(),
+    extras: emptyExtras(),
   };
 }
 
@@ -214,6 +218,7 @@ export function sanitizeTenant(data: unknown): TenantState {
   t.packages = sanitizePackages(d.packages, ids);
   t.transportJobs = sanitizeJobs(d.transportJobs);
   t.catalog = sanitizeCatalog(d.catalog);
+  t.extras = sanitizeExtras(d.extras, ids);
   return t;
 }
 

@@ -16,6 +16,8 @@ import {
 import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
 import { restorePersistence } from './perf';
 import { usedMB, fmtSize } from './views/welcome';
+import { renderSystemSpaces, renderCapacities, renderEcn } from './views/sysmon';
+import { renderMarketplace, renderTranslation, renderSharing } from './views/exchange';
 import { ctx, type ViewId } from './ctx';
 import { esc, icon, ICONS, setCrumb, ask } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
@@ -309,6 +311,18 @@ function renderView() {
       return currentChapter() >= EXCURSIONS ? renderBusiness(main) : renderAppInfo(main, a!);
     case 'semantic':
       return currentChapter() >= EXCURSIONS ? renderOnboarding(main) : renderAppInfo(main, a!);
+    case 'sysmonitor':
+      return currentChapter() >= 9 ? renderSystemSpaces(main) : renderAppInfo(main, a!);
+    case 'capacities':
+      return currentChapter() >= 9 ? renderCapacities(main) : renderAppInfo(main, a!);
+    case 'ecn':
+      return currentChapter() >= 9 ? renderEcn(main) : renderAppInfo(main, a!);
+    case 'marketplace':
+      return currentChapter() >= EXCURSIONS ? renderMarketplace(main) : renderAppInfo(main, a!);
+    case 'translation':
+      return currentChapter() >= EXCURSIONS ? renderTranslation(main) : renderAppInfo(main, a!);
+    case 'sharing':
+      return currentChapter() >= EXCURSIONS ? renderSharing(main) : renderAppInfo(main, a!);
     default:
       return renderAppInfo(main, a!);
   }

@@ -11,9 +11,23 @@ for f in chapter12 chapter12_hier chapter12_ver chapter12_odata chapter12_onb ch
   out=$(DSG_CHAIN=$CHAIN timeout 600 python3 "$f.py" "$SHOTS" 2>&1) || true
   echo "$f: $(echo "$out" | grep -c GAIN) solved, $(echo "$out" | grep -c Traceback) tracebacks"
 done
-python3 - "$CHAIN" <<'EOF'
+# The chain starts after chapter 11 from hand-made data without roles, the S/4 connection or statement logs:
+# take those from the end states of chapters 2, 3 and 9 (each run alone).
+EXTRA=$(dirname "$CHAIN")
+for f in chapter2 chapter3 chapter9; do
+  out=$(DSG_CHAIN=$EXTRA/$f.json timeout 600 python3 "$f.py" "$SHOTS" 2>&1) || true
+  echo "$f: $(echo "$out" | grep -c GAIN) solved (for roles, connections, statements)"
+done
+python3 - "$CHAIN" "$EXTRA" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
+part = lambda f: json.load(open(f'{sys.argv[2]}/{f}.json'))['tenant']
+t, c2, c3, c9 = d['tenant'], part('chapter2'), part('chapter3'), part('chapter9')
+t['roles'], t['assignments'] = c2['roles'], c2['assignments']
+have = {(c['space'], c['name']) for c in t['connections']}
+t['connections'] = [c for c in c3['connections'] if (c['space'], c['name']) not in have] + t['connections']
+t['certificates'] = sorted(set(t['certificates']) | set(c3['certificates']))
+t['statements'] = c9['statements']
 ids = list(d['missions'])
 open_ = [m for m, p in d['missions'].items() if not p['done']]
 assert not open_, f'not solved: {open_}'

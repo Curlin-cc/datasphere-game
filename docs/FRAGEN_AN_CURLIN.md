@@ -26,6 +26,7 @@
 - [ ] Data Flow (Handbuch 6.7.1): Screenshot des Editors (Canvas, Operatoren, Ziel-Eigenschaften); heißen die Modi Append / Truncate / Delete?
 - [ ] Delta Capture (Handbuch 6.4.2): Wo sitzt der Schalter im Tabellen-Editor, und lässt er sich nach dem Deploy wieder **abschalten**? Welche Werte zeigt **Change_Type** (I/U/D oder andere)? Screenshot der Tabelle mit Delta Capture wäre ideal
 - [ ] Transformation Flow (Handbuch 6.7.3): Screenshot des Editors (View Transform, Target Table, Eigenschaften). Was macht **Initial Only** bei jedem Lauf mit dem Ziel (ersetzen oder anhängen)? Wie heißt die Aktion zum **Zurücksetzen des Delta** im Monitor (Spiel: *Reset Delta* in Monitor › Flows, c12-m12)? Darf die Delta-Quelle eine **geteilte Tabelle eines anderen Space** sein (Spiel: ja)?
+- [ ] **Neue Apps (12.10.2026)**: Screenshots von *Elastic Compute Nodes*, *Marketplace Data Products*, *Data Sharing Cockpit* und einer Space in *Translation* (nach der Space-Wahl), falls dein Tenant sie zeigt; dazu Capacities › Reiter *Spaces* und System and Spaces › Reiter *Object Store*. Gebaut ist alles nur nach Handbuch + Bild 4/5/12.
 - [ ] Standardrollen: welche Rollen-Vorlagen gibt es im Tenant wirklich (Handbuch belegt nur DW Administrator, DW Viewer, Catalog User)?
 
 ## Erledigt

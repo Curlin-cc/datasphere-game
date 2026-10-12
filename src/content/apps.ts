@@ -106,7 +106,7 @@ export const APPS: AppInfo[] = [
     who: 'Administrators, space administrators',
   },
   {
-    id: 'sysmonitor', label: 'System Monitor', section: 'monitoring', navLabel: 'System and Spaces', chapter: 9,
+    id: 'sysmonitor', label: 'System and Spaces', section: 'monitoring', navLabel: 'System and Spaces', interactive: 9, chapter: 9,
     icon: '<rect x="2.5" y="3" width="11" height="8" rx="1"/><path d="M6 13.5h4M5 8l2-2 2 1.5 2-2.5"/>',
     summary: 'Tenant health: storage, memory, expensive statements, task logs.',
     does: ['Shows disk and memory use per space', 'Lists expensive statements and failed tasks', 'Monitors elastic compute nodes'],
@@ -133,9 +133,9 @@ export const APPS: AppInfo[] = [
     does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: Cloud Connectors and Data Provisioning Agents', 'IP allowlist, OAuth clients, About: version and URL'],
     who: 'Administrators',
   },
-  // ---- info-only entries that complete the real navigation (docs/design/README.md, section 1)
+  // ---- apps that complete the real navigation (docs/design/README.md, section 1); interactive since 2026-10-12 (src/views/sysmon.ts, exchange.ts)
   {
-    id: 'capacities', label: 'Capacities', section: 'monitoring',
+    id: 'capacities', label: 'Capacities', section: 'monitoring', interactive: 9, chapter: 9,
     icon: '<path d="M3 13V8M6.5 13V5M10 13V9.5M13.5 13V3"/>',
     summary: 'Consumption of capacity units over time: compute, memory, disk.',
     does: ['Shows total capacity unit (CU) consumption per month', 'Splits it into memory and compute, disk storage and other blocks', 'Daily and cumulative consumption charts'],
@@ -156,28 +156,28 @@ export const APPS: AppInfo[] = [
     who: 'Administrators, lead modelers',
   },
   {
-    id: 'ecn', label: 'Elastic Compute Nodes', section: 'monitoring',
+    id: 'ecn', label: 'Elastic Compute Nodes', section: 'monitoring', interactive: 9, chapter: 9,
     icon: '<rect x="2.5" y="3" width="11" height="4" rx="1"/><rect x="2.5" y="9" width="11" height="4" rx="1"/>',
     summary: 'Extra compute for peak loads, run for a limited number of block-hours.',
     does: ['Starts and stops elastic compute nodes', 'Shows remaining block-hours and usage logs'],
     who: 'Administrators',
   },
   {
-    id: 'marketplace', label: 'Marketplace Data Products', section: 'catalog',
+    id: 'marketplace', interactive: 12, chapter: 12, label: 'Marketplace Data Products', section: 'catalog',
     icon: '<path d="M3 5h10l-1 8H4zM5.5 5a2.5 2.5 0 015 0"/>',
     summary: 'Data products from SAP and partners, ready to install into a space.',
     does: ['Browse and install data products', 'Manage licenses and updates of installed products'],
     who: 'Data stewards, modelers',
   },
   {
-    id: 'translation', label: 'Translation', section: 'utilities',
+    id: 'translation', interactive: 12, chapter: 12, label: 'Translation', section: 'utilities',
     icon: '<path d="M2.5 4h6M5.5 3v1c0 3-1.5 5-3 6M4 7c1 1.5 2.5 2.5 4 3M9 13l2.5-6 2.5 6M9.8 11h3.4"/>',
     summary: 'Translate business names and descriptions of objects.',
     does: ['Exports texts of analytic models and views for translation', 'Imports translated texts, shown in the user\'s language in SAP Analytics Cloud'],
     who: 'Modelers, translators',
   },
   {
-    id: 'sharing', label: 'Data Sharing Cockpit', section: 'utilities',
+    id: 'sharing', interactive: 12, chapter: 12, label: 'Data Sharing Cockpit', section: 'utilities',
     icon: '<circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M5.6 7.1l4.8-2.3M5.6 8.9l4.8 2.3"/>',
     summary: 'Offer your own data products to others as a data provider.',
     does: ['Create a data provider profile', 'Publish data products and manage licenses and contracts'],

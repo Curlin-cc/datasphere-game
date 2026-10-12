@@ -4,6 +4,7 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 
 | Datum | Entscheidung | Grund |
 | --- | --- | --- |
+| 2026-10-12 | Alle Apps der Seitennavigation sind bedienbar; System and Spaces, Capacities, ECN ab Kapitel 9, Marketplace, Translation, Data Sharing Cockpit ab den Exkursen | Wunsch von Curlin: alles anklicken können. Kennzahlen, die der Trainings-Tenant nicht kennt (Systemdaten, OOM, CU-Raten), sind simuliert und auf der Seite gekennzeichnet; Translation fehlt im Handbuch (vereinfacht) |
 | 2026-10-12 | Keine Browser-Dialoge (`confirm`/`alert`/`prompt`), nur `ask()`/`tell()` aus `ui.ts` | Der Artifact-Host blockiert sie; Playtests setzen sie auf no-op, damit ein Rückfall auffällt |
 | 2026-10-12 | Sandbox als fertiger Spielstand im Bundle (`sandbox.json`, ~100 KB), erzeugt durch die Playtests statt von Hand | Objekte entstehen über die echte UI, bleiben also mit dem Spiel konsistent; kein Sondermodus im Code nötig |
 | 2026-10-09 | Hierarchie-Missionen als c12-m05/m06 an die Exkurse angehängt statt in Kapitel 6/8 eingefügt | Eingefügte Missionen würden weiter fortgeschrittene Spielstände zurücksetzen (Freischaltung „alle vorherigen gelöst“); als Vertiefung passt das Ende |
