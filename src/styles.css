@@ -1711,3 +1711,11 @@ td.actions { white-space: nowrap; text-align: right; }
 .ext-usage dd { margin: 2px 0 0; font-weight: 600; }
 .ext-usage .bar { height: 8px; }
 .ext-list-head .spacer { flex: 1; }
+
+/* Data Integration Monitor lists (Views has eight columns): headers may wrap and padding is tighter, so records and
+   in-memory size stay visible without side scrolling at 1366–1500 px (playtest 2026-10-12). */
+#mon-body table.grid th { white-space: normal; vertical-align: bottom; }
+#mon-body table.grid th, #mon-body table.grid td { padding-left: 10px; padding-right: 10px; }
+#mon-body #view-list th, #mon-body #view-list td { padding-left: 8px; padding-right: 8px; }
+#view-list td:nth-child(4), #view-list td:nth-child(6) { white-space: normal; }
+#view-list .nw { white-space: nowrap; }

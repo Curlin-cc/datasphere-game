@@ -156,6 +156,8 @@ function openSpaceDialog(existing?: Space) {
     if (existing) {
       Object.assign(existing, { name: sp.name, diskGB: sp.diskGB, memoryGB: sp.memoryGB, priority: sp.priority });
       ctx.track(`edit-space:${existing.id}`);
+      // With the values, so a tutorial step can wait for a sizing that fits the ticket.
+      ctx.track(`edit-space-values:${existing.id}:${sp.diskGB}:${sp.memoryGB}:${sp.priority}`);
     }
     else {
       await exec(`CREATE SCHEMA IF NOT EXISTS "${sp.id}"`);

@@ -69,7 +69,7 @@ with sync_playwright() as p:
     load('Initial and Delta')
     deploy()
     run()
-    print('   pointer:', pg.inner_text('#tf-props').split('Delta pointer')[1].split('\n')[1] if 'Delta pointer' in pg.inner_text('#tf-props') else '?')
+    print('   pointer:', pg.inner_text('#tf-props').split('Watermark')[1].split('\n')[1] if 'Watermark' in pg.inner_text('#tf-props') else '?')
     g.check('m11 initial load only')
 
     # Bank message saved, not deployed

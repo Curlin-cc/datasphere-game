@@ -144,6 +144,7 @@ Delta Capture an, Flow anlegen, Ziel + Ladeart, deployen, ausführen. Vereinfach
 (Handbuch nennt keine), Initial Only ersetzt das Ziel, Delta zurücksetzen nur erklärt (Bezeichnung „nicht verifiziert“), Python-Operator und Dateibereiche nur erklärt.
 
 **Reset Delta und Nachtkette (c12-m12, Handbuch 6.7.3, 6.8, ergänzt am 10.10.2026):** Das Handbuch nennt das Zurücksetzen des Delta-Zeigers über den Monitor
-(„Bezeichnung nicht verifiziert“); das Spiel nennt den Knopf *Reset Delta* im Data Integration Monitor › Flows. Der Transformation Flow läuft als Schritt der
+(„Bezeichnung nicht verifiziert“); das Spiel nannte den Knopf bis 12.10.2026 *Reset Delta*, seitdem **Reset Watermark** im Data Integration Monitor › Flows
+(SAP-Release 2024.2: das Watermark merkt sich, wie weit ein Delta-Flow gelesen hat; Zurücksetzen überträgt beim nächsten Lauf alle Daten). Der Transformation Flow läuft als Schritt der
 Nachtkette (6.8 nennt Transformationsflüsse als mögliche Aufgabe).
 

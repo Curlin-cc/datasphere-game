@@ -231,8 +231,9 @@ export const CHAPTER_8: Mission[] = [
     ],
     xp: 50,
     realTenant: `In a real tenant: open the view, section <b>Data Access Controls</b>, add the control and map its criteria to view columns,
-      deploy. Users then see only their rows in the view, in views built on it, and in SAP Analytics Cloud. To test, log on as a test user
-      (the game's "View as" is a shortcut for that).`,
+      deploy. Users then see only their rows in the view, in views built on it, and in SAP Analytics Cloud. To test, the data preview of
+      graphical views, SQL views and analytic models can show the data as another user (since July 2024); with sources from other spaces
+      the result can differ, so check those with a test user.`,
     debrief: `<p>Same model, three users, three different results. And the model itself was not touched.</p>
       <p><i>Calin adds:</i> Roles decide <b>what</b> someone may open, the data access control decides <b>which rows</b> he sees there.
       Aylin just wrote: she still sees the North in the consumption model.</p>`,

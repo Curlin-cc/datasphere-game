@@ -88,7 +88,7 @@ const shareStep = (object: string, to: string, owner = 'RHN_IN'): TourStep => ({
   title: `Share ${object}`,
   target: `[data-share="${owner}.${object}"]`,
   body: `<p>The share icon at the end of the row. Tick <b>${to}</b> and save.</p>`,
-  action: { do: `Share <b>${object}</b> with <b>${to}</b>.`, event: `share:${owner}.${object}` },
+  action: { do: `Share <b>${object}</b> with <b>${to}</b>.`, event: `share:${owner}.${object}->${to}` },
 });
 
 /** Open a new SQL view from the start page. */
@@ -748,7 +748,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     {
       title: 'When a delta cannot help',
       body: `<p>A delta run reads the change records of the <b>source</b>. If the <b>target</b> is damaged while the source did not change, no delta brings the rows back.</p>
-        <p><b>Reset Delta</b> in the Data Integration Monitor makes the next run an initial load: it reads everything and replaces the target, then the delta continues.
+        <p><b>Reset Watermark</b> in the Data Integration Monitor makes the next run an initial load: it reads everything and replaces the target, then the delta continues.
         After the repair, a step in the nightly task chain runs the flow every night.</p>`,
     },
   ],
@@ -1093,8 +1093,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Storage and priority',
         target: '.dialog',
-        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. Reporting must get a higher priority later.</p>`,
-        action: { do: 'Enter disk, in-memory and priority for RHN_HARM, then press <b>Save</b>.', event: 'edit-space:RHN_HARM' },
+        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. Reporting must get a higher priority later.</p>
+          <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
+        // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 5.
+        action: { do: 'Enter disk, in-memory and priority for RHN_HARM, then press <b>Save</b>.', event: '^edit-space-values:RHN_HARM:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-4]$' },
       },
     ],
     [
@@ -1107,8 +1109,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Highest priority',
         target: '.dialog',
-        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>5</b>, higher than every other space.</p>`,
-        action: { do: 'Enter the values for RHN_REP, then press <b>Save</b>.', event: 'edit-space:RHN_REP' },
+        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>5</b>, higher than every other space.</p>
+          <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
+        // At least 10 GB disk and 8 GB in-memory, priority 5.
+        action: { do: 'Enter the values for RHN_REP, then press <b>Save</b>.', event: '^edit-space-values:RHN_REP:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:5$' },
       },
       {
         title: 'Check the bars',
@@ -1150,13 +1154,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Pick the target',
         target: '.dialog',
         body: `<p>Only the layer directly above: harmonization. Never reporting.</p>`,
-        action: { do: 'Tick <b>RHN_HARM</b> and press <b>Save sharing</b>.', event: 'share:RHN_IN.BILLING_CONTRACTS' },
+        action: { do: 'Tick <b>RHN_HARM</b> and press <b>Save sharing</b>.', event: 'share:RHN_IN.BILLING_CONTRACTS->RHN_HARM' },
       },
       {
         title: 'Share the grid areas',
         target: '[data-share="RHN_IN.GRID_AREAS"]',
         body: `<p>Same for the second table.</p>`,
-        action: { do: 'Share <b>GRID_AREAS</b> with RHN_HARM.', event: 'share:RHN_IN.GRID_AREAS' },
+        action: { do: 'Share <b>GRID_AREAS</b> with <b>RHN_HARM</b>.', event: 'share:RHN_IN.GRID_AREAS->RHN_HARM' },
       },
     ],
     [
@@ -1564,7 +1568,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Flows',
         target: '[data-mon-tab="flows"]',
         body: `<p>Deployed flows of the space.</p>`,
-        action: { do: 'Open <b>Flows</b> and click your flow.', event: 'monitor-open:RHN_IN.' },
+        action: { do: 'Open <b>Flows</b>.', check: () => tabOn('[data-mon-tab="flows"]') || !!$('#flow-list') },
+      },
+      {
+        title: 'Open your flow',
+        target: '[data-flow="RHN_IN_RF_S4U"] || #flow-list',
+        body: `<p>A click on the name opens its runs and messages.</p>`,
+        action: { do: 'Click <code>RHN_IN_RF_S4U</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_S4U' },
       },
       {
         title: 'Read the run',
@@ -1651,10 +1661,16 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
       nav('monitor', 'Data Integration Monitor', `<p>Schedules for flows are set in the monitor.</p>`),
       {
-        title: 'Open the flow',
+        title: 'Flows',
         target: '[data-mon-tab="flows"]',
-        body: `<p>Flows, then your CRM flow.</p>`,
-        action: { do: 'Open <b>Flows</b> and click <code>RHN_IN_RF_CRM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_CRM' },
+        body: `<p>Deployed flows of the space.</p>`,
+        action: { do: 'Open <b>Flows</b>.', check: () => tabOn('[data-mon-tab="flows"]') || !!$('#flow-list') },
+      },
+      {
+        title: 'Open RHN_IN_RF_CRM',
+        target: '[data-flow="RHN_IN_RF_CRM"] || #flow-list',
+        body: `<p>A click on the name opens its runs and messages.</p>`,
+        action: { do: 'Click <code>RHN_IN_RF_CRM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_CRM' },
       },
       {
         title: 'Schedule',
@@ -1681,7 +1697,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Flows',
         target: '[data-mon-tab="flows"]',
         body: `<p>The status column shows the failed run.</p>`,
-        action: { do: 'Open <b>Flows</b> and click <code>RHN_IN_RF_MDM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_MDM' },
+        action: { do: 'Open <b>Flows</b>.', check: () => tabOn('[data-mon-tab="flows"]') || !!$('#flow-list') },
+      },
+      {
+        title: 'Open RHN_IN_RF_MDM',
+        target: '[data-flow="RHN_IN_RF_MDM"] || #flow-list',
+        body: `<p>A click on the name opens its runs and messages.</p>`,
+        action: { do: 'Click <code>RHN_IN_RF_MDM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_MDM' },
       },
       {
         title: 'Read the messages',
@@ -2894,10 +2916,10 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         action: { do: 'Select <b>RHN_HA_TF_PAYMENTS</b>.', appear: '#flow-reset' },
       },
       {
-        title: 'Reset Delta',
+        title: 'Reset Watermark',
         target: '#flow-reset',
-        body: `<p>Only for flows with Initial and Delta. Nothing runs yet; the flow forgets how far it has read the delta table.</p>`,
-        action: { do: 'Press <b>Reset Delta</b>.', event: '^tf-reset:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+        body: `<p>Only for flows with Initial and Delta. Nothing runs yet; the flow forgets its watermark, the point up to which it has read the delta table.</p>`,
+        action: { do: 'Press <b>Reset Watermark</b>.', event: '^tf-reset:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
       },
       {
         title: 'Run',
@@ -3074,7 +3096,8 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       {
         title: 'Projection',
         target: '[data-node="projection"]',
-        body: `<p>Three columns: the month as text (<code>strftime(a.READING_DATE, '%Y-%m')</code>), <code>b.GRID_AREA</code> and <code>a.CONSUMPTION_KWH</code>. The SQL below the canvas follows every change.</p>`,
+        body: `<p>Three columns: the month as text (<code>strftime(a.READING_DATE, '%Y-%m')</code>), <code>b.GRID_AREA</code> and <code>a.CONSUMPTION_KWH</code>. The SQL below the canvas follows every change.</p>
+          <p class="muted">The game runs on DuckDB, hence <code>strftime</code>. In SAP HANA the same is <code>TO_VARCHAR(READING_DATE, 'YYYY-MM')</code>.</p>`,
         action: { do: 'Open <b>Projection</b> and add the three columns.', check: () => (document.querySelectorAll('[data-col-name]').length >= 3) },
       },
       {
@@ -3323,10 +3346,16 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     ],
     [
       {
-        title: 'Schedule and run',
+        title: 'Schedule',
         target: '#chain-schedule',
-        body: `<p>Schedule it daily, then run it once to see that every step completes.</p>`,
-        action: { do: 'Schedule <b>Daily</b> and press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
+        body: `<p>One schedule for the whole night.</p>`,
+        action: { do: 'Press <b>Schedule</b>, choose <b>Daily</b> and save.', event: 'schedule:RHN_HARM.RHN_HARM_TC_NIGHTLY:Daily' },
+      },
+      {
+        title: 'Run',
+        target: '#chain-run',
+        body: `<p>Run it once to see that every step completes.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
       },
       {
         title: 'The second schedule',

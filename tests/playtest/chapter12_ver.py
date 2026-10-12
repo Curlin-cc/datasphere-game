@@ -51,7 +51,10 @@ with sync_playwright() as p:
     tour(pg, 'Versions'); pg.click('#ed-versions')
     tour(pg, 'Compare')
     n = pg.locator('[data-version]').count()
-    pg.locator('[data-version]').last.click()    # the oldest: your version from before Tim's clean-up
+    # The version directly below Tim's (in a full playthrough the history holds older versions of your own too)
+    vs = pg.locator('[data-version]').all_inner_texts()
+    ti = max(i for i, t in enumerate(vs) if 'TSCHULZ' in t)
+    pg.locator('[data-version]').nth(ti + 1).click()
     print('   diff:', pg.inner_text('#version-diff').replace('\n', ' ⏎ ')[:220])
     g.shot('c12-versions')
     tour(pg, 'Restore'); pg.click('#version-restore')

@@ -183,4 +183,17 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 2. Alle Apps der Navigation sind jetzt bedienbar (`src/views/sysmon.ts`, `src/views/exchange.ts`); Optik nach Curlins Screenshots nachziehen, sobald er welche schickt
 3. **Sandbox** (Home › Sandbox) nach jeder neuen Mission mit `tests/playtest/sandbox.sh` neu erzeugen, sonst fehlt die Mission im Sandbox-Stand
 4. Alle geplanten Exkurse sind gebaut, dazu Data Flows und Transformation Flow mit Delta (c12-m11). Mögliche weitere: E/R-Modell (6.6), Data Marketplace mit Lizenzschlüssel (8.3), Import Entities im Semantic Onboarding;
-   Transformation Flow in der Nachtkette und Reset Delta sind seit c12-m12 gebaut
+   Transformation Flow in der Nachtkette und Reset Watermark (bis 12.10.2026 „Reset Delta“) sind seit c12-m12 gebaut
+5. **Umbauten aus Curlins Antworten vom 12.10.2026** (`docs/FRAGEN_AN_CURLIN.md`, Erledigt), noch nicht gebaut:
+   - **Delta Capture nur vor dem ersten Deploy** (✅ SAP): c12-m11 schaltet es heute an der schon deployten `RHN_IN_T_PAYMENTS` ein. Umbau nötig,
+     z. B. Accounts Receivable übergibt die Tabelle nur gespeichert (nicht deployt), oder der Spieler legt eine neue Tabelle mit Delta Capture an
+     und lädt die Zahlungen hinein; Schalter im Editor nach dem Deploy sperren; c12-m12, Playtests `chapter12_tf*.py` und Sandbox mitziehen
+   - **OAuth-Dialog** (c12-m08): Purpose *Technical User* ergänzen, Feld *Authorization Grant* (schreibgeschützt), *Refresh Token Lifetime*
+     (60 s–180 Tage, Std. 30 Tage), Token Lifetime 60 s–1 Tag
+   - **Standardrollen**: Security › Roles kann die echten Vorlagen zeigen (System Owner, DW Scoped … usw.); Hinweis, dass DW Administrator keine Apps
+     und DW Consumer keine Anmeldung an Datasphere hat (passt zu c02: Petra & Co. lesen nur in SAC)
+   - **Content Network** (c12-m09): Import-Optionen *Import Schedule* + *Overwrite Preferences*; „Open Import Logs“ gehört zu *Import Entities*
+     (Space wählen, Liste links, Meldungen rechts); Samples sind laut Doku in Datasphere nicht genutzt
+   - **Data Flow** (c12-m10): Hinweisbanner „SAP empfiehlt Replication Flow + Transformation Flow“; Operator *Calculated Column* erwähnen
+6. **Testlauf 12.10.2026** (Bericht als Doc an Curlin): `tests/playtest/chain.sh` spielt das ganze Spiel ab leerem Spielstand durch (alle Kapitel-Skripte
+   verkettet); vor größeren Änderungen mitlaufen lassen. Alle 60 Hands-on-Tutorials ließen sich am echten Spielstand durchspielen

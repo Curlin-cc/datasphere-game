@@ -401,6 +401,8 @@ export function openShareDialog(key: string) {
     const chosen = [...form.querySelectorAll<HTMLInputElement>('[name="to"]:checked')].map((i) => i.value);
     t.shares = t.shares.filter((s) => s.object !== key).concat(chosen.map((to) => ({ object: key, to })));
     ctx.track(`share:${key}`);
+    // One event per target, so a tutorial step can wait for the right space (share:KEY->SPACE).
+    chosen.forEach((to) => ctx.track(`share:${key}->${to}`));
     ctx.save();
     close();
     ctx.renderView();

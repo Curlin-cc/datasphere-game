@@ -518,7 +518,7 @@ export const CHAPTER_12: Mission[] = [
     from: CFO,
     ticket: `<p>Petra Lindner. This morning's board figures show 91 contracts fewer than yesterday, and the revenue of region West dropped.
       Nobody told me about a change.</p>
-      <p><i>Calin adds:</i> Tim deployed a "clean-up" of <code>RHN_HA_V_CONTRACTS</code> yesterday afternoon. Do not rewrite the view from memory:
+      <p><i>Calin adds:</i> Tim deployed a "clean-up" of <code>RHN_HA_V_CONTRACTS</code> after your last change. Do not rewrite the view from memory:
       every deployment is a version. Open the <b>version history</b>, compare Tim's version with the one before, <b>restore</b> the good one
       and deploy it. Everything built on the view gets the contracts back.</p>`,
     tasks: [
@@ -542,7 +542,11 @@ export const CHAPTER_12: Mission[] = [
       v.sql = tim;
       v.deployed.sql = tim;
       v.status = 'deployed';
-      v.changedAt = new Date(Date.now() - 0.7 * day).toISOString();
+      // Tim's deployment is the newest version: yesterday afternoon, but never older than the player's last version
+      // (someone who plays chapters 5 to 12 in one day deployed the view today).
+      const last = Date.parse(v.versions?.at(-1)?.at ?? '') || 0;
+      const timAt = Math.min(Date.now() - 60_000, Math.max(Date.now() - 0.7 * day, last + 5 * 60_000));
+      v.changedAt = new Date(timAt).toISOString();
       addVersion(v, 'TSCHULZ', v.changedAt);
     },
     checks: [
@@ -910,15 +914,15 @@ export const CHAPTER_12: Mission[] = [
       <p>Please repair the table, and make sure the flow runs every night: it should be a step of our nightly chain <code>RHN_HARM_TC_NIGHTLY</code>
       (I get the failure emails).</p>
       <p><i>Calin adds:</i> A delta only carries what changed in the <b>source</b>. Nothing changed there; the target was damaged. In the Data Integration Monitor
-      you can <b>reset the delta</b> of a transformation flow: the next run is an initial load again, and the delta continues from there.</p>`,
+      you can <b>reset the watermark</b> of a transformation flow: the next run is an initial load again, and the delta continues from there.</p>`,
     tasks: [
-      'In the <b>Data Integration Monitor › Flows</b> of <code>RHN_HARM</code>, select <code>RHN_HA_TF_PAYMENTS</code>, press <b>Reset Delta</b> and <b>Run</b> it.',
+      'In the <b>Data Integration Monitor › Flows</b> of <code>RHN_HARM</code>, select <code>RHN_HA_TF_PAYMENTS</code>, press <b>Reset Watermark</b> and <b>Run</b> it.',
       'Open <code>RHN_HARM_TC_NIGHTLY</code>, add <code>RHN_HA_TF_PAYMENTS</code> as its last step and deploy the chain.',
       '<b>Run</b> the chain once, as tonight would.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Monitoring › Data Integration › Flows, space RHN_HARM: the flow\'s detail has Run and Reset Delta. The chain is a Task Chain of RHN_HARM in the Data Builder; Add Step lists transformation flows too.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Monitoring › Data Integration › Flows, space RHN_HARM: the flow\'s detail has Run and Reset Watermark. The chain is a Task Chain of RHN_HARM in the Data Builder; Add Step lists transformation flows too.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A delta run reads the change records of the source since the last run. The lost rows never changed in the source, so only a full read brings them back: reset, then run.' },
     ],
     setup: (t) => {
@@ -961,13 +965,13 @@ export const CHAPTER_12: Mission[] = [
           if (!missing) return null;
           return missing === 1 && !have.has(NEW_PAYMENT[0])
             ? `Today's payment ${NEW_PAYMENT[0]} is not in the target yet. Run the flow.`
-            : `${missing} payments are still missing in RHN_HA_T_PAYMENTS. A delta run only brings what changed in the source; reset the delta, then run.`;
+            : `${missing} payments are still missing in RHN_HA_T_PAYMENTS. A delta run only brings what changed in the source; reset the watermark, then run.`;
         },
       },
       {
         type: 'rule', label: 'Reset, not rebuilt', ok: 'The delta was reset in the monitor, and the next run was an initial load.',
         test: ({ tenant, events }) => {
-          if (![...events].some((e) => e === `tf-reset:${TF_PAYMENTS}`)) return 'Reset the delta of RHN_HA_TF_PAYMENTS in the Data Integration Monitor › Flows (RHN_HARM), then run it.';
+          if (![...events].some((e) => e === `tf-reset:${TF_PAYMENTS}`)) return 'Reset the watermark of RHN_HA_TF_PAYMENTS in the Data Integration Monitor › Flows (RHN_HARM), then run it.';
           const f = findObject(tenant, TF_PAYMENTS);
           if (f?.deployed?.transform?.loadType !== 'Initial and Delta') return 'RHN_HA_TF_PAYMENTS no longer loads by delta. Keep Initial and Delta: tonight should process the changes only.';
           return tenant.runs.some((r) => r.object === TF_PAYMENTS && r.status === 'Completed' && r.messages[0]?.startsWith('Initial load'))
@@ -1006,7 +1010,7 @@ export const CHAPTER_12: Mission[] = [
         options: [
           'Delta runs ignore deletions',
           'The delta reads the change records of the source; the lost payments never changed in the source, only the target was damaged',
-          'The delta pointer was broken by Tim and had to be repaired',
+          'The watermark was broken by Tim and had to be repaired',
           'Delta runs process at most one change per night',
         ],
         answer: 1,
@@ -1014,8 +1018,8 @@ export const CHAPTER_12: Mission[] = [
       },
     ],
     xp: 50,
-    realTenant: `In a real tenant: Data Integration Monitor › Flows, select the transformation flow; the monitor lets you reset the delta so the next run loads
-      everything again (Handbuch 6.7.3, name of the action not verified; the game calls it Reset Delta). Task chains run transformation flows as steps (6.8);
+    realTenant: `In a real tenant: Data Integration Monitor › Flows, select the transformation flow; <b>Reset Watermark</b> makes the next run load
+      everything again (Handbuch 6.7.3; SAP release 2024.2: the watermark tracks how far a delta flow has read, resetting it transfers all data on the next run). Task chains run transformation flows as steps (6.8);
       the chain's schedule then runs the flow every night.`,
     debrief: `<p>The report is complete again, and tonight the flow runs after the inbound load. If it fails, I get the email.</p>
       <p><i>Calin adds:</i> Targets of a flow are no place for manual edits. If you need test data, copy the table; and if a target is damaged, a delta reset is the repair.</p>`,

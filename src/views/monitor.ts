@@ -258,7 +258,7 @@ function viewsTab(host: HTMLElement, redraw: () => void) {
             <td>${p ? 'Persisted' : 'Virtual'}</td>
             <td>${o.persistSchedule ? `Scheduled, ${esc(o.persistSchedule.toLowerCase())}` : 'None'}</td>
             <td>${r ? runChip(r) : '<span class="muted">–</span>'}</td>
-            <td class="muted">${p ? fmtDate(p.lastRefresh) : '–'}</td>
+            <td class="muted">${p ? fmtDate(p.lastRefresh).split(' ').map((x) => `<span class="nw">${esc(x)}</span>`).join(' ') : '–'}</td>
             <td class="num">${p ? p.records.toLocaleString('en-US') : '–'}</td>
             <td class="num">${p ? fmtSize(sizeMB(p.records, p.columns)) : '–'}</td></tr>`;
         }).join('') : `<tr><td colspan="8" class="muted">No deployed views in this space.</td></tr>`}</tbody>
@@ -556,7 +556,7 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
           <button class="btn small primary" type="button" id="flow-run">Run</button>
           <button class="btn small" type="button" id="flow-schedule" ${sel.kind !== 'Replication Flow' ? 'disabled title="In the game, data and transformation flows run on a schedule as a step of a task chain"' : ''}>Schedule</button>
           ${sel.kind === 'Transformation Flow' && sel.deployed?.transform?.loadType === 'Initial and Delta'
-            ? `<button class="btn small" type="button" id="flow-reset" ${sel.tfPointer === undefined ? 'disabled title="The next run is an initial load already"' : 'title="The next run loads everything again (initial load), then delta continues"'}>Reset Delta</button>` : ''}
+            ? `<button class="btn small" type="button" id="flow-reset" ${sel.tfPointer === undefined ? 'disabled title="The next run is an initial load already"' : 'title="Resets the watermark: the next run loads everything again (initial load), then delta continues"'}>Reset Watermark</button>` : ''}
         </div></div>
       <div class="runs-layout">
         <table class="grid" id="run-list"><thead><tr><th>Runs</th><th>Status</th><th>Records</th></tr></thead>
@@ -592,7 +592,7 @@ function flowsTab(host: HTMLElement, redraw: () => void) {
     sel.tfPointer = undefined;
     ctx.track(`tf-reset:${objectKey(sel)}`);
     ctx.save();
-    toast(`Delta of ${sel.name} reset: the next run is an initial load.`, 'ok');
+    toast(`Watermark of ${sel.name} reset: the next run is an initial load.`, 'ok');
     redraw();
   });
   host.querySelector('#flow-schedule')?.addEventListener('click', () =>

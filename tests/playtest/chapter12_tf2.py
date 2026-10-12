@@ -104,7 +104,7 @@ with sync_playwright() as p:
     pg.click('#next-mission'); pg.wait_for_timeout(500)
     tour(pg, 'When a delta cannot help'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'The flows of RHN_HARM'); pg.click('[data-flow="RHN_HA_TF_PAYMENTS"]')
-    tour(pg, 'Reset Delta'); pg.click('#flow-reset')
+    tour(pg, 'Reset Watermark'); pg.click('#flow-reset')
     tour(pg, 'Run'); pg.click('#flow-run')
     tour(pg, 'Open the nightly chain'); pg.click(f'#object-list [data-open="{C}"]')
     tour(pg, 'Add Step'); pg.click('#chain-add'); pg.wait_for_timeout(300)

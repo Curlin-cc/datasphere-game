@@ -121,7 +121,7 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
         <dl class="props-list"><dt>Type</dt><dd>Transformation Flow</dd><dt>Space</dt><dd>${spaceChip(space)}</dd>
           <dt>Runtime</dt><dd>SAP HANA (standard space)</dd>
           <dt>Delta source</dt><dd>${src ? `${esc(objectKey(src))} <small class="muted">Delta Capture on</small>` : '<span class="muted">none</span>'}</dd>
-          ${o?.deployed?.transform?.loadType === 'Initial and Delta' ? `<dt>Delta pointer</dt><dd>${o.tfPointer === undefined ? 'Next run is the initial load' : o.tfPointer ? `Change records up to #${o.tfPointer} processed` : 'Initial load done; no change records processed yet'}</dd>` : ''}
+          ${o?.deployed?.transform?.loadType === 'Initial and Delta' ? `<dt>Watermark</dt><dd>${o.tfPointer === undefined ? 'Next run is the initial load' : o.tfPointer ? `Change records up to #${o.tfPointer} processed` : 'Initial load done; no change records processed yet'}</dd>` : ''}
           <dt>Status</dt><dd>${o ? `<span class="status" data-status="${o.status}">${STATUS_LABEL[o.status]}</span><p class="muted">${STATUS_HELP[o.status]}</p>` : 'New, not saved'}</dd></dl>
         <p class="muted">Click a node of the canvas to set it up.</p>`;
     }
