@@ -184,17 +184,9 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 3. **Sandbox** (Home › Sandbox) nach jeder neuen Mission mit `tests/playtest/sandbox.sh` neu erzeugen, sonst fehlt die Mission im Sandbox-Stand
 4. Alle geplanten Exkurse sind gebaut, dazu Data Flows und Transformation Flow mit Delta (c12-m11). Mögliche weitere: E/R-Modell (6.6), Data Marketplace mit Lizenzschlüssel (8.3), Import Entities im Semantic Onboarding;
    Transformation Flow in der Nachtkette und Reset Watermark (bis 12.10.2026 „Reset Delta“) sind seit c12-m12 gebaut
-5. **Umbauten aus Curlins Antworten vom 12.10.2026** (`docs/FRAGEN_AN_CURLIN.md`, Erledigt), noch nicht gebaut:
-   - **Delta Capture nur vor dem ersten Deploy** (✅ SAP): c12-m11 schaltet es heute an der schon deployten `RHN_IN_T_PAYMENTS` ein. Umbau nötig,
-     z. B. Accounts Receivable übergibt die Tabelle nur gespeichert (nicht deployt), oder der Spieler legt eine neue Tabelle mit Delta Capture an
-     und lädt die Zahlungen hinein; Schalter im Editor nach dem Deploy sperren; c12-m12, Playtests `chapter12_tf*.py` und Sandbox mitziehen
-   - **OAuth-Dialog** (c12-m08): Purpose *Technical User* ergänzen, Feld *Authorization Grant* (schreibgeschützt), *Refresh Token Lifetime*
-     (60 s–180 Tage, Std. 30 Tage), Token Lifetime 60 s–1 Tag
-   - **Standardrollen**: Security › Roles kann die echten Vorlagen zeigen (System Owner, DW Scoped … usw.); Hinweis, dass DW Administrator keine Apps
-     und DW Consumer keine Anmeldung an Datasphere hat (passt zu c02: Petra & Co. lesen nur in SAC)
-   - **Content Network** (c12-m09): Import-Optionen sind seit 12.10.2026 nach SAP benannt (Import Schedule, Overwrite Preferences, Deployment Preference);
-     offen: „Open Import Logs“ gehört zu *Import Entities* (Space wählen, Liste links, Meldungen rechts); Samples sind laut Doku in Datasphere nicht genutzt
-   - **Data Flow** (c12-m10): Hinweisbanner ist gebaut (12.10.2026); offen: Operator *Calculated Column* erwähnen
-   - **Standardrollen** sind seit 12.10.2026 in Security › Roles gelistet (inkl. DW Scoped …)
+5. **Umbauten aus Curlins Antworten vom 12.10.2026** sind alle gebaut (12.10.2026, zweite Session): Delta Capture nur vor dem ersten Deploy
+   (c12-m11 übergibt die Tabelle gespeichert; Missions-Hook `setupAgain` gibt sie nach dem Löschen neu), OAuth-Dialog mit *Technical User* und
+   Lifetimes, Content-Network-Meldungen im Paket (*Import Overview*), *Open Import Logs* nur für Import Entities, Data Flow mit *Calculated Column*.
+   **Back-Pfeil** der Shellbar geht seitenweise zurück (`src/nav.ts`: Apps mit Unterseiten melden ihren Ort mit `registerLocation`; neue Seiten dort eintragen)
 6. **Testlauf 12.10.2026** (Bericht als Doc an Curlin): `tests/playtest/chain.sh` spielt das ganze Spiel ab leerem Spielstand durch (alle Kapitel-Skripte
    verkettet); vor größeren Änderungen mitlaufen lassen. Alle 60 Hands-on-Tutorials ließen sich am echten Spielstand durchspielen
