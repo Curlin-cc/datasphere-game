@@ -230,8 +230,16 @@ Noch offen:
 - [ ] Shellbar rechts: im Original Glocke, Feedback, Support, Hilfe; im Spiel Rang/XP, Glossar, „How to play“ (spielspezifisch, bleibt)
 - [ ] Tabellen- und DAC-Editor sind im Original **ganze Seiten mit Reitern** (General · Columns · … bzw. General · Criteria, Bild 30/38), im Spiel Mitte + Seitenpanel
 - [ ] Analytic Model: Umschalter *Model · Preview* und „Analytic Model Properties“ (Bild 37); Replication Flow: Kopf „Select Source/Target Connection“ und
-      Panel-Abschnitte Settings/Run Settings (Bild 41); Data Sharing Cockpit als Kachel-Übersicht mit Unterpunkten in der Navigation (Bild 42)
-- [ ] Security › Users/Roles/Authorization Overview: kein Screenshot möglich (Curlins Rolle sieht nur Activities); Aufbau nach SAP-Hilfe
+      Panel-Abschnitte Settings/Run Settings (Bild 41)
+- [ ] Analytic Model / Replication Flow / Tabellen- und DAC-Editor: siehe oben
+
+Nach SAP-Hilfe gebaut (kein Screenshot möglich, 12.10.2026):
+- [x] Security › Users / Roles / Authorization Overview: links „Filter By“, Liste rechts mit Search, Sort, Spalten-Zahnrad; Roles mit `+ ⌄` (Create a Custom Role
+      deaktiviert, Create a Scoped Role) und allen Rollen in einer Tabelle (Role Type, Role Scope, Users, Scopes)
+- [x] Elastic Compute Nodes: Bereich in der Space-Management-Seitenspalte mit Create und Knotenliste, Knotenseite mit Aktionen und Reitern Spaces / Exposed Objects;
+      Monitoring › Elastic Compute Nodes als Kartenseite mit Knoten-Dropdown
+- [x] Capacities › Spaces (Spalten der SAP-Hilfe), System and Spaces › Object Store (zwei Karten + Apache Spark: Tasks)
+- [x] Translation-Tool, Marketplace Data Products (Charts, Data Products, Licenses, Contexts deaktiviert), Data Sharing Cockpit mit Unterseiten (Bild 42 für die Übersicht)
 
 ## 5. Arbeitsweise
 

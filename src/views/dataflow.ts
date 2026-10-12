@@ -142,7 +142,13 @@ export function renderDataFlowEditor(main: HTMLElement, o: RepoObject | null, na
     if (node === 'source') {
       return `<label>Source <small>views and tables of ${esc(space)}, and objects shared with it</small>
           <select id="df-source" ${ro}><option value="">Select</option>${sourceKeys(space).map((k) => `<option ${k === def.source ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
-        ${colsA.length ? `<p class="muted">Columns (alias <code>a</code>): ${colsA.map((c) => `<code>${esc(c)}</code>`).join(' ')}</p>` : ''}`;
+        ${def.source ? (() => {
+          const so = findObject(t, def.source);
+          return `<h4 class="props-sec">General</h4><dl class="props-list"><dt>Label</dt><dd>${esc(def.source.split('.')[1])}</dd><dt>Connection</dt><dd>Datasphere</dd>
+            <dt>Business Name</dt><dd>${esc(so?.businessName ?? '')}</dd><dt>Type</dt><dd>${esc(so?.kind === 'SQL View' ? 'View' : so?.kind ?? '')}</dd>
+            <dt>Space Name</dt><dd>${esc(def.source.split('.')[0])}</dd><dt>Status</dt><dd>${so?.deployed ? 'Deployed' : 'Not Deployed'}</dd></dl>`;
+        })() : ''}
+        ${colsA.length ? `<h4 class="props-sec">Columns (${colsA.length})</h4><p class="muted">Alias <code>a</code>: ${colsA.map((c) => `<code>${esc(c)}</code>`).join(' ')}</p>` : ''}`;
     }
     if (node === 'join') {
       if (!def.join) return `<p>No join. A join adds the columns of a second source, matched on a key.</p>
@@ -177,7 +183,17 @@ export function renderDataFlowEditor(main: HTMLElement, o: RepoObject | null, na
         <input class="mono" id="df-target" list="df-target-list" value="${esc(def.target.table)}" ${readOnly ? 'readonly' : ''} spellcheck="false" autocomplete="off">
         <datalist id="df-target-list">${tables.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       ${target ? `<p class="muted">${target.kind === 'Local Table' ? `Existing table, ${target.table?.columns.length ?? 0} columns. Columns are mapped by name.` : `${esc(target.kind)}: not a valid target.`}</p>` : def.target.table ? '<p class="muted">New table: created with the columns of the flow on the first run.</p>' : ''}
-      <fieldset class="df-modes" id="df-mode"><legend>Mode</legend>${(['Append', 'Truncate', 'Delete'] as TargetMode[]).map((m) => `<label><input type="radio" name="df-mode" value="${m}" ${def.target.mode === m ? 'checked' : ''} ${ro}> <b>${m}</b> <small class="muted">${esc(MODE_TEXT[m])}</small></label>`).join('')}</fieldset>`;
+      <h4 class="props-sec">General</h4>
+      <dl class="props-list"><dt>Label</dt><dd>${esc(def.target.table || '…')}</dd><dt>Type</dt><dd>Local Table</dd><dt>Use As</dt><dd>Target</dd>
+        <dt>Status</dt><dd>${target?.deployed ? 'Deployed' : def.target.table ? 'New (created on the first run)' : '—'}</dd></dl>
+      <fieldset class="df-modes" id="df-mode"><legend>Mode</legend>${(['Append', 'Truncate', 'Delete'] as TargetMode[]).map((m) => `<label><input type="radio" name="df-mode" value="${m}" ${def.target.mode === m ? 'checked' : ''} ${ro}> <b>${m}</b> <small class="muted">${esc(MODE_TEXT[m])}</small></label>`).join('')}</fieldset>
+      <h4 class="props-sec">Mappings</h4>
+      ${def.columns.length ? `<table class="grid compact"><thead><tr><th>Incoming</th><th>Target Column</th></tr></thead><tbody>${def.columns.map((c) => {
+        const hit = !target?.table || target.table.columns.some((x) => x.name === c.name);
+        return `<tr><td class="mono">${esc(c.name)}</td><td class="mono ${hit ? '' : 'bad'}">${hit ? esc(c.name) : 'not in the table'}</td></tr>`;
+      }).join('')}</tbody></table>` : '<p class="muted">No incoming columns yet (projection).</p>'}
+      ${target?.table ? `<h4 class="props-sec">Columns (${target.table.columns.length})</h4><p class="muted">${target.table.columns.map((c) => `<code>${esc(c.name)}</code>`).join(' ')}</p>` : ''}
+      <h4 class="props-sec">Advanced</h4><dl class="props-list"><dt>Control Batch Size</dt><dd>off</dd><dt>Enable ODBC Tracing</dt><dd>off</dd></dl>`;
   }
 
   function bind(colsA: string[], _colsB: string[]) {

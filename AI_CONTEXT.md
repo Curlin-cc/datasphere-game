@@ -180,7 +180,7 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 1. **Alles, was Curlin am echten Tenant klären muss** (Screenshots, fachliche Prüfpunkte), steht in `docs/FRAGEN_AN_CURLIN.md`.
    Am Ende jeder Session danach fragen; Antworten einarbeiten
-2. Alle Apps der Navigation sind jetzt bedienbar (`src/views/sysmon.ts`, `src/views/exchange.ts`); Optik nach Curlins Screenshots nachziehen, sobald er welche schickt
+2. Alle Apps der Navigation sind bedienbar. Optik folgt Bild 1–46 (`docs/design/`); was Curlins Tenant nicht zeigt, ist nach der SAP-Hilfe gebaut (GitHub `SAP-docs/sap-datasphere`, Stand 08.10.2026; für neue Fragen zuerst dort suchen). Offene Optik-Abweichungen: `docs/design/README.md`, Abschnitt 4 „Noch offen“
 3. **Sandbox** (Home › Sandbox) nach jeder neuen Mission mit `tests/playtest/sandbox.sh` neu erzeugen, sonst fehlt die Mission im Sandbox-Stand
 4. Alle geplanten Exkurse sind gebaut, dazu Data Flows und Transformation Flow mit Delta (c12-m11). Mögliche weitere: E/R-Modell (6.6), Data Marketplace mit Lizenzschlüssel (8.3), Import Entities im Semantic Onboarding;
    Transformation Flow in der Nachtkette und Reset Watermark (bis 12.10.2026 „Reset Delta“) sind seit c12-m12 gebaut
@@ -192,8 +192,9 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
      (60 s–180 Tage, Std. 30 Tage), Token Lifetime 60 s–1 Tag
    - **Standardrollen**: Security › Roles kann die echten Vorlagen zeigen (System Owner, DW Scoped … usw.); Hinweis, dass DW Administrator keine Apps
      und DW Consumer keine Anmeldung an Datasphere hat (passt zu c02: Petra & Co. lesen nur in SAC)
-   - **Content Network** (c12-m09): Import-Optionen *Import Schedule* + *Overwrite Preferences*; „Open Import Logs“ gehört zu *Import Entities*
-     (Space wählen, Liste links, Meldungen rechts); Samples sind laut Doku in Datasphere nicht genutzt
-   - **Data Flow** (c12-m10): Hinweisbanner „SAP empfiehlt Replication Flow + Transformation Flow“; Operator *Calculated Column* erwähnen
+   - **Content Network** (c12-m09): Import-Optionen sind seit 12.10.2026 nach SAP benannt (Import Schedule, Overwrite Preferences, Deployment Preference);
+     offen: „Open Import Logs“ gehört zu *Import Entities* (Space wählen, Liste links, Meldungen rechts); Samples sind laut Doku in Datasphere nicht genutzt
+   - **Data Flow** (c12-m10): Hinweisbanner ist gebaut (12.10.2026); offen: Operator *Calculated Column* erwähnen
+   - **Standardrollen** sind seit 12.10.2026 in Security › Roles gelistet (inkl. DW Scoped …)
 6. **Testlauf 12.10.2026** (Bericht als Doc an Curlin): `tests/playtest/chain.sh` spielt das ganze Spiel ab leerem Spielstand durch (alle Kapitel-Skripte
    verkettet); vor größeren Änderungen mitlaufen lassen. Alle 60 Hands-on-Tutorials ließen sich am echten Spielstand durchspielen

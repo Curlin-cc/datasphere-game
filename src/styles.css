@@ -1745,3 +1745,54 @@ td.actions { white-space: nowrap; text-align: right; }
 .tr-editor.stacked { grid-template-columns: 1fr; }
 .tr-editor.stacked .tr-props { max-width: 520px; }
 .pkg-tabs { margin-top: 0; }
+/* Security pages after SAP help: "Filter By" panel left, list right (12.10.2026) */
+.sec-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; align-items: start; }
+.sec-layout .sec-wide { grid-column: 1 / -1; }
+.filter-by { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 14px; }
+.filter-by h4 { margin: 0; font-size: 14px; }
+.fb-group { display: grid; gap: 6px; font-size: 13px; }
+.fb-group label { display: flex; gap: 6px; align-items: center; font-weight: 500; }
+.fb-group select { width: 100%; }
+.list-search input { width: 180px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.add-menu { position: relative; }
+.add-menu-list { position: absolute; right: 0; top: 100%; z-index: 20; display: grid; min-width: 200px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); padding: 4px; }
+.add-menu-list[hidden] { display: none; }
+.add-menu-list button { text-align: left; padding: 8px 10px; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; border-radius: 6px; }
+.add-menu-list button:hover:not(:disabled) { background: var(--accent-soft); }
+.add-menu-list button:disabled { color: var(--ink-faint); cursor: default; }
+#role-list tr.std-role td { color: var(--ink-soft); }
+/* Elastic compute nodes (SAP help): side area in Space Management, node page, monitoring cards */
+.sm-box-head { display: flex; align-items: center; justify-content: space-between; padding-right: 10px; }
+.sm-box-head h3 { margin-bottom: 8px; }
+.sm-row small.ecn-st { display: block; color: var(--ink-faint); font-size: 12px; }
+.sm-row small.ecn-st.run { color: var(--ok); }
+#ecn-side > .btn.link { margin: 6px 12px 0; }
+.ecn-node { padding-bottom: 24px; }
+.ecn-node .sm-head h1 .mono { font-size: 13px; color: var(--ink-faint); font-weight: 500; margin-left: 8px; }
+.ecn-status { font-weight: 700; color: var(--ink-soft); }
+.ecn-status.ready { color: var(--ok); }
+.ecn-status.run { color: var(--accent); }
+.ecn-node .ecn-conf, .ecn-node .tabs, .ecn-node > .table-scroll, .ecn-node > .ext-note, .ecn-node > p { margin-left: 24px; margin-right: 24px; }
+.ecn-actions { display: flex; gap: 8px; margin: 0 0 12px; }
+.ecn-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.ecn-card { display: grid; gap: 6px; align-content: start; }
+.ecn-node .tabs { margin-top: 14px; }
+.ecn-node .sm-toolbar .btn { white-space: nowrap; }
+.ext-status.warn { color: var(--warning); }
+.ext-status.warn::before { background: var(--warning); }
+.tr-lang-input { display: grid; gap: 4px; }
+.tr-lang-input[hidden] { display: none; }
+/* Data Sharing Cockpit (screenshot 42): band "Data Marketplace", tiles of the overview */
+.ds-banner { display: grid; justify-items: center; gap: 4px; padding: 22px 16px; margin: -8px 0 18px; border-radius: 12px;
+  background: linear-gradient(120deg, var(--banner), #1b3a5c 55%, #8a6a1c); color: #fff; position: relative; }
+.ds-banner b { font-size: 26px; }
+.ds-banner .btn { position: absolute; right: 16px; bottom: 12px; }
+.ds-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.ds-tile { display: grid; gap: 8px; align-content: start; text-align: left; min-height: 120px; padding: 16px; border-radius: 12px; font: inherit;
+  background: var(--surface); border: 1.5px solid var(--tile-border); color: var(--ink); cursor: pointer; }
+.ds-tile span { color: var(--ink-soft); font-size: 13px; }
+.ds-tile:hover:not(:disabled) { border-color: var(--accent); }
+.ds-tile:disabled { opacity: .5; cursor: default; }
+.ds-tile.chart { grid-row: span 2; cursor: default; }
+.props-sec { margin: 14px 0 6px; font-size: 13px; text-transform: none; color: var(--ink); border-top: 1px solid var(--line); padding-top: 10px; }

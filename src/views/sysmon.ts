@@ -1,13 +1,11 @@
 import { ctx } from '../ctx';
 import { CAPACITY, assigned } from '../tenant';
-import {
-  diskBreakdown, memoryUsedGB, failedRuns, dailyCU, monthDays, isRunning, stopEcn, usedBlockHours, BLOCK_HOURS, PERF_INFO, type Ecn, type PerfClass,
-} from '../extras';
+import { diskBreakdown, memoryUsedGB, failedRuns, dailyCU, monthDays } from '../extras';
 import { usedMB, fmtSize } from './welcome';
-import { esc, openDialog, toast, ask } from '../ui';
+import { esc } from '../ui';
 
 /**
- * Monitoring › System and Spaces (Bild 5), Capacities (Bild 4) and Elastic Compute Nodes (Handbuch 10.4, 3.3.2).
+ * Monitoring › System and Spaces (Bild 5) and Capacities (Bild 4). Elastic compute nodes: views/ecn.ts.
  * Figures come from the tenant in the save game (spaces, objects, runs); what the training tenant cannot know
  * (system data, out-of-memory events, CU rates) is simulated and the pages say so.
  */
@@ -95,7 +93,19 @@ export function renderSystemSpaces(main: HTMLElement) {
               <td class="num">${t.objects.filter((o) => o.space === sp.id).length}</td></tr>`;
           }).join('')}</tbody></table></div>
           <p class="muted">Assigned: ${assigned(t).diskGB} of ${CAPACITY.diskGB} GB disk and ${assigned(t).memoryGB} of ${CAPACITY.memoryGB} GB in-memory. Change the assignment in Space Management.</p></section>`
-      : `<section class="panel ext-empty" id="sm-objectstore"><h3>Object Store</h3><p>The object store keeps data of file spaces in the data lake instead of SAP HANA. This tenant has no file spaces, so there is nothing to show. In this game all spaces are SAP HANA spaces.</p></section>`}
+      : `<div id="sm-objectstore">
+          <label class="ext-field">Spaces <select disabled><option>No file spaces</option></select></label>
+          <div class="ext-kpis">
+            <section class="panel ext-kpi"><b>SAP HANA Data Lake Files: Storage Utilization</b><p class="ext-kpi-value">0 <small>TB</small></p><p class="muted small">selected file space</p></section>
+            <section class="panel ext-kpi"><b>SAP HANA Data Lake Files: Storage Utilization of All Spaces</b><p class="ext-kpi-value">0 <small>TB</small></p></section>
+          </div>
+          <section class="panel"><div class="ext-list-head"><h3>Apache Spark: Tasks</h3><span class="spacer"></span>
+              <label class="ext-field">Date and Time Range <select disabled><option>Last 7 Days</option></select></label></div>
+            <div class="table-scroll"><table class="grid"><thead><tr><th>Application Name</th><th>Object Type</th><th>Task Activity</th><th class="num">Number of Tasks</th></tr></thead>
+              <tbody><tr><td colspan="4" class="muted">No data</td></tr></tbody></table></div></section>
+          <p class="muted ext-note">The object store keeps the data of <b>file spaces</b> (SAP HANA data lake files) instead of SAP HANA; local tables (file) and
+            transformation flows there run on Apache Spark. This tenant has only SAP HANA spaces, so the tab stays empty, as in a real tenant without file spaces.</p>
+        </div>`}
     </div>`;
   main.querySelectorAll<HTMLButtonElement>('[data-sm-tab]').forEach((b) => b.addEventListener('click', () => {
     sysTab = b.dataset.smTab as typeof sysTab;
@@ -175,134 +185,28 @@ function barChart(values: number[], ds: Date[], cumulative: boolean) {
   </svg>`;
 }
 
+/**
+ * Capacities › Spaces after SAP help ("Monitoring Capacity Unit Consumption"): per space the premium outbound volume, the object
+ * store figures and the capacity units. The game has no premium outbound and no file spaces, so those stay 0; the CU share is
+ * derived from the space's assigned storage. Two game columns explain where the CU come from.
+ */
 function spacesTable(t: ReturnType<typeof ctx.tenant>, ds: Date[]) {
   const used = assigned(t);
   const memoryCU = ds.reduce((s, d) => s + dailyCU(t, d).memory, 0);
   const diskCU = ds.reduce((s, d) => s + dailyCU(t, d).disk, 0);
-  return `<section class="panel" id="cap-spaces"><div class="table-scroll"><table class="grid">
-    <thead><tr><th>Space</th><th class="num">In-Memory Assigned</th><th class="num">Disk Assigned</th><th class="num">Memory and Compute CU</th><th class="num">Disk CU</th><th class="num">Share</th></tr></thead>
+  return `<section class="panel" id="cap-spaces"><div class="ext-list-head"><h3>Spaces (${t.spaces.length})</h3><span class="spacer"></span>
+      <button class="btn small link" type="button" disabled title="Downloads the hourly CU measurements as CSV; not in this game">Download Capacity Metrics as CSV</button></div>
+    <div class="table-scroll"><table class="grid">
+    <thead><tr><th>Technical Name</th><th class="num">Premium Outbound Volume Consumption</th><th class="num">Object Store Storage Consumption</th>
+      <th class="num">Object Store Compute Consumption</th><th class="num">Object Store Control Plane Requests</th><th class="num">Object Store Category 1 (Read) Requests</th>
+      <th class="num">Object Store Category 2 (Write) Requests</th><th class="num">Capacity Unit Consumption</th>
+      <th class="num">In-Memory / Disk Assigned (game)</th><th class="num">Share (game)</th></tr></thead>
     <tbody>${t.spaces.map((sp) => {
       const m = memoryCU * (sp.memoryGB / Math.max(1, used.memoryGB));
       const dk = diskCU * (sp.diskGB / Math.max(1, used.diskGB));
-      return `<tr><td class="mono">${esc(sp.id)}</td><td class="num">${sp.memoryGB} GB</td><td class="num">${sp.diskGB} GB</td><td class="num">${m.toFixed(2)}</td><td class="num">${dk.toFixed(2)}</td>
-        <td class="num">${pct(m + dk, memoryCU + diskCU).toFixed(0)}%</td></tr>`;
+      return `<tr><td class="mono">${esc(sp.id)}</td><td class="num">0 GB</td><td class="num">0 TBh</td><td class="num">0 GBh</td><td class="num">0</td><td class="num">0</td><td class="num">0</td>
+        <td class="num"><b>${(m + dk).toFixed(2)}</b></td><td class="num">${sp.memoryGB} GB / ${sp.diskGB} GB</td><td class="num">${pct(m + dk, memoryCU + diskCU).toFixed(0)}%</td></tr>`;
     }).join('')}</tbody></table></div>
-    <p class="muted">Lowering the in-memory assignment of a space that does not need it is the quickest way to save capacity units.</p></section>`;
-}
-
-// ---------------------------------------------------------------- Elastic Compute Nodes
-
-let selectedEcn = '';
-
-export function renderEcn(main: HTMLElement) {
-  const t = ctx.tenant();
-  const x = t.extras;
-  const sel = x.ecns.find((e) => e.name === selectedEcn) ?? x.ecns[0];
-  const used = usedBlockHours(x);
-  main.innerHTML = `
-    <div class="ext-page">
-      <div class="ext-head"><div><h1 class="view-title">Elastic Compute Nodes</h1>
-        <p class="view-lead">Extra compute for peak loads, such as the month-end close. A running node takes over the persisted views and local tables of its spaces,
-          so heavy reads do not slow down everyone else. It is billed in block-hours while it runs.</p></div></div>
-      <div class="ext-kpis three">
-        <section class="panel ext-kpi"><b>Block-Hours Used</b><p class="ext-kpi-value" id="ecn-used">${used} <small>of ${BLOCK_HOURS}</small></p>
-          <span class="bar"><i style="width:${Math.max(1, pct(used, BLOCK_HOURS)).toFixed(1)}%"></i></span></section>
-        <section class="panel ext-kpi"><b>Running Nodes</b><p class="ext-kpi-value">${x.ecns.filter(isRunning).length}</p></section>
-        <section class="panel ext-kpi"><b>Nodes</b><p class="ext-kpi-value">${x.ecns.length}</p></section>
-      </div>
-      <section class="panel">
-        <div class="ext-list-head"><h3>Elastic Compute Nodes (${x.ecns.length})</h3>
-          <span class="spacer"></span><button class="btn primary small" type="button" id="ecn-create">Create</button></div>
-        <div class="table-scroll"><table class="grid" id="ecn-list">
-          <thead><tr><th>Name</th><th>Performance Class</th><th class="num">Compute Blocks</th><th>Spaces</th><th>Status</th><th>Last Run</th><th></th></tr></thead>
-          <tbody>${x.ecns.length ? x.ecns.map((e) => `<tr data-ecn="${esc(e.name)}" class="${e === sel ? 'selected' : ''}">
-            <td class="mono"><button class="btn link" type="button" data-ecn-open="${esc(e.name)}">${esc(e.name)}</button></td><td>${e.perf}</td><td class="num">${e.blocks}</td>
-            <td class="mono small">${e.spaces.map(esc).join(', ') || '<span class="muted">none</span>'}</td>
-            <td>${isRunning(e) ? '<span class="ext-status run">Running</span>' : '<span class="ext-status">Ready</span>'}</td>
-            <td class="muted">${e.runs[0] ? new Date(e.runs[0].start).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
-            <td class="actions">${isRunning(e) ? `<button class="btn small" type="button" data-ecn-stop="${esc(e.name)}">Stop</button>`
-              : `<button class="btn small" type="button" data-ecn-start="${esc(e.name)}">Start</button> <button class="btn link small" type="button" data-ecn-delete="${esc(e.name)}">Delete</button>`}</td></tr>`).join('')
-            : '<tr><td colspan="7" class="muted">No elastic compute node yet. Create one, assign spaces, then start it before the peak.</td></tr>'}</tbody></table></div>
-      </section>
-      ${sel ? ecnDetail(sel) : ''}
-      <p class="muted ext-note">Simplified: the Handbuch marks the setup as dependent on license (10.4.5, 3.3.2). In this game a run is billed by the full hour
-        (at least one hour times the compute blocks), performance figures are simulated.</p>
-    </div>`;
-  main.querySelector('#ecn-create')!.addEventListener('click', () => ecnDialog(main));
-  main.querySelectorAll<HTMLButtonElement>('[data-ecn-open]').forEach((b) => b.addEventListener('click', () => { selectedEcn = b.dataset.ecnOpen!; renderEcn(main); }));
-  main.querySelectorAll<HTMLButtonElement>('[data-ecn-start]').forEach((b) => b.addEventListener('click', () => {
-    const e = x.ecns.find((n) => n.name === b.dataset.ecnStart)!;
-    if (!e.spaces.length) return toast(`${e.name} serves no space yet. Edit it and assign at least one space.`, 'error');
-    const left = BLOCK_HOURS - usedBlockHours(x);
-    if (left < e.blocks) return toast(`Not enough block-hours left this month (${left}). One hour of ${e.name} needs ${e.blocks}.`, 'error');
-    e.runs.unshift({ start: new Date().toISOString() });
-    e.runs.splice(30);
-    selectedEcn = e.name;
-    ctx.track(`ecn-start:${e.name}`);
-    ctx.save();
-    toast(`${e.name} is starting. Persisted views of ${e.spaces.join(', ')} are now read from the node.`);
-    renderEcn(main);
-  }));
-  main.querySelectorAll<HTMLButtonElement>('[data-ecn-stop]').forEach((b) => b.addEventListener('click', () => {
-    const e = x.ecns.find((n) => n.name === b.dataset.ecnStop)!;
-    stopEcn(e);
-    ctx.track(`ecn-stop:${e.name}`);
-    ctx.save();
-    toast(`${e.name} stopped. Billed ${e.runs[0].blockHours} block-hours.`);
-    renderEcn(main);
-  }));
-  main.querySelectorAll<HTMLButtonElement>('[data-ecn-delete]').forEach((b) => b.addEventListener('click', async () => {
-    const name = b.dataset.ecnDelete!;
-    if (!(await ask(`Delete the elastic compute node ${name}? Its run history is removed too.`, 'Delete'))) return;
-    x.ecns = x.ecns.filter((n) => n.name !== name);
-    ctx.save();
-    renderEcn(main);
-  }));
-  main.querySelector('#ecn-edit')?.addEventListener('click', () => ecnDialog(main, sel));
-}
-
-function ecnDetail(e: Ecn) {
-  const info = PERF_INFO[e.perf];
-  const run = isRunning(e);
-  const mins = run ? Math.max(1, Math.round((Date.now() - new Date(e.runs[0].start).getTime()) / 60000)) : 0;
-  return `<section class="panel ext-detail" id="ecn-detail"><div class="ext-list-head"><h3>${esc(e.name)}</h3><span class="spacer"></span>
-      <button class="btn small" type="button" id="ecn-edit" ${run ? 'disabled title="Stop the node to change it"' : ''}>Edit</button></div>
-    <dl class="ext-dl"><div><dt>Configuration</dt><dd>${e.perf}, ${e.blocks} compute blocks = ${info.vcpu * e.blocks} vCPUs, ${info.memGB * e.blocks} GB memory</dd></div>
-      <div><dt>Status</dt><dd>${run ? `Running for ${mins} min` : 'Ready (not running)'}</dd></div>
-      <div><dt>CPU</dt><dd>${run ? `${18 + (e.blocks * 7) % 40} %` : '—'}</dd></div>
-      <div><dt>Memory (incl. replicated data)</dt><dd>${run ? `${(e.spaces.length * 1.7 + 0.4).toFixed(1)} GB` : '—'}</dd></div>
-      <div><dt>Runs</dt><dd>${e.runs.length ? e.runs.slice(0, 5).map((r) => `${new Date(r.start).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}${r.end ? ` · ${r.blockHours} block-hours` : ' · running'}`).join('<br>') : 'Not started yet'}</dd></div>
-      <div><dt>Errors</dt><dd>None</dd></div></dl></section>`;
-}
-
-function ecnDialog(main: HTMLElement, existing?: Ecn) {
-  const t = ctx.tenant();
-  const { form, close } = openDialog(existing ? `Edit ${existing.name}` : 'Create Elastic Compute Node', `
-    <div class="form-grid">
-      <label>Technical Name <small>3 to 9 lowercase letters and digits (simplified)</small><input name="name" value="${esc(existing?.name ?? '')}" ${existing ? 'readonly' : ''} placeholder="e.g. monthend" maxlength="9" autocomplete="off" spellcheck="false"></label>
-      <label>Performance Class <small>memory-heavy reads or calculations</small><select name="perf">${(['Memory', 'Compute', 'High Compute'] as PerfClass[]).map((p) =>
-        `<option ${existing?.perf === p ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
-      <label>Compute Blocks <small>1 to 32; each block costs one block-hour per hour</small><input name="blocks" type="number" min="1" max="32" value="${existing?.blocks ?? 4}"></label>
-    </div>
-    <fieldset class="question share-targets"><legend>Spaces the node serves</legend>${t.spaces.map((s) => `<label><input type="checkbox" name="space" value="${esc(s.id)}" ${existing?.spaces.includes(s.id) ? 'checked' : ''}> ${esc(s.id)}</label>`).join('')}</fieldset>
-    <p class="form-error" role="alert"></p>
-    <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">${existing ? 'Save' : 'Create'}</button></div>`);
-  form.addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const f = new FormData(form);
-    const name = String(f.get('name') ?? '').trim();
-    const err = form.querySelector<HTMLElement>('.form-error')!;
-    if (!existing && !/^[a-z][a-z0-9]{2,8}$/.test(name)) return void (err.textContent = 'Use 3 to 9 lowercase letters and digits, starting with a letter.');
-    if (!existing && t.extras.ecns.some((e) => e.name === name)) return void (err.textContent = `${name} exists already.`);
-    const node: Ecn = existing ?? { name, perf: 'Memory', blocks: 4, spaces: [], runs: [] };
-    node.perf = String(f.get('perf')) as PerfClass;
-    node.blocks = Math.min(32, Math.max(1, Math.round(Number(f.get('blocks')) || 4)));
-    node.spaces = f.getAll('space').map(String);
-    if (!existing) t.extras.ecns.push(node);
-    selectedEcn = node.name;
-    ctx.track(`ecn-save:${node.name}`);
-    ctx.save();
-    close();
-    renderEcn(main);
-  });
+    <p class="muted">Object store figures only count for file spaces (SAP HANA data lake files); premium outbound for replication flows to non-SAP targets.
+      Lowering the in-memory assignment of a space that does not need it is the quickest way to save capacity units.</p></section>`;
 }

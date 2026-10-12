@@ -5,11 +5,19 @@ import { esc, spaceChip, layerOf, layerName, LAYER_ORDER, openDialog, toast, ico
 import { usedMB, fmtSize } from './welcome';
 import { EXCURSIONS } from '../content/chapters';
 import { dbUserError, dbUserName, readableByDbUser, DB_HOST, DB_PORT } from '../consumption';
+import { ecnSideHtml, bindEcnSide, ecnNodeHtml, bindEcnNode, takeEcnRequest } from './ecn';
+
+/** Elastic compute node opened in the side column ('' = the space list). */
+let openNode = '';
 
 /** Space Management: one tile per space with storage and priority, create, edit and delete. */
 
 export async function renderSpaces(main: HTMLElement) {
   const t = ctx.tenant();
+  const req = takeEcnRequest();
+  if (req) openNode = req;
+  const node = t.extras.ecns.find((e) => e.name === openNode);
+  if (!node) openNode = '';
   const deployed = await listObjects();
   const canCreate = ctx.currentChapter() >= 1;
   const used = assigned(t);
@@ -36,14 +44,15 @@ export async function renderSpaces(main: HTMLElement) {
       <aside class="sm-side" aria-label="Spaces overview">
         ${canCreate ? '' : `<div class="msg warn">${icon(ICONS.info)}<span>Creating spaces unlocks in chapter 1. For now you can look at the space IT prepared.</span></div>`}
         <div class="sm-box"><h3>Spaces</h3>
-          <button type="button" class="sm-row on">All Spaces<b>${spaces.length}</b>${icon(ICONS.right)}</button>
+          <button type="button" class="sm-row ${node ? '' : 'on'}" id="sm-all">All Spaces<b>${spaces.length}</b>${icon(ICONS.right)}</button>
           <button type="button" class="sm-row" disabled>Recycle Bin<b>0</b>${icon(ICONS.right)}</button></div>
+        ${ctx.currentChapter() >= 9 || t.extras.ecns.length ? ecnSideHtml(openNode, ctx.currentChapter() >= 9) : ''}
         <section class="sm-box capacity" aria-label="Tenant capacity"><h3>Tenant Capacity</h3>
           ${bar('Disk', used.diskGB, CAPACITY.diskGB)}
           ${bar('In-memory', used.memoryGB, CAPACITY.memoryGB)}
         </section>
       </aside>
-      <section class="sm-main">
+      <section class="sm-main">${node ? `<div class="ecn-node" id="ecn-node">${ecnNodeHtml(node)}</div>` : `
         <div class="sm-head"><h1>Spaces <span>(${spaces.length})</span></h1>
           <span class="sm-counts"><span class="ok" title="Healthy">${icon(ICONS.check)} ${healthy}</span><span class="bad" title="Locked">${icon(ICONS.lock)} ${locked}</span></span></div>
         <div class="sm-toolbar">
@@ -74,9 +83,13 @@ export async function renderSpaces(main: HTMLElement) {
                 <button class="btn small" type="button" data-edit="${esc(sp.id)}">Edit</button>` : ''}</div>
             </article>`;
           }).join('')}
-        </div>
+        </div>`}
       </section>
     </div>`;
+  const rerender = () => renderSpaces(main);
+  main.querySelector('#sm-all')?.addEventListener('click', () => { openNode = ''; rerender(); });
+  bindEcnSide(main, (n) => { openNode = n; rerender(); }, rerender);
+  if (node) bindEcnNode(main, node, rerender, () => { openNode = ''; rerender(); });
   main.querySelector('#create-space')?.addEventListener('click', () => openSpaceDialog());
   main.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((b) =>
     b.addEventListener('click', () => openSpaceDialog(t.spaces.find((x) => x.id === b.dataset.edit))),

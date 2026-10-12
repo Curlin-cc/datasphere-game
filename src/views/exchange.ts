@@ -3,7 +3,7 @@ import {
   MARKET, marketProducts, installProduct, uninstallProduct, LANGS, translatable, translationStatus, licenseKey, listError,
   type MarketProduct, type OwnProduct,
 } from '../extras';
-import { objectKey, findObject } from '../repo';
+import { objectKey, findObject, readsFrom } from '../repo';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { esc, openDialog, toast, ask } from '../ui';
 
@@ -15,7 +15,14 @@ import { esc, openDialog, toast, ask } from '../ui';
 
 // ---------------------------------------------------------------- Marketplace Data Products
 
-let mpTab: 'browse' | 'installed' | 'licenses' = 'browse';
+/**
+ * After SAP help ("Managing Marketplace Data Products", "Installing Marketplace Data Products"): the page tracks installed products
+ * with the charts Installations by Month, Top Data Providers and License Validity, the tab Data Products (installed: Name, Data Provider,
+ * Space, Data Product Details, Installation Details, Actions with Delivery Details; toolbar Install · Update · Uninstall · Reinitialize)
+ * and the license activation. Browsing and installing happens in the catalog collection Data Products (Marketplace); the game shows
+ * that collection as the tab "Catalog". Contexts are not part of the game.
+ */
+let mpTab: 'browse' | 'installed' | 'licenses' = 'installed';
 let mpSelected = MARKET[0].id;
 
 export function renderMarketplace(main: HTMLElement) {
@@ -26,22 +33,37 @@ export function renderMarketplace(main: HTMLElement) {
   main.innerHTML = `
     <div class="ext-page">
       <div class="ext-head"><div><h1 class="view-title">Marketplace Data Products</h1>
-        <p class="view-lead">Data products from providers, ready to install into a space. Some are free, others need a license key from the provider.
-          Installed products appear in the catalog collection “Data Products (Marketplace)”.</p></div></div>
+        <p class="view-lead">Keep track of the data products installed in your spaces and activate licenses. You find and install products in the catalog
+          collection “Data Products (Marketplace)”: free ones directly, others with a license key from the provider.</p></div></div>
+      <div class="ext-kpis three" id="mp-charts">
+        <section class="panel ext-kpi"><b>Installations by Month</b><p class="ext-kpi-value">${x.installed.filter((i) => i.at.slice(0, 7) === new Date().toISOString().slice(0, 7)).length}</p><p class="muted small">this month · ${x.installed.length} in total</p></section>
+        <section class="panel ext-kpi"><b>Top Data Providers</b><p class="small">${[...new Set(x.installed.map((i) => MARKET.find((p) => p.id === i.product)?.provider ?? ''))].filter(Boolean).map(esc).join('<br>') || '<span class="muted">No data</span>'}</p></section>
+        <section class="panel ext-kpi"><b>License Validity</b><p class="ext-kpi-value">0</p><p class="muted small">expiring or expired licenses</p></section>
+      </div>
       <div class="tabs" role="tablist" id="mp-tabs">
-        ${(['browse', 'installed', 'licenses'] as const).map((k) => `<button type="button" role="tab" data-mp-tab="${k}" aria-selected="${mpTab === k}">${{ browse: 'Browse', installed: `Installed (${x.installed.length})`, licenses: 'Licenses' }[k]}</button>`).join('')}
+        ${(['installed', 'licenses', 'browse'] as const).map((k) => `<button type="button" role="tab" data-mp-tab="${k}" aria-selected="${mpTab === k}">${{ browse: 'Catalog: Data Products (Marketplace)', installed: `Data Products (${x.installed.length})`, licenses: 'Licenses' }[k]}</button>`).join('')}
+        <button type="button" role="tab" disabled title="Contexts limit which data products you see; not in this game">Contexts</button>
       </div>
       ${mpTab === 'browse' ? `<div class="ext-split">
           <ul class="ext-cardlist" id="mp-list">${products.map((p) => `<li><button type="button" class="ext-pcard ${p === sel ? 'selected' : ''}" data-mp="${esc(p.id)}">
             <b>${esc(p.name)}</b><small>${esc(p.provider)} · ${esc(p.category)}</small>
             <span class="ext-tags"><span class="ext-status ${p.contract === 'Free' ? 'ok' : ''}">${p.contract}</span>${x.installed.some((i) => i.product === p.id) ? '<span class="ext-status ok">Installed</span>' : ''}${p.own ? '<span class="ext-status">Yours</span>' : ''}</span></button></li>`).join('')}</ul>
           ${sel ? productDetail(sel) : ''}</div>`
-      : mpTab === 'installed' ? `<section class="panel"><div class="table-scroll"><table class="grid" id="mp-installed">
-          <thead><tr><th>Data Product</th><th>Space</th><th>Objects</th><th>Installed On</th><th></th></tr></thead>
-          <tbody>${x.installed.length ? x.installed.map((i, n) => `<tr><td>${esc(MARKET.find((p) => p.id === i.product)?.name ?? i.product)}</td><td class="mono">${esc(i.space)}</td>
-            <td class="mono small">${i.objects.map((k) => esc(k.split('.')[1])).join(', ')}</td><td class="muted">${new Date(i.at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-            <td class="actions"><button class="btn small" type="button" data-mp-open="${esc(i.space)}">Open in Data Builder</button> <button class="btn link small" type="button" data-mp-uninstall="${n}">Uninstall</button></td></tr>`).join('')
-            : '<tr><td colspan="5" class="muted">Nothing installed yet. Browse the products and install one into a space.</td></tr>'}</tbody></table></div></section>`
+      : mpTab === 'installed' ? `<section class="panel"><div class="ext-list-head"><h3>Installed Data Products (${x.installed.length})</h3><span class="spacer"></span>
+          <button class="btn small link" type="button" disabled title="Installs a data product with status uninstalled">Install</button>
+          <button class="btn small link" type="button" disabled title="Installs the latest minor version; no update available">Update</button>
+          <button class="btn small link" type="button" disabled title="Use Uninstall in the row">Uninstall</button>
+          <button class="btn small link" type="button" disabled title="Re-initializes a product with connection issues (status failed)">Reinitialize</button></div>
+          <div class="table-scroll"><table class="grid" id="mp-installed">
+          <thead><tr><th>Name</th><th>Data Provider</th><th>Space</th><th>Data Product Details</th><th>Installation Details</th><th>Actions</th></tr></thead>
+          <tbody>${x.installed.length ? x.installed.map((i, n) => {
+            const p = MARKET.find((m) => m.id === i.product);
+            return `<tr><td><b>${esc(p?.name ?? i.product)}</b><br><small class="mono muted">${i.objects.map((k) => esc(k.split('.')[1])).join(', ')}</small></td><td>${esc(p?.provider ?? '')}</td><td class="mono">${esc(i.space)}</td>
+            <td class="small">Released · Direct · ${esc(p?.contract ?? '')}</td>
+            <td class="small"><span class="ext-status ok">Up-to-date</span><br><span class="muted">${new Date(i.at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</span></td>
+            <td class="actions"><button class="btn small link" type="button" data-mp-delivery="${n}">Delivery Details</button> <button class="btn small" type="button" data-mp-open="${esc(i.space)}">Open in Data Builder</button> <button class="btn link small" type="button" data-mp-uninstall="${n}">Uninstall</button></td></tr>`;
+          }).join('')
+            : '<tr><td colspan="6" class="muted">Nothing installed yet. Find a product in the catalog (tab Catalog) and install it into a space.</td></tr>'}</tbody></table></div></section>`
       : `<section class="panel" id="mp-licenses"><div class="ext-list-head"><h3>Activated Licenses</h3><span class="spacer"></span>
           <button class="btn small" type="button" id="mp-activate">Activate License</button></div>
           <div class="table-scroll"><table class="grid"><thead><tr><th>Data Product</th><th>License Key</th><th>Installed In</th></tr></thead>
@@ -61,6 +83,14 @@ export function renderMarketplace(main: HTMLElement) {
     renderMarketplace(main);
   });
   main.querySelector('#mp-activate')?.addEventListener('click', () => activateDialog(main));
+  main.querySelectorAll<HTMLButtonElement>('[data-mp-delivery]').forEach((b) => b.addEventListener('click', () => {
+    const i = x.installed[Number(b.dataset.mpDelivery)];
+    openDialog('Delivery Details', `<table class="grid compact"><thead><tr><th>Installation</th><th>Status</th><th>Data Artifacts</th></tr></thead>
+      <tbody><tr><td>${new Date(i.at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</td><td><span class="ext-status ok">Successful</span></td>
+        <td class="mono small">${i.objects.map((k) => esc(k.split('.')[1])).join(', ')}</td></tr></tbody></table>
+      <p class="muted">A failed installation shows its message here, for the overview and for each data artifact.</p>
+      <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Close</button></div>`);
+  }));
   main.querySelectorAll<HTMLButtonElement>('[data-mp-open]').forEach((b) => b.addEventListener('click', () => {
     t.activeSpace = b.dataset.mpOpen!;
     ctx.setView('builder');
@@ -150,12 +180,21 @@ function activateDialog(main: HTMLElement) {
 
 let trSpace = '';
 
+/**
+ * Translation tool after SAP help ("Translating Metadata for SAP Analytics Cloud"): pick a space, then the list of objects selected for
+ * translation. Add opens "Add Objects", where only analytic models can be chosen; their dimensions (and hierarchies) come along.
+ * Edit translates in-line per target language; Delete removes the object and its strings; Download/Upload (XLIFF) are shown but
+ * not part of the game. Columns: Business Name / Technical Name, Type, Creator, Status. Source language: English.
+ */
+let trSel = '';
+let trFilter: 'all' | 'Translated' | 'Partially Translated' | 'Not Translated' = 'all';
+
 export function renderTranslation(main: HTMLElement) {
   const t = ctx.tenant();
   if (!trSpace || !t.spaces.some((s) => s.id === trSpace)) {
     main.classList.add('flush');
     main.innerHTML = welcomeSpacesHtml({
-      title: 'Welcome to the Translation Dashboard', text: 'Translate the business names of your models and views, so business users see them in their own language.',
+      title: 'Welcome to the Translation Dashboard', text: 'Translate the business names of your models and their dimensions, so business users see them in their own language in SAP Analytics Cloud.',
       emptyTitle: 'It looks like you haven’t selected a space.', emptyText: 'Texts are managed per space. Select a space to add objects to translation and maintain their translations.',
       cardAttrs: (id) => `data-tr-space="${id}"`, gridId: 'tr-spaces',
     });
@@ -169,40 +208,76 @@ export function renderTranslation(main: HTMLElement) {
   }
   main.classList.remove('flush');
   const x = t.extras;
-  const objs = t.objects.filter((o) => o.space === trSpace && translatable(o));
+  const added = Object.keys(x.translations).filter((k) => k.split('.')[0] === trSpace).map((k) => findObject(t, k)).filter((o): o is NonNullable<typeof o> => !!o);
+  const rows = added.filter((o) => trFilter === 'all' || translationStatus(o, x.translations[objectKey(o)]) === trFilter);
+  if (!added.some((o) => objectKey(o) === trSel)) trSel = '';
   main.innerHTML = `
     <div class="ext-page">
-      <div class="ext-head"><div><h1 class="view-title">Translation</h1><p class="view-lead">Space <span class="mono">${esc(trSpace)}</span>: add views and analytic models to translation,
-        then maintain their business names per language (source language: English). A translation becomes outdated when the English business name changes.</p></div>
+      <div class="ext-head"><div><h1 class="view-title">Translation</h1><p class="view-lead">Space <span class="mono">${esc(trSpace)}</span> · Source Language: English.
+        Add analytic models; their dimensions come along. Then translate their business names per target language.</p></div>
         <button class="btn" type="button" id="tr-back">Change Space</button></div>
-      <section class="panel"><div class="table-scroll"><table class="grid" id="tr-list">
-        <thead><tr><th>Business Name</th><th>Technical Name</th><th>Type</th><th>Languages</th><th>Status</th><th></th></tr></thead>
-        <tbody>${objs.length ? objs.map((o) => {
+      <section class="panel">
+        <div class="ext-list-head"><h3>Objects (${rows.length})</h3><span class="spacer"></span>
+          <button class="btn small link" type="button" id="tr-add" title="Add Objects">+ Add</button>
+          <button class="btn small link" type="button" id="tr-refresh">Refresh</button>
+          <button class="btn small link" type="button" id="tr-edit" ${trSel ? '' : 'disabled'}>Edit</button>
+          <button class="btn small link" type="button" id="tr-delete" ${trSel ? '' : 'disabled'}>Delete</button>
+          <button class="btn small link" type="button" disabled title="Download the strings as XLIFF files (All Strings or Outstanding Strings); not in this game">Download</button>
+          <button class="btn small link" type="button" disabled title="Import Translations: upload translated XLIFF files; not in this game">Upload</button>
+          <label class="ext-field">Filter <select id="tr-filter">${(['all', 'Translated', 'Partially Translated', 'Not Translated'] as const).map((f) => `<option value="${f}" ${trFilter === f ? 'selected' : ''}>${f === 'all' ? 'All' : f}</option>`).join('')}</select></label></div>
+        <div class="table-scroll"><table class="grid" id="tr-list">
+        <thead><tr><th></th><th>Business Name</th><th>Technical Name</th><th>Type</th><th>Creator</th><th>Languages</th><th>Status</th></tr></thead>
+        <tbody>${rows.length ? rows.map((o) => {
           const key = objectKey(o);
           const list = x.translations[key];
           const st = translationStatus(o, list);
-          return `<tr data-tr="${esc(key)}"><td>${esc(o.businessName)}</td><td class="mono">${esc(o.name)}</td><td>${esc(o.kind)}</td>
-            <td>${list?.map((l) => esc(l.lang)).join(', ') || '<span class="muted">—</span>'}</td>
-            <td><span class="ext-status ${st === 'Translated' ? 'ok' : st === 'Outdated' ? 'bad' : ''}">${st}</span></td>
-            <td class="actions">${list ? `<button class="btn small" type="button" data-tr-edit="${esc(key)}">Translate</button> <button class="btn link small" type="button" data-tr-remove="${esc(key)}">Remove</button>`
-              : `<button class="btn small" type="button" data-tr-add="${esc(key)}">Add</button>`}</td></tr>`;
-        }).join('') : '<tr><td colspan="6" class="muted">No views or analytic models in this space.</td></tr>'}</tbody></table></div></section>
-      <p class="muted ext-note">Simplified: the Handbuch does not cover translation. In a real tenant texts are often exported as XLIFF files and translated outside; here you type them in.</p>
+          return `<tr data-tr="${esc(key)}" class="${key === trSel ? 'selected' : ''}"><td><input type="radio" name="tr-sel" value="${esc(key)}" ${key === trSel ? 'checked' : ''} aria-label="Select ${esc(o.name)}"></td>
+            <td>${esc(o.businessName)}</td><td class="mono">${esc(o.name)}</td><td>${o.kind === 'SQL View' ? 'View' : esc(o.kind)}</td><td>DATA_ARCHITECT</td>
+            <td>${list?.filter((l) => l.businessName).map((l) => `${esc(l.lang)}${l.source !== o.businessName ? ' (expired)' : ''}`).join(', ') || '<span class="muted">—</span>'}</td>
+            <td><span class="ext-status ${st === 'Translated' ? 'ok' : st === 'Partially Translated' ? 'warn' : ''}">${st}</span></td></tr>`;
+        }).join('') : `<tr><td colspan="7" class="muted">${added.length ? 'No object matches the filter.' : 'No objects selected for translation yet. Add an analytic model.'}</td></tr>`}</tbody></table></div></section>
+      <p class="muted ext-note">A string made for an older business name is expired: the object falls back to Not Translated or Partially Translated until you translate it again.</p>
     </div>`;
-  main.querySelector('#tr-back')!.addEventListener('click', () => { trSpace = ''; renderTranslation(main); });
-  main.querySelectorAll<HTMLButtonElement>('[data-tr-add]').forEach((b) => b.addEventListener('click', () => {
-    x.translations[b.dataset.trAdd!] = [];
-    ctx.track(`translation-add:${b.dataset.trAdd}`);
+  main.querySelector('#tr-back')!.addEventListener('click', () => { trSpace = ''; trSel = ''; renderTranslation(main); });
+  main.querySelector('#tr-refresh')!.addEventListener('click', () => renderTranslation(main));
+  main.querySelector<HTMLSelectElement>('#tr-filter')!.addEventListener('change', (e) => { trFilter = (e.target as HTMLSelectElement).value as typeof trFilter; renderTranslation(main); });
+  main.querySelectorAll<HTMLInputElement>('[name="tr-sel"]').forEach((r) => r.addEventListener('change', () => { trSel = r.value; renderTranslation(main); }));
+  main.querySelector('#tr-add')!.addEventListener('click', () => addObjectsDialog(main));
+  main.querySelector('#tr-edit')!.addEventListener('click', () => trSel && translateDialog(main, trSel));
+  main.querySelector('#tr-delete')!.addEventListener('click', async () => {
+    if (!trSel || !(await ask('Delete the translations of this object? It leaves the Translation tool; you can add it again, but without its strings.', 'Delete'))) return;
+    delete x.translations[trSel];
+    trSel = '';
     ctx.save();
     renderTranslation(main);
-  }));
-  main.querySelectorAll<HTMLButtonElement>('[data-tr-remove]').forEach((b) => b.addEventListener('click', async () => {
-    if (!(await ask('Remove this object from translation? Its translations are deleted.', 'Remove'))) return;
-    delete x.translations[b.dataset.trRemove!];
+  });
+}
+
+/** Add Objects: only analytic models; their dimension views come along (SAP help). */
+function addObjectsDialog(main: HTMLElement) {
+  const t = ctx.tenant();
+  const x = t.extras;
+  const models = t.objects.filter((o) => o.space === trSpace && o.kind === 'Analytic Model' && translatable(o));
+  const { form, close } = openDialog('Add Objects', `
+    <p class="guide-lead">Only analytic models can be selected. Their dimensions are added automatically.</p>
+    <fieldset class="question share-targets"><legend>Analytic Models in ${esc(trSpace)}</legend>${models.map((o) => `<label><input type="checkbox" name="am" value="${esc(objectKey(o))}" ${x.translations[objectKey(o)] ? 'checked disabled' : ''}>
+      ${esc(o.businessName)} <span class="mono muted">${esc(o.name)}</span></label>`).join('') || '<p class="muted">No analytic models in this space.</p>'}</fieldset>
+    <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Add Objects</button></div>`);
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    for (const key of new FormData(form).getAll('am').map(String)) {
+      const am = findObject(t, key);
+      x.translations[key] ??= [];
+      ctx.track(`translation-add:${key}`);
+      for (const k of am ? readsFrom(am, t) : []) {
+        const d = findObject(t, k);
+        if (d && d.space === trSpace && translatable(d) && (d.semanticUsage === 'Dimension' || d.semanticUsage === 'Hierarchy')) x.translations[k] ??= [];
+      }
+    }
     ctx.save();
+    close();
     renderTranslation(main);
-  }));
-  main.querySelectorAll<HTMLButtonElement>('[data-tr-edit]').forEach((b) => b.addEventListener('click', () => translateDialog(main, b.dataset.trEdit!)));
+  });
 }
 
 function translateDialog(main: HTMLElement, key: string) {
@@ -210,21 +285,30 @@ function translateDialog(main: HTMLElement, key: string) {
   const o = findObject(t, key)!;
   const list = t.extras.translations[key] ?? [];
   const { form, close } = openDialog(`Translate ${o.name}`, `
-    <p class="guide-lead">English (source): <b>${esc(o.businessName)}</b></p>
-    <div class="form-grid">${LANGS.map((g) => {
-      const tr = list.find((l) => l.lang === g.code);
-      const outdated = tr && tr.source !== o.businessName;
-      return `<label>${g.label} <small>${outdated ? `outdated: made for “${esc(tr!.source)}”` : tr ? 'translated' : 'empty = not translated'}</small>
-        <input name="${g.code}" value="${esc(tr?.businessName ?? '')}" autocomplete="off"></label>`;
-    }).join('')}</div>
+    <label class="ext-field">Target Language <select id="tr-lang">${LANGS.map((g) => `<option value="${g.code}">${g.label}</option>`).join('')}</select></label>
+    <table class="grid compact"><thead><tr><th>Source Text (English)</th><th>Translated Text</th></tr></thead><tbody>
+      <tr><td><b>${esc(o.businessName)}</b><br><small class="muted">Business Name</small></td><td>${LANGS.map((g, i) => {
+        const tr = list.find((l) => l.lang === g.code);
+        const outdated = tr && tr.source !== o.businessName;
+        return `<label class="tr-lang-input" data-lang="${g.code}" ${i ? 'hidden' : ''}><input name="${g.code}" value="${esc(tr?.businessName ?? '')}" autocomplete="off" aria-label="${g.label}">
+          <small class="muted">${outdated ? `expired: made for “${esc(tr!.source)}”` : tr ? 'translated' : 'Not Translated'}</small></label>`;
+      }).join('')}</td></tr></tbody></table>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>`, 'wide');
+  form.querySelector<HTMLSelectElement>('#tr-lang')!.addEventListener('change', (e) => {
+    const lang = (e.target as HTMLSelectElement).value;
+    form.querySelectorAll<HTMLElement>('.tr-lang-input').forEach((l) => (l.hidden = l.dataset.lang !== lang));
+  });
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const f = new FormData(form);
-    t.extras.translations[key] = LANGS.map((g) => ({ lang: g.code, businessName: String(f.get(g.code) ?? '').trim(), source: o.businessName }))
-      .filter((l) => l.businessName);
+    t.extras.translations[key] = LANGS.map((g) => {
+      const v = String(f.get(g.code) ?? '').trim();
+      const old = list.find((l) => l.lang === g.code);
+      return { lang: g.code, businessName: v, source: old && old.businessName === v ? old.source : o.businessName };
+    }).filter((l) => l.businessName);
     ctx.track(`translation-save:${key}`);
     ctx.save();
+    toast('Translation updated successfully');
     close();
     renderTranslation(main);
   });
@@ -232,23 +316,56 @@ function translateDialog(main: HTMLElement, key: string) {
 
 // ---------------------------------------------------------------- Data Sharing Cockpit
 
-let dsTab: 'profile' | 'products' | 'licenses' = 'profile';
+/**
+ * Data Sharing Cockpit after Curlin's screenshot 42 (12.10.2026; his tenant has no provider profile, so the pages behind the tiles
+ * follow SAP help and the Handbuch, simplified): the navigation opens Data Sharing Cockpit (overview with tiles), Publishing Management,
+ * My Data Provider Profile, My Data Products, License Management and Context Management. Until a provider profile exists only
+ * "Create Data Provider Profile" is active.
+ */
+export type SharingPage = 'overview' | 'publishing' | 'profile' | 'products' | 'licenses' | 'context';
+export const SHARING_PAGES: { id: SharingPage; label: string }[] = [
+  { id: 'overview', label: 'Data Sharing Cockpit' }, { id: 'publishing', label: 'Publishing Management' },
+  { id: 'profile', label: 'My Data Provider Profile' }, { id: 'products', label: 'My Data Products' },
+  { id: 'licenses', label: 'License Management' }, { id: 'context', label: 'Context Management' },
+];
+let dsTab: SharingPage = 'overview';
+export const sharingPage = () => dsTab;
+export function sharingTo(p: SharingPage) {
+  dsTab = p;
+}
 
 export function renderSharing(main: HTMLElement) {
   const t = ctx.tenant();
   const x = t.extras;
-  if (!x.provider && dsTab !== 'profile') dsTab = 'profile';
+  if (!x.provider && dsTab !== 'profile' && dsTab !== 'overview') dsTab = 'overview';
   const keyed = x.products.filter((p) => p.contract === 'License Key');
+  const listed = x.products.filter((p) => p.status === 'Listed');
+  const tile = (id: SharingPage, title: string, text: string, enabled = !!x.provider) => `<button type="button" class="ds-tile" data-ds-tab="${id}" ${enabled ? '' : 'disabled'}>
+      <b>${esc(title)}</b><span>${esc(text)}</span></button>`;
+  const pageTitle = SHARING_PAGES.find((p) => p.id === dsTab)!.label;
   main.innerHTML = `
     <div class="ext-page">
-      <div class="ext-head"><div><h1 class="view-title">Data Sharing Cockpit</h1>
-        <p class="view-lead">The provider side of the Marketplace: describe your organization, bundle deployed objects into data products, list them,
-          and hand out license keys to consumers.</p></div></div>
-      <div class="tabs" role="tablist" id="ds-tabs">
-        <button type="button" role="tab" data-ds-tab="profile" aria-selected="${dsTab === 'profile'}">Data Provider Profile</button>
-        <button type="button" role="tab" data-ds-tab="products" aria-selected="${dsTab === 'products'}" ${x.provider ? '' : 'disabled title="Create your profile first"'}>Data Products (${x.products.length})</button>
-        <button type="button" role="tab" data-ds-tab="licenses" aria-selected="${dsTab === 'licenses'}" ${x.provider ? '' : 'disabled title="Create your profile first"'}>License Management</button></div>
-      ${dsTab === 'profile' ? `<section class="panel ext-form" id="ds-profile">
+      <div class="ds-banner"><b>Data Marketplace</b><span>${esc(pageTitle)}</span>
+        ${dsTab === 'overview' ? '<button class="btn small" type="button" disabled title="For users who manage several provider profiles">Switch Data Provider</button>' : ''}</div>
+      ${dsTab === 'overview' ? `<h2 class="section-title">Overview</h2>
+        <div class="ds-tiles" id="ds-overview">
+          <section class="ds-tile chart"><b>Product Views Over Time</b><span class="muted">${listed.length ? `${listed.length * 7} views of your listed products this month (simulated)` : 'No data'}</span></section>
+          ${tile('products', 'Data Product Listing', 'Prepare your data products to list them in the Data Marketplace of SAP Datasphere.')}
+          ${tile('products', 'My Data Products', 'Access your listed data products and start your data product lifecycle management tasks.')}
+          ${tile('publishing', 'Publishing Management', 'Manage the initial and ongoing delivery of your offered data products.')}
+          ${tile('profile', 'My Data Provider Profile', 'Make sure the Data Marketplace users see the most relevant information about you.')}
+          ${tile('licenses', 'License Management', 'Manage your license keys to ensure compliant access to your data products.')}
+          ${tile('context', 'Context Management', 'Create and manage a Data Marketplace environment with its own visibility and interaction.', false)}
+          ${x.provider ? '' : tile('profile', 'Create Data Provider Profile', 'Create a Data Provider profile to start using the Data Marketplace.', true)}
+        </div>`
+      : !x.provider && dsTab !== 'profile' ? '<p class="muted">Create your data provider profile first.</p>'
+      : dsTab === 'context' ? `<section class="panel"><p>Contexts are private marketplaces: only invited consumers see the products listed in them. Not part of this game.</p></section>`
+      : dsTab === 'publishing' ? `<section class="panel"><div class="ext-list-head"><h3>Listed Data Products (${listed.length})</h3></div>
+          <div class="table-scroll"><table class="grid" id="ds-publishing"><thead><tr><th>Name</th><th>Delivery</th><th>Contract Type</th><th class="num">Licenses</th><th>Status</th></tr></thead>
+          <tbody>${listed.map((p) => `<tr><td>${esc(p.name)}</td><td>Direct (from space ${esc(p.space)})</td><td>${p.contract}</td><td class="num">${p.licenses.length}</td>
+            <td><span class="ext-status ok">Listed</span></td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nothing listed yet. List a product in My Data Products.</td></tr>'}</tbody></table></div>
+          <p class="muted">With direct delivery consumers read your deployed objects; there is nothing to ship. The real app also plans regular deliveries.</p></section>`
+      : dsTab === 'profile' ? `<section class="panel ext-form" id="ds-profile">
           <h3>${x.provider ? 'Your Data Provider Profile' : 'Create a Data Provider Profile'}</h3>
           <form id="ds-profile-form" class="form-grid" novalidate>
             <label>Provider Name<input name="name" value="${esc(x.provider?.name ?? '')}" maxlength="60" placeholder="e.g. Stadtwerke Rheinau"></label>
@@ -271,9 +388,9 @@ export function renderSharing(main: HTMLElement) {
           <tbody>${keyed.flatMap((p) => p.licenses.map((l) => `<tr><td>${esc(p.name)}</td><td>${esc(l.customer)}</td><td class="mono">${esc(l.key)}</td>
             <td class="muted">${new Date(l.at).toLocaleDateString('en-US', { dateStyle: 'medium' })}</td></tr>`)).join('')
             || `<tr><td colspan="4" class="muted">${keyed.length ? 'No license yet. Create one per consumer and send them the key.' : 'Licenses are for products with contract type License Key.'}</td></tr>`}</tbody></table></div></section>`}
-      <p class="muted ext-note">Handbuch 8.4: the input fields are not verified, so this is simplified. Listed products appear in Catalog & Marketplace › Marketplace Data Products.</p>
+      <p class="muted ext-note">Simplified after Handbuch 8.4 and SAP help. Listed products appear in the catalog collection Data Products (Marketplace).</p>
     </div>`;
-  main.querySelectorAll<HTMLButtonElement>('[data-ds-tab]').forEach((b) => b.addEventListener('click', () => { dsTab = b.dataset.dsTab as typeof dsTab; renderSharing(main); }));
+  main.querySelectorAll<HTMLButtonElement>('[data-ds-tab]').forEach((b) => b.addEventListener('click', () => { dsTab = b.dataset.dsTab as SharingPage; ctx.refreshNav(); renderSharing(main); }));
   main.querySelector<HTMLFormElement>('#ds-profile-form')?.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const f = new FormData(ev.target as HTMLFormElement);
@@ -288,6 +405,7 @@ export function renderSharing(main: HTMLElement) {
     ctx.save();
     toast(first ? 'Profile created. Now create a data product.' : 'Profile saved.');
     if (first) dsTab = 'products';
+    ctx.refreshNav();
     renderSharing(main);
   });
   main.querySelector('#ds-new')?.addEventListener('click', () => productDialog(main));

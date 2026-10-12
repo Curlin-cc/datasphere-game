@@ -13,14 +13,14 @@ with sync_playwright() as p:
     check = g.check
     def role(id, tpl, scope, edit=False):
         if edit: pg.click(f'[data-role-edit="{id}"]')
-        else: pg.click('#create-role'); pg.fill('[name="id"]', id)
+        else: pg.click('#add-role'); pg.click('#create-role'); pg.fill('[name="id"]', id)
         pg.select_option('[name="template"]', tpl)
         for cb in pg.locator('[name="scope"]').all():
             (cb.check() if cb.get_attribute('value') in scope else cb.uncheck())
         pg.click('.dialog [type="submit"]'); pg.wait_for_timeout(250)
         e=pg.locator('.form-error')
         if e.count() and e.inner_text().strip(): print('   FORM ERROR:', e.inner_text()); pg.click('[data-act="cancel"]')
-    g.nav('security'); pg.wait_for_selector('#create-role')
+    g.nav('security'); pg.wait_for_selector('#add-role')
     role('rhn modeler','MODELER',['RHN_HARM'])
     role('RHN_SPACE_ADMIN','SPACE_ADMIN',['RHN_IN','RHN_HARM','RHN_REP'])
     role('RHN_INTEGRATOR','INTEGRATOR',['RHN_IN'])

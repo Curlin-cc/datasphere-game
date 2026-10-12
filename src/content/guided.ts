@@ -1218,9 +1218,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'Create a scoped role',
-        target: '#create-role',
+        target: '#add-role',
         body: `<p>One role per template, so five roles. Names start with <code>RHN_</code>, for example <code>RHN_MODELER</code>.</p>`,
-        action: { do: 'Press <b>Create scoped role</b>.', appear: '.dialog [name="template"]' },
+        action: { do: 'Press <b>+</b> (Add Role) and choose <b>Create a Scoped Role</b>.', appear: '.dialog [name="template"]' },
       },
       {
         title: 'Name, template, scope',

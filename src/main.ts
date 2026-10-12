@@ -16,8 +16,9 @@ import {
 import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
 import { restorePersistence } from './perf';
 import { usedMB, fmtSize } from './views/welcome';
-import { renderSystemSpaces, renderCapacities, renderEcn } from './views/sysmon';
-import { renderMarketplace, renderTranslation, renderSharing } from './views/exchange';
+import { renderSystemSpaces, renderCapacities } from './views/sysmon';
+import { renderEcnMonitor } from './views/ecn';
+import { renderMarketplace, renderTranslation, renderSharing, SHARING_PAGES, sharingPage, sharingTo, type SharingPage } from './views/exchange';
 import { ctx, type ViewId } from './ctx';
 import { esc, icon, ICONS, setCrumb, ask } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
@@ -79,6 +80,7 @@ ctx.track = (event: string) => {
 };
 ctx.setView = setView;
 ctx.renderView = renderView;
+ctx.refreshNav = refreshNav;
 ctx.renderMission = renderMission;
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -174,6 +176,15 @@ function navHtml() {
       ${open ? `<div class="nav-children">${TRANSPORT_PAGES.map((p) => `<button type="button" class="child" data-view="transport" data-tsub="${p.id}"
         ${ctx.view === 'transport' && transportPage() === p.id ? 'aria-current="page"' : ''}><span class="label">${p.label}</span></button>`).join('')}</div>` : ''}`;
   };
+  /** Data Sharing Cockpit opens its pages in the navigation (Bild 42). */
+  const sharingItem = () => {
+    const open = ctx.view === 'sharing';
+    const a = appById('sharing')!;
+    return `<button type="button" data-view="sharing" class="${open ? 'open' : ''}" aria-expanded="${open}" title="${esc(a.label)}: ${esc(a.summary)}">
+        ${icon(a.icon)}<span class="label">${esc(a.label)}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
+      ${open ? `<div class="nav-children">${SHARING_PAGES.map((p) => `<button type="button" class="child" data-view="sharing" data-dssub="${p.id}"
+        ${sharingPage() === p.id ? 'aria-current="page"' : ''}><span class="label">${p.label}</span></button>`).join('')}</div>` : ''}`;
+  };
   /** Security and System open their pages below the entry while the app is open (Bild 1: Security ›, System ›). */
   const bottomItem = (id: AppId) => {
     const a = appById(id)!;
@@ -201,7 +212,7 @@ function navHtml() {
     if (title) {
       const open = !state.closedGroups.has(sec) || ids.includes(ctx.view as AppId);
       return `<button type="button" class="nav-title" data-group="${sec}" aria-expanded="${open}"><span class="label">${title}</span><span class="chev">${icon(open ? ICONS.down : ICONS.right)}</span></button>
-        ${open ? ids.map((id) => (id === 'transport' && currentChapter() >= EXCURSIONS ? transportItem() : item(id))).join('') : ''}`;
+        ${open ? ids.map((id) => (id === 'transport' && currentChapter() >= EXCURSIONS ? transportItem() : id === 'sharing' && currentChapter() >= EXCURSIONS ? sharingItem() : item(id))).join('') : ''}`;
     }
     return ids.map((id) => (sec === 'bottom' ? bottomItem(id) : item(id))).join('');
   };
@@ -214,6 +225,7 @@ function bindNav() {
     b.addEventListener('click', () => {
       if (b.dataset.view === 'builder') enterBuilder();
       if (b.dataset.tsub) transportTo(b.dataset.tsub as TransportPage);
+      if (b.dataset.dssub) sharingTo(b.dataset.dssub as SharingPage);
       if (b.dataset.view === 'catalog') catalogReset();
       if (b.dataset.view === 'business') businessReset();
       if (b.dataset.view === 'semantic') onboardingReset();
@@ -316,7 +328,7 @@ function renderView() {
     case 'capacities':
       return currentChapter() >= 9 ? renderCapacities(main) : renderAppInfo(main, a!);
     case 'ecn':
-      return currentChapter() >= 9 ? renderEcn(main) : renderAppInfo(main, a!);
+      return currentChapter() >= 9 ? renderEcnMonitor(main) : renderAppInfo(main, a!);
     case 'marketplace':
       return currentChapter() >= EXCURSIONS ? renderMarketplace(main) : renderAppInfo(main, a!);
     case 'translation':

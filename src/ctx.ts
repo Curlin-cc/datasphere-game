@@ -26,6 +26,8 @@ export const ctx = {
   track: (_event: string) => {},
   setView: (_view: ViewId) => {},
   renderView: () => {},
+  /** Redraws the side navigation (sub-pages such as Transport or Data Sharing Cockpit). */
+  refreshNav: () => {},
   renderMission: () => {},
   currentChapter: () => 0,
 };

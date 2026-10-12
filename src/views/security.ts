@@ -8,9 +8,11 @@ import {
 import { esc, spaceChip, openDialog, ask } from '../ui';
 
 /**
- * Security app (Bild 1 style, page type D): in the real tenant, Security opens sub-pages in the side navigation
- * (Users, Roles, Authorization Overview). Each page is a monitoring-style list: white head with filters, table "Name (n)"
- * with text actions on grey ground.
+ * Security app. Curlin's role sees only Activities (Bild 20/27), so Users, Roles and Authorization Overview follow SAP help
+ * ("Search, Sort and Filter in the Users/Roles Page", "View Authorizations by User, Role, or Space", "Create a User",
+ * "Create a Scoped Role"): a "Filter By" panel on the left, Search, Sort and column settings, a toolbar with + / edit / delete,
+ * and the list. Roles lists standard, predefined scoped and your scoped roles in one table; + offers Create a Custom Role
+ * (not in the game) and Create a Scoped Role.
  */
 
 export type SecurityPage = 'users' | 'roles' | 'authorization' | 'activities';
@@ -40,6 +42,22 @@ const pageHead = (title: string, lead: string, filters = '') => `
     ${filters ? `<div class="mon-filters">${filters}</div>` : ''}
   </header>`;
 
+/** Left "Filter By" panel of the Users, Roles and Authorization Overview pages (SAP help). */
+const filterBy = (groups: string) => `<aside class="filter-by" aria-label="Filter By"><h4>Filter By</h4>${groups}</aside>`;
+const fGroup = (label: string, body: string) => `<div class="fb-group"><b>${esc(label)}</b>${body}</div>`;
+/** Search, sort and column settings at the right of a list head; only Search works in the game. */
+const listTools = (id: string) => `<label class="list-search"><input type="search" id="${id}" placeholder="Search" aria-label="Search"></label>
+  <button type="button" class="text-act" disabled title="Sort: Best Match on Top">Sort</button>
+  <button type="button" class="text-act" disabled title="Show, hide and order columns">⚙</button>`;
+function bindListSearch(main: HTMLElement, id: string, table: string) {
+  main.querySelector<HTMLInputElement>(`#${id}`)?.addEventListener('input', (e) => {
+    const q = (e.target as HTMLInputElement).value.trim().toLowerCase();
+    main.querySelectorAll<HTMLTableRowElement>(`${table} tbody tr`).forEach((r) => (r.hidden = !!q && !r.textContent!.toLowerCase().includes(q)));
+  });
+}
+let roleScopeFilter: 'all' | 'global' | 'scoped' = 'all';
+let roleTypeFilter: 'all' | 'standard' | 'custom' = 'all';
+
 export function renderSecurity(main: HTMLElement) {
   main.classList.add('bleed');
   if (page === 'roles') renderRoles(main);
@@ -53,33 +71,65 @@ function renderRoles(main: HTMLElement) {
   const card = (info: RoleInfo, kind: string) => `<article class="panel role-card">
       <div class="role-kind">${kind}</div><h3>${esc(info.name)}</h3><p>${esc(info.short)}</p>
       <ul>${info.can.map((c) => `<li>${esc(c)}</li>`).join('')}</ul><p class="muted">${esc(info.cannot)}</p></article>`;
+  const usersOf = (id: string) => new Set(t.assignments.filter((a) => a.role === id && (id === GLOBAL_ADMIN || a.spaces.length)).map((a) => a.user)).size;
+  type Row = { name: string; desc: string; type: 'Standard Role' | 'Custom Role'; scope: 'Global Role' | 'Scoped Role'; users: number | ''; scopes: string; own?: ScopedRole };
+  const rows: Row[] = [
+    { name: 'System Owner', desc: 'Owns the tenant; one user, transferable', type: 'Standard Role', scope: 'Global Role', users: '', scopes: '' },
+    { name: GLOBAL_ADMIN, desc: ADMIN_INFO.short, type: 'Standard Role', scope: 'Global Role', users: usersOf(GLOBAL_ADMIN), scopes: '' },
+    ...TEMPLATE_ORDER.map((tp): Row => ({ name: TEMPLATES[tp].name, desc: `Template. ${TEMPLATES[tp].short}`, type: 'Standard Role', scope: 'Scoped Role', users: '', scopes: '' })),
+    ...TEMPLATE_ORDER.map((tp): Row => ({ name: TEMPLATES[tp].name.replace(/^DW /, 'DW Scoped '), desc: 'Predefined scoped role, not used in this tenant', type: 'Standard Role', scope: 'Scoped Role', users: 0, scopes: '0 Scopes' })),
+    ...t.roles.map((r): Row => ({ name: r.id, desc: `Based on ${TEMPLATES[r.template].name}`, type: 'Custom Role', scope: 'Scoped Role', users: usersOf(r.id), scopes: `${r.scope.length} Scope${r.scope.length === 1 ? '' : 's'}`, own: r })),
+  ];
+  const list = rows.filter((r) => (roleScopeFilter === 'all' || r.scope === (roleScopeFilter === 'global' ? 'Global Role' : 'Scoped Role'))
+    && (roleTypeFilter === 'all' || r.type === (roleTypeFilter === 'standard' ? 'Standard Role' : 'Custom Role')));
+  const radio = (name: string, value: string, label: string, cur: string) =>
+    `<label><input type="radio" name="${name}" value="${value}" ${cur === value ? 'checked' : ''}> ${esc(label)}</label>`;
   main.innerHTML = `<div class="mon-page">
-    ${pageHead('Roles', 'One global role runs the tenant; everything else is a scoped role: a template plus the spaces it applies to.')}
-    <section class="mon-body">
+    ${pageHead('Roles', 'All roles of the tenant: standard roles delivered by SAP, the predefined scoped roles, and the scoped roles you create from a template.')}
+    <section class="mon-body sec-layout">
+      ${filterBy(fGroup('Role Scope', radio('f-scope', 'all', 'All', roleScopeFilter) + radio('f-scope', 'global', 'Global Role', roleScopeFilter) + radio('f-scope', 'scoped', 'Scoped Role', roleScopeFilter))
+        + fGroup('Role Type', radio('f-type', 'all', 'All', roleTypeFilter) + radio('f-type', 'standard', 'Standard Role', roleTypeFilter) + radio('f-type', 'custom', 'Custom Role', roleTypeFilter))
+        + fGroup('License Type', '<label><input type="checkbox" checked disabled> SAP Datasphere</label>'))}
       <div class="panel mon-table">
-        <div class="mon-table-head"><h3>Scoped Roles (${t.roles.length})</h3><span class="spacer"></span>
-          <button class="text-act" type="button" id="create-role">Create scoped role</button></div>
+        <div class="mon-table-head"><h3>Roles (${list.length})</h3><span class="spacer"></span>
+          <span class="add-menu"><button class="text-act" type="button" id="add-role" aria-haspopup="menu" title="Add Role">+ ⌄</button>
+            <span class="add-menu-list" id="add-role-menu" hidden role="menu">
+              <button type="button" role="menuitem" disabled title="Custom roles with own privileges are not part of the game">Create a Custom Role</button>
+              <button type="button" role="menuitem" id="create-role">Create a Scoped Role</button></span></span>
+          ${listTools('role-search')}</div>
         <div class="table-scroll"><table class="grid" id="role-list">
-          <thead><tr><th>Role Name</th><th>Template</th><th>Scope</th><th class="num">Users</th><th></th></tr></thead>
-          <tbody>${t.roles.length ? t.roles.map((r) => `<tr>
-              <td class="mono"><b>${esc(r.id)}</b></td><td>${esc(templateLabel(r.template))}</td>
-              <td class="chips">${r.scope.map(spaceChip).join(' ') || '<span class="muted">no spaces</span>'}</td>
-              <td class="num">${new Set(t.assignments.filter((a) => a.role === r.id && a.spaces.length).map((a) => a.user)).size}</td>
-              <td class="row-actions"><button class="text-act" type="button" data-role-edit="${esc(r.id)}">Edit</button>
-                <button class="text-act" type="button" data-role-delete="${esc(r.id)}">Delete</button></td></tr>`).join('')
-            : '<tr><td colspan="5" class="muted">No scoped roles yet. Create one from a template below.</td></tr>'}</tbody>
+          <thead><tr><th>Role Name</th><th>Role Description</th><th>Role Type</th><th>Role Scope</th><th class="num">Users</th><th>Scopes</th><th></th></tr></thead>
+          <tbody>${list.length ? list.map((r) => `<tr class="${r.own ? '' : 'std-role'}">
+              <td class="${r.own ? 'mono' : ''}"><b>${esc(r.name)}</b></td><td class="job">${esc(r.desc)}</td><td>${r.type}</td><td>${r.scope}</td>
+              <td class="num">${r.users}</td>
+              <td class="chips">${r.own ? r.own.scope.map(spaceChip).join(' ') || '<span class="muted">0 Scopes</span>' : esc(r.scopes)}</td>
+              <td class="row-actions">${r.own ? `<button class="text-act" type="button" data-role-edit="${esc(r.name)}">Edit</button>
+                <button class="text-act" type="button" data-role-delete="${esc(r.name)}">Delete</button>` : ''}</td></tr>`).join('')
+            : '<tr><td colspan="7" class="muted">No roles match the filter.</td></tr>'}</tbody>
         </table></div>
+        <p class="muted mon-note">Standard roles cannot be changed or deleted; they serve as templates. A scoped role takes a template's privileges and
+          grants them in the spaces you add as scopes. DW Administrator has no access to the apps (for example the Data Builder); DW Consumer cannot log on to Datasphere.</p>
       </div>
-      <div class="panel mon-table">
-        <div class="mon-table-head"><h3>Standard Role</h3></div>
-        <div class="role-cards mon-cards">${card(ADMIN_INFO, 'Global role')}</div>
-      </div>
-      <div class="panel mon-table">
-        <div class="mon-table-head"><h3>Templates for Scoped Roles (${TEMPLATE_ORDER.length})</h3></div>
-        <div class="role-cards mon-cards" id="templates">${TEMPLATE_ORDER.map((tp) => card(TEMPLATES[tp], 'Template')).join('')}</div>
+      <div class="panel mon-table sec-wide">
+        <div class="mon-table-head"><h3>What the roles allow (game)</h3></div>
+        <div class="role-cards mon-cards" id="templates">${card(ADMIN_INFO, 'Global role')}${TEMPLATE_ORDER.map((tp) => card(TEMPLATES[tp], 'Template')).join('')}</div>
       </div>
     </section></div>`;
-  main.querySelector('#create-role')!.addEventListener('click', () => openRoleDialog());
+  const menu = main.querySelector<HTMLElement>('#add-role-menu')!;
+  main.querySelector('#add-role')!.addEventListener('click', () => (menu.hidden = !menu.hidden));
+  main.querySelector('#create-role')!.addEventListener('click', () => {
+    menu.hidden = true;
+    openRoleDialog();
+  });
+  main.querySelectorAll<HTMLInputElement>('[name="f-scope"]').forEach((r) => r.addEventListener('change', () => {
+    roleScopeFilter = r.value as typeof roleScopeFilter;
+    renderSecurity(main);
+  }));
+  main.querySelectorAll<HTMLInputElement>('[name="f-type"]').forEach((r) => r.addEventListener('change', () => {
+    roleTypeFilter = r.value as typeof roleTypeFilter;
+    renderSecurity(main);
+  }));
+  bindListSearch(main, 'role-search', '#role-list');
   main.querySelectorAll<HTMLButtonElement>('[data-role-edit]').forEach((b) =>
     b.addEventListener('click', () => openRoleDialog(t.roles.find((r) => r.id === b.dataset.roleEdit))),
   );
@@ -102,23 +152,27 @@ function renderUsers(main: HTMLElement) {
   const all = visiblePeople();
   const list = all.filter((p) => userFilter === 'all' || (userFilter === 'none') !== hasRoles(p.id));
   main.innerHTML = `<div class="mon-page">
-    ${pageHead('Users', 'Everyone who can log on to the tenant. A user without a role sees nothing.',
-      `<label>Roles <select id="user-filter">${(['all', 'none', 'some'] as const).map((f) => `<option value="${f}" ${userFilter === f ? 'selected' : ''}>${f === 'all' ? 'All' : f === 'none' ? 'Without roles' : 'With roles'}</option>`).join('')}</select></label>
-       <label>Identity Provider <select disabled><option>SAP Cloud Identity Services</option></select></label>`)}
-    <section class="mon-body">
+    ${pageHead('Users', 'Everyone who can log on to the tenant. A user without a role sees nothing. Users come from the identity provider (SAP Cloud Identity Services).')}
+    <section class="mon-body sec-layout">
+      ${filterBy(fGroup('Role Name', `<select id="user-filter" aria-label="Role Name">${(['all', 'none', 'some'] as const).map((f) => `<option value="${f}" ${userFilter === f ? 'selected' : ''}>${f === 'all' ? 'All' : f === 'none' ? 'Without roles' : 'With roles'}</option>`).join('')}</select>`)
+        + fGroup('User Status', '<label><input type="checkbox" checked disabled> Activated</label>')
+        + fGroup('License Type', '<label><input type="checkbox" checked disabled> SAP Datasphere</label>'))}
       <div class="panel mon-table">
         <div class="mon-table-head"><h3>Users (${list.length})</h3><span class="spacer"></span>
-          <button type="button" class="text-act" disabled title="New people join through the tickets">New</button>
-          <button type="button" class="text-act" disabled>Delete</button></div>
+          <button type="button" class="text-act" disabled title="Create User (User Information, Role Assignment): new people join through the tickets">+</button>
+          <button type="button" class="text-act" disabled title="Delete">Delete</button>
+          <button type="button" class="text-act" disabled title="Export users to a CSV file">Export</button>
+          ${listTools('user-search')}</div>
         <div class="table-scroll"><table class="grid" id="user-list">
-          <thead><tr><th>User Name</th><th>Display Name</th><th>What They Do</th><th>Roles</th><th></th></tr></thead>
+          <thead><tr><th>User ID</th><th>Display Name</th><th>Email</th><th>Roles</th><th>What They Do (game)</th><th></th></tr></thead>
           <tbody>${list.length ? list.map((p) => `<tr>
               <td class="mono">${esc(p.id.toUpperCase())}</td>
               <td><div class="person"><span class="avatar" aria-hidden="true">${esc(p.initials)}</span><div><b>${esc(p.name)}</b><span>${esc(p.title)}</span></div></div></td>
-              <td class="job">${esc(p.job)}</td>
+              <td class="muted">${esc(p.id)}@stadtwerke-rheinau.example</td>
               <td class="chips">${userRolesHtml(p.id)}</td>
-              <td class="row-actions"><button class="text-act" type="button" data-user="${esc(p.id)}">Edit roles</button></td>
-            </tr>`).join('') : '<tr><td colspan="5" class="muted">No users match the filter.</td></tr>'}</tbody>
+              <td class="job">${esc(p.job)}</td>
+              <td class="row-actions"><button class="text-act" type="button" data-user="${esc(p.id)}" title="Edit: Role Assignment">Edit roles</button></td>
+            </tr>`).join('') : '<tr><td colspan="6" class="muted">No users match the filter.</td></tr>'}</tbody>
         </table></div>
       </div>
     </section></div>`;
@@ -127,6 +181,7 @@ function renderUsers(main: HTMLElement) {
     renderSecurity(main);
   });
   main.querySelectorAll<HTMLButtonElement>('[data-user]').forEach((b) => b.addEventListener('click', () => openUserDialog(b.dataset.user!)));
+  bindListSearch(main, 'user-search', '#user-list');
 }
 
 /** Authorization Overview: one row per user, space and template, i.e. what a user may really do where. */
@@ -148,15 +203,16 @@ function renderAuthorization(main: HTMLElement) {
   }
   const list = rows.filter((r) => (authUser === 'all' || r.user === authUser) && (authSpace === 'all' || r.space === authSpace || r.space === '*'));
   main.innerHTML = `<div class="mon-page">
-    ${pageHead('Authorization Overview', 'What each user may do in which space, resolved from scoped roles and their assignments. Rows of data are not covered here: those are data access controls.',
-      `<label>User <select id="auth-user"><option value="all">All</option>${people.map((p) => `<option value="${esc(p.id)}" ${authUser === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-       <label>Space <select id="auth-space"><option value="all">All</option>${t.spaces.map((s) => `<option value="${esc(s.id)}" ${authSpace === s.id ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}</select></label>`)}
-    <section class="mon-body">
+    ${pageHead('Authorization Overview', 'Which users have which roles in which spaces, and which users have global roles. Rows of data are not covered here: those are data access controls.')}
+    <section class="mon-body sec-layout">
+      ${filterBy(fGroup('User Name', `<select id="auth-user" aria-label="User Name"><option value="all">All</option>${people.map((p) => `<option value="${esc(p.id)}" ${authUser === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>`)
+        + fGroup('Scope Name', `<select id="auth-space" aria-label="Scope Name"><option value="all">All</option>${t.spaces.map((s) => `<option value="${esc(s.id)}" ${authSpace === s.id ? 'selected' : ''}>${esc(s.id)}</option>`).join('')}</select>`)
+        + fGroup('Role Name', '<select disabled><option>All</option></select>'))}
       <div class="panel mon-table">
         <div class="mon-table-head"><h3>Authorizations (${list.length})</h3><span class="spacer"></span>
-          <button type="button" class="text-act" id="auth-refresh">Refresh</button></div>
+          <button type="button" class="text-act" id="auth-refresh">Refresh</button>${listTools('auth-search')}</div>
         <div class="table-scroll"><table class="grid" id="auth-list">
-          <thead><tr><th>User</th><th>Role</th><th>Template</th><th>Space</th><th>May</th></tr></thead>
+          <thead><tr><th>User Name</th><th>Role Name</th><th>Template</th><th>Scope Name</th><th>May</th></tr></thead>
           <tbody>${list.length ? list.map((r) => `<tr>
               <td><b>${esc(r.name)}</b> <span class="mono muted">${esc(r.user.toUpperCase())}</span></td>
               <td class="mono">${esc(r.role)}</td><td>${esc(r.template)}</td>
@@ -176,6 +232,7 @@ function renderAuthorization(main: HTMLElement) {
     renderSecurity(main);
   });
   main.querySelector('#auth-refresh')!.addEventListener('click', () => renderSecurity(main));
+  bindListSearch(main, 'auth-search', '#auth-list');
 }
 
 /** Which recorded events count as activities, and how the log names them (object type, activity). */
@@ -252,7 +309,7 @@ function userRolesHtml(user: string) {
 function openRoleDialog(existing?: ScopedRole) {
   const t = ctx.tenant();
   const v = existing ?? { id: '', template: 'MODELER' as Template, scope: [] as string[] };
-  const { form, close } = openDialog(existing ? `Edit role ${existing.id}` : 'Create scoped role', `
+  const { form, close } = openDialog(existing ? `Edit role ${existing.id}` : 'Create a Scoped Role', `
     <p class="guide-lead">A scoped role is a template plus a scope. When you assign it to a user, you pick for which of these spaces.</p>
     <div class="form-grid">
       <label>Role name <small>e.g. RHN_MODELER</small><input name="id" maxlength="30" value="${esc(v.id)}" ${existing ? 'readonly' : ''} autocomplete="off" spellcheck="false"></label>

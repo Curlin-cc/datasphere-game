@@ -21,6 +21,8 @@ export interface EcnRun {
 
 export interface Ecn {
   name: string;
+  /** Business name (SAP help: up to 30 characters); older saves have none. */
+  businessName?: string;
   perf: PerfClass;
   blocks: number;
   /** Spaces whose persisted views and local tables the node serves while it runs. */
@@ -236,10 +238,14 @@ export const LANGS: { code: string; label: string }[] = [
 /** Objects that carry texts for business users: views and analytic models. */
 export const translatable = (o: RepoObject) => o.kind === 'SQL View' || o.kind === 'Analytic Model';
 
-export function translationStatus(o: RepoObject, list: Translation[] | undefined): 'Not Added' | 'Not Translated' | 'Translated' | 'Outdated' {
+/**
+ * Status as in SAP help ("Translating Metadata for SAP Analytics Cloud"): Translated when every target language has a current string,
+ * Partially Translated when some have, Not Translated when none has. A string made for an older business name is expired and counts as missing.
+ */
+export function translationStatus(o: RepoObject, list: Translation[] | undefined): 'Not Added' | 'Not Translated' | 'Partially Translated' | 'Translated' {
   if (!list) return 'Not Added';
-  if (!list.length) return 'Not Translated';
-  return list.some((x) => x.source !== o.businessName) ? 'Outdated' : 'Translated';
+  const current = LANGS.filter((g) => list.some((x) => x.lang === g.code && x.source === o.businessName && x.businessName)).length;
+  return current === LANGS.length ? 'Translated' : current ? 'Partially Translated' : 'Not Translated';
 }
 
 export function licenseKey(seed: string) {
@@ -269,7 +275,7 @@ export function sanitizeExtras(d: unknown, ids: Set<string>): ExtrasState {
   const spaces = (v: unknown) => (Array.isArray(v) ? v.map(String).filter((s) => ids.has(s)) : []);
   const keys = (v: unknown) => (Array.isArray(v) ? v.map(String).filter((k) => ids.has(k.split('.')[0])).slice(0, 50) : []);
   x.ecns = (Array.isArray(e.ecns) ? e.ecns : []).filter((n) => n && typeof n.name === 'string').slice(0, 10).map((n) => ({
-    name: str(n.name, 30), perf: (['Memory', 'Compute', 'High Compute'] as PerfClass[]).includes(n.perf) ? n.perf : 'Memory',
+    name: str(n.name, 30), ...(n.businessName ? { businessName: str(n.businessName, 30) } : {}), perf: (['Memory', 'Compute', 'High Compute'] as PerfClass[]).includes(n.perf) ? n.perf : 'Memory',
     blocks: Math.min(32, Math.max(1, Math.round(Number(n.blocks) || 4))), spaces: spaces(n.spaces),
     runs: (Array.isArray(n.runs) ? n.runs : []).slice(0, 30).map((r) => ({
       start: str(r?.start, 40), ...(r?.end ? { end: str(r.end, 40) } : {}), ...(Number(r?.blockHours) > 0 ? { blockHours: Number(r.blockHours) } : {}),

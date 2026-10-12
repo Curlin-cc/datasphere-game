@@ -141,7 +141,13 @@ export function renderTransformEditor(main: HTMLElement, o: RepoObject | null, n
         <input class="mono" id="tf-target" list="tf-target-list" value="${esc(def.target)}" ${readOnly ? 'readonly' : ''} spellcheck="false" autocomplete="off">
         <datalist id="tf-target-list">${tables.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       ${target && target.kind !== 'Local Table' ? `<p class="tf-warn">${esc(target.kind)}: not a valid target.</p>` : ''}
-      <dl class="kv"><dt>Delete All Before Loading</dt><dd>${def.loadType === 'Initial Only' ? 'Yes: each run empties the target, then loads' : 'No: a target with Delta Capture cannot be emptied before loading'}</dd></dl>
+      <h4 class="props-sec">General</h4>
+      <dl class="props-list"><dt>Status</dt><dd>${target?.deployed ? 'Deployed' : def.target ? 'New (created on the first run)' : '—'}</dd>
+        <dt>Delete All Before Loading</dt><dd>${def.loadType === 'Initial Only' ? 'Yes: each run empties the target, then loads' : 'No: a target with Delta Capture cannot be emptied before loading'}</dd>
+        <dt>Delta Capture</dt><dd>${target?.table?.deltaCapture ? 'On' : 'Off'}</dd>
+        ${target?.table?.deltaCapture ? `<dt>Delta Capture Table Name</dt><dd class="mono">${esc(target.name)}_Delta</dd>` : ''}
+        <dt>Storage</dt><dd>Disk</dd></dl>
+      ${target?.table ? `<h4 class="props-sec">Columns (${target.table.columns.length})</h4><p class="muted">${target.table.columns.map((c) => `<code>${esc(c.name)}</code>`).join(' ')}</p>` : ''}
       <p class="muted">Columns are mapped by name. With Initial and Delta, the target needs the key of the delta source.</p>`;
   }
 

@@ -106,7 +106,7 @@ export const CHAPTER_2: Mission[] = [
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 5, text: 'Security > Roles. Create scoped role asks for a name, a template and the spaces of the scope.' },
+      { label: 'Hint 1: where to look', cost: 5, text: 'Security > Roles. + › Create a Scoped Role asks for a name, a template and the spaces of the scope.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Five templates, five roles. Data lands in RHN_IN, reports come from RHN_REP, Calin runs RHN_HARM and RHN_REP.' },
       { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_SPACE_ADMIN: HARM + REP · RHN_INTEGRATOR: IN · RHN_MODELER: all three · RHN_VIEWER: __ · RHN_CONSUMER: __' },
     ],
