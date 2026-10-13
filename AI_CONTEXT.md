@@ -142,8 +142,8 @@ Die Oberfläche folgt seit 09.10.2026 dem Aufbau von SAP Datasphere: Seitennavig
 zeigen eine Infoseite, was sie tun), Data Builder mit Space-Auswahl, Startseite mit „New“-Kacheln und Objektliste, Editoren mit
 Properties-Panel, Save/Deploy/Share/Data Preview; Repository Explorer; Space Management als Kacheln; Security.
 
-Spielbar (64 Missionen, Hauptspiel und Exkurse komplett):
-- Kapitel 0 „Find your way“ (ohne SQL): Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
+Spielbar (65 Missionen, Hauptspiel und Exkurse komplett):
+- Kapitel 0 „Find your way“ (ohne SQL): **c00-m00 „The grand tour“** (seit 13.10.2026 erste Mission: Hands-on-Tour durch Banner, Shellbar, Glossar, How to play, Benutzermenü/Settings und alle 20 Apps der Navigation in echter Reihenfolge, je mit *was / warum / wann bei Rheinau*; Data Builder von innen mit Space, Reitern, Kacheln, Import-Menü, Editor, Data Preview), dann Apps kennenlernen, Space wählen, Repository Explorer, Save vs. Deploy
 - Kapitel 1 Space Concept, Kapitel 2 Users & Roles
 - Kapitel 3 Data Integration (alles in `RHN_ENTRY`): Connections, Cloud Connector + Zertifikat, Remote vs. Snapshot, Replication Flows (Delta, Truncate, Projektion), gesperrter Space;
   **c03-m07 Import Entities**: Semantic Onboarding › SAP S/4HANA Cloud › Assistent, `RHN_S4U`, Data Access *Replication Flow to Local Tables*,
@@ -187,6 +187,10 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
+00. **Grand Tour c00-m00** (13.10.2026, Wunsch von Curlin: „am Anfang alles einmal durchklicken und erklären“): Inhalte in `guided.ts`
+   (`visit`/`look`/`tryIt`), App-Liste `TOUR_APPS` in `c00.ts`. **Neue App in der Navigation → auch einen `visit`-Schritt in die Tour
+   und die App in `TOUR_APPS`.** Tour-Schritte mit `action.stay` warten nach dem Klick auf *Next* (Engine `src/tutorial.ts`).
+   Alte Spielstände bekommen c00-m00 automatisch als gelöst (`sanitize` in `progress.ts`), die Sandbox ebenso.
 0. **Layer-Umbau vom 13.10.2026** (Entry / Data & Semantic / Presentation, Import Entities c03-m07) ist gebaut. Offene Abgleichfragen zum
    Projekt (Namen, wo DACs liegen, Modelle auf geteilten Facts, Import-Namen) stehen in `docs/FRAGEN_AN_CURLIN.md`; Antworten einarbeiten.
    Neue Objekte immer nach der Regel einordnen: bringt Daten herein → `RHN_ENTRY`; säubert oder gibt Bedeutung (inkl. DACs) → `RHN_DSL`;

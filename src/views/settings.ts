@@ -112,6 +112,7 @@ export function openSettings() {
     form.querySelectorAll<HTMLButtonElement>('[data-set]').forEach((b) =>
       b.addEventListener('click', () => {
         section = b.dataset.set as Section;
+        ctx.track(`settings:${section}`);
         draw();
       }),
     );
@@ -132,6 +133,7 @@ export function openSettings() {
     );
   };
   form.addEventListener('submit', (e) => e.preventDefault());
+  ctx.track('settings:open');
   draw();
 }
 
@@ -155,6 +157,7 @@ export function openUserMenu(anchor: HTMLElement) {
     <button type="button" role="menuitem" data-um="about">About</button>
     <button type="button" role="menuitem" disabled title="Not in this game">Sign Out</button>`;
   document.body.append(menu);
+  ctx.track('user-menu');
   const r = anchor.getBoundingClientRect();
   menu.style.top = `${r.bottom + 6}px`;
   menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
@@ -173,6 +176,7 @@ export function openUserMenu(anchor: HTMLElement) {
   });
   menu.querySelector('[data-um="about"]')!.addEventListener('click', () => {
     close();
+    ctx.track('about');
     openAbout();
   });
 }

@@ -496,6 +496,7 @@ function guideList() {
 
 function openGuide() {
   document.querySelector('.guide-overlay')?.remove();
+  ctx.track('guide');
   const overlay = document.createElement('div');
   overlay.className = 'guide-overlay';
   overlay.innerHTML = `

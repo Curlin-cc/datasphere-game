@@ -24,14 +24,69 @@ function did(event: string, message: string) {
   return ({ events }: RuleContext) => (events.has(event) ? null : message);
 }
 
+/** Every app of the side navigation, in its real order: the grand tour (c00-m00) opens each of them once. */
+export const TOUR_APPS = ['home', 'repository', 'sysmonitor', 'capacities', 'tasklogs', 'statements', 'ecn', 'monitor', 'catalog', 'marketplace',
+  'semantic', 'business', 'builder', 'connections', 'spaces', 'translation', 'transport', 'sharing', 'security', 'system'];
+
+const TOUR_JOBS = ['Capacities', 'Transport', 'Translation', 'Business Builder', 'Settings (user menu)', 'Expensive Statement Logs'];
+const job = (label: string) => TOUR_JOBS.indexOf(label);
+
 export const CHAPTER_0: Mission[] = [
+  {
+    id: 'c00-m00',
+    chapter: 0,
+    title: 'The grand tour',
+    from: CALIN,
+    ticket: `<p>Welcome to Stadtwerke Rheinau! I am Calin, your mentor. Before you touch anything, I walk you through the
+      <b>whole</b> tenant once: every part of the screen and every app in the side navigation, top to bottom.</p>
+      <p>For each one you learn what it does, why it exists, and when you will need it in our project. You click everything yourself;
+      the tutorial waits for you. Most apps are still locked and show an info page: that is fine, today you only look.</p>`,
+    tasks: [
+      '<b>The frame:</b> tenant banner, shellbar, your XP, glossary, How to play and the user menu with Settings.',
+      '<b>Home</b> and the <b>Repository Explorer</b>.',
+      '<b>Monitoring:</b> System and Spaces, Capacities, Task Logs, Expensive Statement Logs, Elastic Compute Nodes, Data Integration.',
+      '<b>Catalog &amp; Marketplace:</b> Search and Marketplace Data Products.',
+      '<b>Apps:</b> Semantic Onboarding, Business Builder, the <b>Data Builder</b> from the inside, Connections.',
+      '<b>Utilities:</b> Space Management, Translation, Transport, Data Sharing Cockpit.',
+      '<b>Security</b> and <b>System</b> at the bottom.',
+      'Answer the questions below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 0, text: 'Press Show tutorial in the mission panel: it walks you through everything, one click at a time.' },
+      { label: 'Hint 2: the concept', cost: 0, text: 'Every app sits in the side navigation. Monitoring and Catalog & Marketplace open a list; Apps and Utilities are groups; Security and System sit at the bottom.' },
+      { label: 'Hint 3: a skeleton', cost: 0, text: 'Costs → Capacities · moving to production → Transport · other languages → Translation · deprecated → Business Builder · technical names → Settings · slow statements → Expensive Statement Logs.' },
+    ],
+    checks: [
+      {
+        type: 'rule', label: 'Every app opened', ok: 'You opened all twenty apps of the side navigation.',
+        test: ({ events }) => {
+          const missing = TOUR_APPS.filter((a) => !events.has(`app:${a}`));
+          return missing.length ? `Still to open: ${missing.map((a) => appById(a)!.label).join(', ')}. Show tutorial walks you there.` : null;
+        },
+      },
+      { type: 'rule', label: 'Glossary', ok: 'You found the glossary.', test: did('app:glossary', 'Open the glossary: the book icon in the shellbar.') },
+      { type: 'rule', label: 'Settings', ok: 'You opened Settings from the user menu.', test: did('settings:open', 'Open Settings: click the avatar DA at the top right, then Settings.') },
+      { type: 'rule', label: 'Inside the Data Builder', ok: 'You opened a table and looked at its data.', test: did('preview:RHN_ENTRY.BILLING_CONTRACTS', 'In the Data Builder, open BILLING_CONTRACTS in RHN_ENTRY and press Data Preview.') },
+      { type: 'question', id: 'cost', label: 'The bill', prompt: 'Finance asks how many capacity units the tenant used this month. Where do you look?', options: TOUR_JOBS, answer: job('Capacities'), nudge: 'Not quite. Which Monitoring entry shows capacity units per month?' },
+      { type: 'question', id: 'prod', label: 'To production', prompt: 'The finished CFO model must go from the development tenant to production. Which app moves it?', options: TOUR_JOBS, answer: job('Transport'), nudge: 'Not quite. Which utility bundles objects into packages and exports them to other tenants?' },
+      { type: 'question', id: 'lang', label: 'French users', prompt: 'The French subsidiary wants French business names in SAP Analytics Cloud. Where?', options: TOUR_JOBS, answer: job('Translation'), nudge: 'Not quite. Which utility handles business names in other languages?' },
+      { type: 'question', id: 'old', label: 'Old models', prompt: 'Where should you no longer build new models, because the app is deprecated?', options: TOUR_JOBS, answer: job('Business Builder'), nudge: 'Not quite. Which app did the tour call the older business layer?' },
+      { type: 'question', id: 'names', label: 'Technical names', prompt: 'You want every list to show technical names instead of business names. Where do you switch?', options: TOUR_JOBS, answer: job('Settings (user menu)'), nudge: 'Not quite. It is a personal setting, behind your avatar.' },
+    ],
+    xp: 30,
+    realTenant: `A real tenant has the same frame: banner with the tenant name, shellbar, side navigation. You only see the apps your roles
+      allow, so a modeler's navigation is shorter than an administrator's. SAP adds and moves apps a few times a year.`,
+    debrief: `<p>That was everything. You will not remember every app today, and you do not have to: the Home page has the map,
+      and every app explains itself until you unlock it.</p>
+      <p>Next: I give you five everyday jobs. Show me you know which app does them.</p>`,
+  },
   {
     id: 'c00-m01',
     chapter: 0,
     title: 'Find your way',
     from: CALIN,
-    ticket: `<p>Welcome to Stadtwerke Rheinau! Before you build anything, get to know the tenant. In SAP Datasphere, every job has its own app,
-      and they all sit in the side navigation on the left.</p>
+    ticket: `<p>The tour showed you every app. Now the six you will use most, once more and on your own: in SAP Datasphere every job
+      has its own app, and a data architect must know without thinking where to go.</p>
       <p>Open each of these apps once and read what it is for: <b>Repository Explorer</b>, <b>Data Builder</b>, <b>Data Integration Monitor</b>,
       <b>Connections</b>, <b>Space Management</b> and <b>Security</b>. Then tell me where you would go for the jobs below.</p>`,
     tasks: [
@@ -77,7 +132,12 @@ export const CHAPTER_0: Mission[] = [
       { label: 'Hint 3: a skeleton', cost: 20, text: 'Data Builder → RHN_ENTRY → BILLING_CONTRACTS → Data Preview. Count the rows of the column list.' },
     ],
     checks: [
-      { type: 'rule', label: 'Space selected', ok: 'You picked RHN_ENTRY.', test: did('space:builder:RHN_ENTRY', 'Open the Data Builder from the side navigation and select the space RHN_ENTRY.') },
+      {
+        type: 'rule', label: 'Space selected', ok: 'You picked RHN_ENTRY.',
+        // After the grand tour the Data Builder may still have RHN_ENTRY selected: opening an object there counts too.
+        test: ({ events }) => (events.has('space:builder:RHN_ENTRY') || [...events].some((e) => e.startsWith('open:RHN_ENTRY.'))
+          ? null : 'Open the Data Builder from the side navigation and select the space RHN_ENTRY.'),
+      },
       { type: 'rule', label: 'Table opened', ok: 'You opened BILLING_CONTRACTS.', test: did('open:RHN_ENTRY.BILLING_CONTRACTS', 'Open BILLING_CONTRACTS from the object list of RHN_ENTRY.') },
       { type: 'rule', label: 'Data previewed', ok: 'You looked at real rows.', test: did('preview:RHN_ENTRY.BILLING_CONTRACTS', 'In the editor of BILLING_CONTRACTS, press Data Preview.') },
       { type: 'question', id: 'cols', label: 'Columns', prompt: 'How many columns does BILLING_CONTRACTS have?', options: ['5', '7', '9', '12'], answer: 1, nudge: 'Not quite. Count the rows in the column list of the editor.' },

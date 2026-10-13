@@ -49,9 +49,9 @@ with sync_playwright() as p:
     g = Game(p, S)
     pg = g.pg
 
-    # ---------------- c00-m01: intro (5 passive steps), then six apps by clicking the navigation
-    g.start(save_before(0, 'c00-m01', xp=0))
-    expect(pg, 'Welcome to the training tenant'); nexts(pg, 5)
+    # ---------------- c00-m01 (after the grand tour, played in tour.py): intro (2 passive steps), then six apps by clicking
+    g.start(save_before(0, 'c00-m01', xp=0) | {"missions": {'c00-m00': {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 30, "events": []}}})
+    expect(pg, 'Now on your own'); nexts(pg, 2)
     for app, label in [('repository', 'Repository Explorer'), ('builder', 'Data Builder'), ('monitor', 'Data Integration Monitor'),
                        ('connections', 'Connections'), ('spaces', 'Space Management'), ('security', 'Security')]:
         expect(pg, f'Open {label}')

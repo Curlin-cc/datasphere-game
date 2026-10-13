@@ -1,13 +1,17 @@
-"""Chapter 0 (Find your way): fresh save, navigation, space picker, repository explorer, save vs deploy."""
+"""Chapter 0 (Find your way): fresh save, the grand tour played by clicking, navigation, space picker, repository explorer, save vs deploy."""
 import sys
 from playwright.sync_api import sync_playwright
 from common import Game
+from tour import play_grand_tour
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
 with sync_playwright() as p:
     g = Game(p, S)
     g.start()
-    g.walk_tutorial()
+    # m00: the grand tour, every step clicked like a player; the tutorial ends with Check my solution
+    play_grand_tour(g, shots=False)
+    g.check('m00 grand tour', show_ok=False)
+    g.next_mission()
     # m01: questions first, without visiting apps
     for q, v in [('space', 1), ('view', 0), ('load', 2), ('role', 3), ('source', 0)]: g.answer(q, v)
     g.check('m01 nothing visited, one wrong')
@@ -19,7 +23,9 @@ with sync_playwright() as p:
     g.next_mission()
     # m02
     g.nav('builder')
-    g.pg.click('[data-space="RHN_ENTRY"]'); g.pg.wait_for_selector('#object-list')
+    if g.pg.locator('[data-space="RHN_ENTRY"]').count():  # after the tour the space can still be selected
+        g.pg.click('[data-space="RHN_ENTRY"]')
+    g.pg.wait_for_selector('#object-list')
     g.shot('c0-landing')
     g.pg.click('#new-tiles [data-new="replication"]'); g.pg.wait_for_selector('.dialog'); print('   TILE INFO:', g.pg.inner_text('.dialog p.muted')); g.pg.click('.dialog [type=submit]')
     g.pg.click('[data-open="RHN_ENTRY.BILLING_CONTRACTS"]'); g.pg.wait_for_selector('#column-list')

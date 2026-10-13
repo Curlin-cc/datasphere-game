@@ -281,16 +281,70 @@ const assignDac = (view: string, intro: string): TourStep[] => [
   deployStep(view, `<p>Until you deploy, everyone still sees every row: the control is only in the saved design.</p>`),
 ];
 
+// ---------------------------------------------------------------- grand tour (c00-m00)
+
+/** Where an app sits in the side navigation, for the grand tour: the group to open first, if any. */
+const TOUR_GROUP: Record<string, [string, string]> = {
+  sysmonitor: ['monitoring', 'Monitoring'], capacities: ['monitoring', 'Monitoring'], tasklogs: ['monitoring', 'Monitoring'],
+  statements: ['monitoring', 'Monitoring'], ecn: ['monitoring', 'Monitoring'], monitor: ['monitoring', 'Monitoring'],
+  catalog: ['catalog', 'Catalog &amp; Marketplace'], marketplace: ['catalog', 'Catalog &amp; Marketplace'],
+  semantic: ['apps', 'Apps'], business: ['apps', 'Apps'], builder: ['apps', 'Apps'], connections: ['apps', 'Apps'],
+  spaces: ['utilities', 'Utilities'], translation: ['utilities', 'Utilities'], transport: ['utilities', 'Utilities'], sharing: ['utilities', 'Utilities'],
+};
+
+/**
+ * One app of the grand tour: the player opens it, the page appears next to the card, and the card stays until Next,
+ * so what it does, why it exists and when we need it can be read with the page in view.
+ */
+const visit = (id: string, label: string, what: string, why: string, when: string): TourStep => {
+  const g = TOUR_GROUP[id];
+  return {
+    title: label,
+    target: g ? `.nav [data-view="${id}"] || .nav [data-group="${g[0]}"]` : `.nav [data-view="${id}"]`,
+    body: `<p>${what}</p><p><b>Why it exists:</b> ${why}</p><p><b>At Stadtwerke Rheinau:</b> ${when}</p>`,
+    action: {
+      do: g
+        ? `Click <b>${label}</b> in the side navigation. If you cannot see it, open <b>${g[1]}</b> first.`
+        : `Click <b>${label}</b> in the side navigation.`,
+      check: () => appOpen(id),
+      stay: true,
+    },
+  };
+};
+
+/** A passive step of the grand tour that points at something on the screen. */
+const look = (title: string, target: string, body: string): TourStep => ({ title, target, body });
+
+/** A hands-on step of the grand tour that waits for Next after it is done. */
+const tryIt = (title: string, target: string, body: string, action: Omit<NonNullable<TourStep['action']>, 'stay'>): TourStep =>
+  ({ title, target, body, action: { ...action, stay: true } });
+
 // ---------------------------------------------------------------- intros
 
 export const GUIDED_INTROS: Record<string, TourStep[]> = {
-  'c00-m01': [
+  'c00-m00': [
     {
       title: 'Welcome to the training tenant',
       body: `<p>This game works like <b>SAP Datasphere</b>: the same apps, the same names, the same way of working. You learn where things are
         and what they are for, then you build a small data warehouse for Stadtwerke Rheinau.</p>
         <p>Every mission starts with a tutorial like this one. It shows you each step, and in steps marked <b>Your turn</b>
         you do it yourself; the tutorial waits and goes on by itself. You start with <b>0 XP</b>.</p>`,
+    },
+    {
+      title: 'Why a grand tour',
+      body: `<p>SAP Datasphere has about twenty apps. In a project you use six of them every day and the rest a few times a year,
+        but you must know that they exist, or you rebuild by hand what an app already does.</p>
+        <p>So before the first real ticket you click through <b>everything</b> once, from the top of the screen to the bottom of the side navigation.
+        For each app the card says what it does, why it exists and when you need it at Stadtwerke Rheinau.</p>
+        <p>It takes about fifteen minutes. You can leave with <b>Skip tutorial</b> and come back with <b>Show tutorial</b>; the <b>Show me</b>
+        button next to each task replays just that part.</p>`,
+    },
+    {
+      title: 'The project in one picture',
+      body: `<p>The board wants one trusted view of revenue, consumption and receivables per grid area. You build it in three layers:</p>
+        ${layerStack(['en', 'ds', 'pr'])}
+        <p>Keep the picture in mind during the tour: most apps either bring data <b>in</b> (bottom), shape it in the <b>middle</b>,
+        hand it <b>out</b> to consumers (top), or run the tenant around all three.</p>`,
     },
     {
       title: 'The ticket',
@@ -308,13 +362,18 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       target: '#hints',
       body: `<p>Below are hints in three levels. In the first chapters they are free; later you buy them with XP.</p>`,
     },
+  ],
+  'c00-m01': [
+    {
+      title: 'Now on your own',
+      body: `<p>The tour showed you every app. This mission asks for the six you will use most: open them once more yourself
+        and answer five everyday questions. The tutorial still points at each one, but the answers are yours.</p>`,
+    },
     {
       title: 'The side navigation',
       target: '.nav',
-      body: `<p>On the left are the <b>apps</b>, in the same order as in a real tenant. <b>Monitoring</b> and <b>Catalog &amp; Marketplace</b>
-        open a list when you click them. Under <b>Apps</b> you model and integrate data, under <b>Utilities</b> you run spaces, translation and transport.
-        <b>Security</b> and <b>System</b> sit at the bottom.</p>
-        <p>Some apps only show an info page in this game for now (an <b>ⓘ</b> appears when you point at them). The <b>☰</b> button folds the navigation to icons.</p>`,
+      body: `<p>Remember the order: <b>Monitoring</b> and <b>Catalog &amp; Marketplace</b> open a list, under <b>Apps</b> you model and integrate,
+        under <b>Utilities</b> you run spaces, translation and transport, and <b>Security</b> and <b>System</b> sit at the bottom.</p>`,
     },
   ],
   'c00-m02': [
@@ -958,6 +1017,216 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
 
 export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 0
+  'c00-m00': [
+    // ---------------------------------------------------------------- task 1: the frame
+    [
+      look('The tenant banner', '#tenant-banner', `<p>The coloured band at the very top names the <b>tenant</b>: one SAP Datasphere system with its own
+        database, users and spaces. Companies usually have several, for example development, test and production.</p>
+        <p>Always glance at it before you change something: deploying in production by mistake is a classic.</p>`),
+      look('The shellbar', '#shell-app', `<p>Below the banner is the <b>shellbar</b>. On the left it names the app you are in, and in an editor
+        also the space or object (the <i>breadcrumb</i>). It is the quickest answer to "where am I?".</p>`),
+      tryIt('Fold the navigation', '#nav-toggle', `<p>The <b>☰</b> button folds the side navigation down to icons. Useful in big editors,
+        where every pixel of width counts.</p>`, { do: 'Click <b>☰</b>.', check: () => !!$('.app.nav-collapsed') }),
+      tryIt('And unfold it', '#nav-toggle', `<p>Folded, the navigation shows only icons; pointing at one shows its name.
+        Clicking a group such as Monitoring unfolds it again, too.</p>`, { do: 'Click <b>☰</b> again.', check: () => !$('.app.nav-collapsed') }),
+      look('Back', '#shell-back', `<p>The arrow goes back one place, like the back button of a browser: from an editor to the object list,
+        from a sub-page to the page before. You will use it all the time once you work in editors.</p>`),
+      look('Logo and app grid', '#brand-home', `<p>The logo takes you to <b>Home</b>, from anywhere. The grid icon at the far right does the same.
+        In a real tenant the SAP logo sits here; in this game it is <b>MSC</b>.</p>`),
+      look('Your rank and XP', '#rank', `<p>Only in the game: your rank and your <b>XP</b>. You earn XP by solving missions;
+        later, hints cost XP. Four ranks, from Junior Data Architect to Lead Data Architect.</p>`),
+      tryIt('The glossary', '#glossary-open', `<p>The book icon opens the <b>glossary</b>: every Datasphere term the game uses, grouped by chapter,
+        with where to find it in a real tenant. New terms appear as you reach their chapter.</p>`, { do: 'Click the <b>book</b> icon.', event: 'app:glossary' }),
+      tryIt('How to play', '#guide-open', `<p>The question mark explains the rules of the game in four steps: ticket, tenant, hints, check.</p>`,
+        { do: 'Click the <b>?</b> icon.', event: 'guide' }),
+      {
+        title: 'How to play',
+        target: '.guide-overlay .guide',
+        body: `<p>Read it once. In a real tenant this icon opens SAP's help for the page you are on.</p>`,
+        action: { do: 'Read it, then press <b>Close</b>.', check: () => !$('.guide-overlay') },
+      },
+      {
+        title: 'The user menu',
+        target: '#shell-user',
+        body: `<p>The circle with your initials is the <b>user menu</b>: Settings, About, Sign Out. Personal settings live here, not in System.</p>`,
+        action: { do: 'Click the avatar <b>DA</b>.', appear: '.user-menu' },
+      },
+      {
+        title: 'Settings',
+        target: '.user-menu',
+        body: `<p><b>About</b> shows the tenant and its version, <b>Sign Out</b> ends the session. We want Settings.</p>`,
+        action: { do: 'Click <b>Settings</b>.', event: 'settings:open' },
+      },
+      tryIt('Your settings', '.dialog', `<p>On the left the areas, on the right the chosen one. Two of them change the game:</p>
+        <ul><li><b>Appearance</b>: light or dark theme.</li>
+        <li><b>UI Settings</b>: show <b>business names</b> (for people) or <b>technical names</b> (what SQL uses) in every list.
+        Modelers often switch to technical names.</li></ul>
+        <p>The others (User Account, Home Screen, Language &amp; Region, Notifications, Privacy, Authorized Consent Settings) explain what a real tenant offers.</p>`,
+        { do: 'Click <b>UI Settings</b>.', event: 'settings:ui' }),
+      closeDialog('Close Settings', `<p>Leave the names on business names for now; the missions mention both.</p>`),
+    ],
+    // ---------------------------------------------------------------- task 2: Home and Repository Explorer
+    [
+      look('The side navigation', '.nav', `<p>Now the apps, top to bottom, in the same order as in a real tenant:</p>
+        <ul><li><b>Home</b> and <b>Repository Explorer</b> on top,</li>
+        <li><b>Monitoring</b> and <b>Catalog &amp; Marketplace</b>, which open a list,</li>
+        <li>the groups <b>Apps</b> (model and integrate) and <b>Utilities</b> (run spaces, translation, transport),</li>
+        <li><b>Security</b> and <b>System</b> pinned to the bottom.</li></ul>
+        <p>An <b>ⓘ</b> after a name means: locked for now, the app opens an info page.</p>`),
+      visit('home', 'Home', `Your start page. In a real tenant: welcome card, recently changed objects, spaces, news and quick actions.
+        In the game it also holds your <b>learning path</b>, the target architecture, badges and your save.`,
+        'everyone needs a place to land that shows what changed since yesterday.',
+        'come back here to pick a mission, see what is next on the learning path, or export your progress.'),
+      look('Your tenant at a glance', '#app-guide', `<p>The map of all apps, grouped by what you do: <b>Find</b>, <b>Model</b>, <b>Integrate</b>, <b>Administer</b>.
+        Whenever you are unsure where something lives, come here.</p>`),
+      look('Your progress', '#save-export', `<p><b>Export save</b> and <b>Import save</b> move your progress to another browser. <b>Sandbox</b> loads a save
+        with every mission solved, to click through finished apps. <b>Start over</b> deletes everything.</p>`),
+      visit('repository', 'Repository Explorer', `One search over <b>every object in every space</b> you are a member of: tables, views, flows, models.
+        Filters by type and space; a click opens the object in its editor.`,
+        'with dozens of spaces nobody clicks through them one by one. And before you change an object, you look here for who uses it.',
+        'from chapter 0 on, whenever someone asks "where is the …?".'),
+    ],
+    // ---------------------------------------------------------------- task 3: Monitoring
+    [
+      look('Monitoring', '.nav [data-group="monitoring"]', `<p><b>Monitoring</b> collects everything that watches the tenant while it runs: health,
+        costs, task runs, slow statements, extra compute and data loads. Six entries; you open each.</p>`),
+      visit('sysmonitor', 'System and Spaces', `The health dashboard of the tenant: disk and memory used, per space, failed tasks,
+        out-of-memory errors, statements waiting in the queue.`,
+        'a full disk or a memory peak stops every load and every report at once. Administrators look here first when "everything is slow".',
+        'chapter 9, when you decide what to persist and what that costs in memory.'),
+      visit('capacities', 'Capacities', `How many <b>capacity units</b> the tenant consumed per month, split into memory, compute, storage and the rest.`,
+        'SAP Datasphere is paid by capacity units. Whoever owns the budget wants to know where they go.',
+        'chapter 9: persisting a view costs memory, and the CFO pays for it.'),
+      visit('tasklogs', 'Task Logs', `Every run of every task in the whole tenant: replication, flows, task chains, persistence. Start, duration, status, records, messages.`,
+        'operations needs one list across all spaces to see what failed last night, without opening each space.',
+        'chapter 10, when the night run fails and you find out why.'),
+      visit('statements', 'Expensive Statement Logs', `SQL statements that took long or used much memory, with duration, peak memory and CPU time.
+        Only filled while tracing is switched on in System › Configuration.`,
+        'a slow dashboard is usually one expensive statement. This is where you find which one.',
+        'chapter 9: the CFO dashboard is slow, and you trace it to a view.'),
+      visit('ecn', 'Elastic Compute Nodes', `Extra compute that you add for peak hours, for a number of block-hours, and remove again. Spaces are assigned to a node.`,
+        'month-end reporting needs more power than the rest of the month; paying for it all year would be waste.',
+        'Rheinau is small enough without one. From chapter 9 on you can create a node and start it, to see how it works.'),
+      visit('monitor', 'Data Integration', `The <b>Data Integration Monitor</b>: runs, schedules and logs of everything that moves data,
+        space by space. Remote tables, view persistence, flows, task chains, remote queries.`,
+        'loads fail: a source is down, a password expired, a column changed. Here you see it, restart it and schedule it.',
+        'one of your daily apps from chapter 3 on: replication into the entry layer, persistence in chapter 9, the night chain in chapter 10.'),
+    ],
+    // ---------------------------------------------------------------- task 4: Catalog & Marketplace
+    [
+      look('Catalog &amp; Marketplace', '.nav [data-group="catalog"]', `<p>Two entries about finding and getting data, beyond the objects you built yourself.</p>`),
+      visit('catalog', 'Search', `The <b>Catalog</b>: data assets with business descriptions, tags, glossary terms and KPIs, also from other systems,
+        and their lineage.`,
+        'the Repository Explorer finds objects for modelers; the catalog explains data to everyone else, in business words.',
+        'an excursion in chapter 12: you describe the consumption model, tag it and link a glossary term.'),
+      visit('marketplace', 'Marketplace Data Products', `Data products from SAP and partners, ready to install into a space: free or with a licence key.`,
+        'some data you buy instead of build, for example weather, market prices or reference data.',
+        'open from chapter 12: install the public holidays, request a licence for weather data, compare market prices with our tariffs.'),
+    ],
+    // ---------------------------------------------------------------- task 5: Apps, with the Data Builder from the inside
+    [
+      look('Apps', '.nav [data-group="apps"]', `<p>The group <b>Apps</b> holds the tools you build with: two import and business apps, the
+        <b>Data Builder</b>, and <b>Connections</b>. The group heading folds it.</p>`),
+      visit('semantic', 'Semantic Onboarding', `Imports objects <b>with their meaning</b> from SAP systems: S/4HANA CDS views come in with labels,
+        associations and texts. It also installs business content packages from the Content Network.`,
+        'rebuilding the semantics of an SAP system by hand takes weeks; importing them takes minutes.',
+        'chapter 3: you import the S/4HANA divisions into the entry layer; chapter 12: a content package.'),
+      visit('business', 'Business Builder', `The <b>older</b> business layer: business entities, fact models and consumption models on top of
+        Data Builder objects. Current tenants label it <b>Deprecated</b>.`,
+        'many existing projects still use it, so you must be able to read it. New models are analytic models in the Data Builder.',
+        'chapter 12: you read the 2023 models a former colleague left behind and replace them.'),
+      visit('builder', 'Data Builder', `The workshop. Tables, views, analytic models, flows, task chains and access controls, always inside <b>one space</b>.`,
+        'everything that turns raw data into something a report can use is built here, and only here.',
+        'your main app from chapter 0 to the end. Let us go inside.'),
+      {
+        title: 'Pick a space',
+        target: '#space-picker, #space-switch',
+        body: `<p>The Data Builder first asks for a <b>space</b>. You only see spaces you are a member of; right now that is <b>RHN_ENTRY</b>,
+          where IT loaded the source data. Later the space name next to the app name switches spaces.</p>`,
+        action: { do: 'Click the space <b>RHN_ENTRY</b>.', check: () => builderSpace('RHN_ENTRY') },
+      },
+      look('Object types', '#list-tabs', `<p>The tabs filter the object list by type: tables, views, E/R models, analytic models, flows,
+        intelligent lookups, task chains, data access controls.</p>`),
+      look('Create something', '#new-tiles', `<p>Each tile creates one kind of object:</p>
+        <ul><li><b>Table</b>, <b>SQL View</b>, <b>Graphical View</b>: store and prepare data (this game uses SQL views)</li>
+        <li><b>E/R Model</b>: draw tables and their relations</li>
+        <li><b>Analytic Model</b>: what SAP Analytics Cloud reads</li>
+        <li><b>Replication</b>, <b>Data</b> and <b>Transformation Flow</b>: move and transform data</li>
+        <li><b>Intelligent Lookup</b>: match records by fuzzy rules</li>
+        <li><b>Task Chain</b>: run loads in order; <b>Data Access Control</b>: row-level security</li></ul>
+        <p>Grey tiles open later.</p>`),
+      {
+        title: 'Try a grey tile',
+        target: '[data-new="analytic"]',
+        body: `<p>A grey tile explains what it creates and in which chapter you build your first one.</p>`,
+        action: { do: 'Click <b>New Analytic Model</b>.', appear: '.dialog' },
+      },
+      closeDialog('What it said', `<p>Every grey tile works like this, so you can always find out what something is before you need it.</p>`),
+      tryIt('The Import menu', '#import-menu-btn', `<p>Data from outside does not come in through tiles but through the <b>Import</b> menu:
+        CSV files, objects from CSN/JSON files, entities from SAP systems, remote tables, permissions. <b>Validate Remote Tables</b>
+        compares imported tables with their source after an upgrade.</p>`, { do: 'Click the <b>Import</b> button (arrow into a tray) above the list.', appear: '.import-menu' }),
+      look('The object list', '#object-list', `<p>Every object of the space: business name, technical name, type, status and last change.
+        The <b>+</b> menu next to Import offers the same objects as the tiles. Row icons share or delete an object.</p>`),
+      {
+        title: 'Open a table',
+        target: '#object-list',
+        body: `<p>A click on a name opens the object in its editor.</p>`,
+        action: { do: 'Click <b>BILLING_CONTRACTS</b>.', check: () => editorOf('RHN_ENTRY.BILLING_CONTRACTS') },
+      },
+      look('The editor toolbar', '.ed-toolbar', `<p>Every editor has the same bar: the arrow back to the space, the object's name and <b>status</b>,
+        then <b>Save</b> (store the design), <b>Deploy</b> (make it active in the database) and, once there are several spaces, <b>Share</b>.
+        <b>Data Preview</b> shows real rows. <b>Versions</b> lists deployed versions, <b>Details</b> shows or hides the properties.</p>`),
+      look('Properties', '#properties', `<p>On the right: the <b>business name</b> people read, the fixed <b>technical name</b> SQL uses,
+        and the status. Views get more here later: semantic usage, associations, access controls.</p>`),
+      look('Columns', '#column-list', `<p>In the middle: the columns with their data types. Behind every report number is one of these columns.</p>`),
+      tryIt('Data Preview', '#run', `<p>Data Preview runs the object and shows the first rows below. Before you trust a table, look at it.</p>`,
+        { do: 'Press <b>Data Preview</b>.', event: 'preview:RHN_ENTRY.BILLING_CONTRACTS' }),
+      {
+        title: 'Back to the space',
+        target: '#ed-back',
+        body: `<p>The arrow in the toolbar returns to the start page of the space.</p>`,
+        action: { do: 'Click the <b>arrow</b> at the left of the toolbar.', appear: '#new-tiles' },
+      },
+      visit('connections', 'Connections', `The links from a space to <b>source systems</b>: S/4HANA, HANA databases, cloud storage, other databases.
+        Each connection belongs to one space. <b>Validate</b> shows what it supports: remote tables, flows, model import.`,
+        'without a connection no data reaches the tenant. The connection also decides whether data is read live or copied.',
+        'chapter 3: you connect S/4HANA billing, the meter data system and the CRM to the entry layer.'),
+    ],
+    // ---------------------------------------------------------------- task 6: Utilities
+    [
+      look('Utilities', '.nav [data-group="utilities"]', `<p>The group <b>Utilities</b> runs the landscape around your models: spaces, languages,
+        transport to other tenants and sharing data with other companies.</p>`),
+      visit('spaces', 'Space Management', `Creates and deletes <b>spaces</b>, gives them disk and in-memory storage and a workload priority,
+        manages members, database users and elastic compute nodes.`,
+        'spaces separate layers and teams. Their storage limits stop one project from eating the whole tenant.',
+        'chapter 1: you design the three spaces of our layers yourself.'),
+      visit('translation', 'Translation', `Translates the <b>business names</b> and descriptions of analytic models and dimensions into other languages.`,
+        'SAP Analytics Cloud shows each user the names in their own language; somebody has to provide them.',
+        'open from chapter 12: give the analytic models German or French names and watch the translation status.'),
+      visit('transport', 'Transport', `Moves content between tenants: <b>Packages</b> bundle objects of a space, <b>Export</b> sends them,
+        <b>Import</b> brings them in, <b>Monitor</b> lists every job.`,
+        'nobody builds in production. You build in development, test in test, then transport, so all tenants stay alike.',
+        'chapter 12: you package the CFO model with everything it needs and export it to test and production.'),
+      visit('sharing', 'Data Sharing Cockpit', `For <b>data providers</b>: a provider profile, data products you offer, licences and contracts.
+        What you list here appears in other companies' Marketplace.`,
+        'some companies sell or share their data. This is the other side of the Marketplace.',
+        'open from chapter 12: create a provider profile for Rheinau and list one of your own data products.'),
+    ],
+    // ---------------------------------------------------------------- task 7: Security and System
+    [
+      visit('security', 'Security', `<b>Users</b>, <b>roles</b> and who may do what where. Global roles for the whole tenant, scoped roles per space,
+        an <b>Authorization Overview</b>, and <b>Activities</b>, the log of who changed what.`,
+        'least privilege: a planner reads, an integrator loads, an administrator administers, and nobody gets more by accident.',
+        'chapter 2: you give eight colleagues exactly the access they need.'),
+      visit('system', 'System', `The tenant itself. <b>Configuration</b>: capacity, workload, monitoring, certificates, Cloud Connector.
+        <b>Administration</b>: identity provider, IP allowlist, OAuth clients for other apps.`,
+        'some things exist once per tenant, not per space. Only administrators come here.',
+        'chapter 3 (certificate and Cloud Connector for the on-premise database), chapter 9 (statement tracing), chapter 12 (OAuth for OData).'),
+      look('That was everything', '.nav', `<p>Twenty apps. You will use the Data Builder, the Data Integration Monitor, Connections, Space Management,
+        Security and the Repository Explorer every week; the others when a ticket needs them. Each app unlocks in the chapter where you first need it.</p>`),
+    ],
+    questions('Each job belongs to one place you saw on the tour. Think of what the card said under "Why it exists".'),
+  ],
   'c00-m01': [
     [
       nav('repository', 'Repository Explorer', `<p>Searches every object in every space you are a member of, in one list.</p>`),

@@ -112,6 +112,11 @@ export function sanitize(data: unknown): Progress | null {
       events: Array.isArray(mp.events) ? mp.events.map(String).slice(-300) : [],
     };
   }
+  // The grand tour c00-m00 came first on 13.10.2026: saves that already solved later missions count it as done
+  // (no XP), so nothing locks again. The tour stays playable from the learning path.
+  if (!p.missions['c00-m00']?.done && Object.entries(p.missions).some(([id, m]) => id !== 'c00-m00' && m.done)) {
+    p.missions['c00-m00'] = { hintsOpen: 0, answers: {}, attempts: 0, done: true, xpEarned: 0, events: [] };
+  }
   // Continue where the first open mission is, if the saved one is not open (e.g. after the v3 migration).
   if (!isUnlocked(p, p.currentMission)) p.currentMission = MISSIONS.find((m) => !p.missions[m.id]?.done)?.id ?? MISSIONS[0].id;
   return p;

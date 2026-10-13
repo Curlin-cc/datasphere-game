@@ -18,6 +18,11 @@ export interface TourAction {
   appear?: string;
   /** Done when this returns true. Checked several times a second. */
   check?: () => boolean;
+  /**
+   * After it is done, wait for Next instead of moving on by itself: the player reads the rest of the card
+   * next to what the click opened (the grand tour, c00-m00).
+   */
+  stay?: boolean;
 }
 
 export interface TourStep {
@@ -141,6 +146,16 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const status = card.querySelector('.tour-do');
     if (status) status.innerHTML = `<span class="tour-check">✓</span> Done`;
     const at = index;
+    if (steps[index]?.action?.stay) {
+      card.querySelector('.tour-wait')?.remove();
+      const next = card.querySelector<HTMLButtonElement>('[data-act="next"]');
+      if (next) {
+        next.classList.add('primary');
+        next.textContent = index === steps.length - 1 ? finishLabel : 'Next';
+        next.removeAttribute('title');
+      }
+      return;
+    }
     doneTimer = window.setTimeout(() => index === at && go(index + 1), 750);
   }
 
@@ -153,7 +168,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
       ${step.action ? `<div class="tour-do" role="status"><span class="tour-arrow">▶</span><span>${step.action.do}</span></div>
-        <p class="tour-wait">The tutorial goes on by itself when you have done it.</p>` : ''}
+        <p class="tour-wait">${step.action.stay ? 'Then read on here and press Next.' : 'The tutorial goes on by itself when you have done it.'}</p>` : ''}
       ${step.example ? `<pre class="tour-example"><code></code></pre>
         <button class="btn" type="button" data-act="example">Put this example in the editor</button>` : ''}
       <div class="tour-actions">
