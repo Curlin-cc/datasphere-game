@@ -43,6 +43,8 @@ export interface Translation {
   businessName: string;
   /** The English business name the translation was made for; differs from the current one = outdated. */
   source: string;
+  /** Column, attribute and measure names: source name → translated text (SAP: "business names and column names"). */
+  columns?: Record<string, string>;
 }
 
 export interface Provider {
@@ -244,8 +246,53 @@ export const translatable = (o: RepoObject) => o.kind === 'SQL View' || o.kind =
  */
 export function translationStatus(o: RepoObject, list: Translation[] | undefined): 'Not Added' | 'Not Translated' | 'Partially Translated' | 'Translated' {
   if (!list) return 'Not Added';
-  const current = LANGS.filter((g) => list.some((x) => x.lang === g.code && x.source === o.businessName && x.businessName)).length;
-  return current === LANGS.length ? 'Translated' : current ? 'Partially Translated' : 'Not Translated';
+  const cols = translationColumns(o);
+  // One language is complete when its business name is current and every column name has a text.
+  const complete = LANGS.filter((g) => {
+    const l = list.find((x) => x.lang === g.code && x.source === o.businessName && x.businessName);
+    return !!l && cols.every((c) => l.columns?.[c]);
+  }).length;
+  const any = list.some((l) => (l.businessName && l.source === o.businessName) || Object.keys(l.columns ?? {}).length);
+  return complete === LANGS.length ? 'Translated' : any ? 'Partially Translated' : 'Not Translated';
+}
+
+/** Column names to translate: the columns of a dimension or hierarchy view, the measures and fact attributes of an analytic model. */
+export function translationColumns(o: RepoObject): string[] {
+  const model = o.deployed?.model;
+  if (o.kind === 'Analytic Model' && model) {
+    return [...model.measures.map((m) => m.name), ...model.attributes.filter((a) => !a.includes('.'))];
+  }
+  return Object.keys(o.deployed?.columnRoles ?? o.columnRoles ?? {});
+}
+
+/**
+ * What adding an analytic model brings into the Translation tool (SAP help: "the dimensions and hierarchies attached to added
+ * Analytic Models are automatically selected"): its dimensions, also when they are shared from another space, and the hierarchies
+ * associated with them.
+ */
+export function translationDependencies(t: TenantState, am: RepoObject): string[] {
+  const dims = (am.deployed?.model ?? am.model)?.dimensions ?? [];
+  const out = new Set<string>();
+  for (const k of dims) {
+    const d = findObject(t, k);
+    if (!d) continue;
+    out.add(k);
+    for (const a of d.deployed?.associations ?? d.associations ?? []) {
+      const h = findObject(t, a.target);
+      if (h && (h.deployed?.semanticUsage ?? h.semanticUsage) === 'Hierarchy') out.add(a.target);
+    }
+  }
+  return [...out];
+}
+
+/** Objects the Translation tool lists for a space: added there, or brought along by an analytic model added there. */
+export function translationsIn(t: TenantState, space: string): RepoObject[] {
+  const keys = new Set(Object.keys(t.extras.translations).filter((k) => k.split('.')[0] === space));
+  for (const k of [...keys]) {
+    const o = findObject(t, k);
+    if (o?.kind === 'Analytic Model') for (const d of translationDependencies(t, o)) if (t.extras.translations[d]) keys.add(d);
+  }
+  return [...keys].map((k) => findObject(t, k)).filter((o): o is RepoObject => !!o);
 }
 
 export function licenseKey(seed: string) {
@@ -289,7 +336,13 @@ export function sanitizeExtras(d: unknown, ids: Set<string>): ExtrasState {
     for (const [k, list] of Object.entries(e.translations)) {
       if (!ids.has(k.split('.')[0]) || !Array.isArray(list)) continue;
       x.translations[k] = list.filter((l) => l && LANGS.some((g) => g.code === l.lang))
-        .map((l) => ({ lang: l.lang, businessName: str(l.businessName, 120), source: str(l.source, 120) }));
+        .map((l) => {
+          const cols: Record<string, string> = {};
+          if (l.columns && typeof l.columns === 'object') {
+            for (const [c, v] of Object.entries(l.columns).slice(0, 80)) if (typeof v === 'string' && v.trim()) cols[str(c, 80)] = str(v, 120);
+          }
+          return { lang: l.lang, businessName: str(l.businessName, 120), source: str(l.source, 120), ...(Object.keys(cols).length ? { columns: cols } : {}) };
+        });
     }
   }
   if (e.provider && typeof e.provider === 'object' && e.provider.name) {

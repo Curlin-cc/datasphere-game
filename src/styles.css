@@ -1799,6 +1799,7 @@ td.actions { white-space: nowrap; text-align: right; }
 .ext-status.warn::before { background: var(--warning); }
 .tr-lang-input { display: grid; gap: 4px; }
 .tr-lang-input[hidden] { display: none; }
+.tr-strings { max-height: min(56vh, 520px); overflow: auto; margin-top: 10px; }
 /* Data Sharing Cockpit (screenshot 42): band "Data Marketplace", tiles of the overview */
 .ds-banner { display: grid; justify-items: center; gap: 4px; padding: 22px 16px; margin: -8px 0 18px; border-radius: 12px;
   background: linear-gradient(120deg, var(--banner), #1b3a5c 55%, #8a6a1c); color: #fff; position: relative; }

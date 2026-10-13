@@ -84,9 +84,9 @@ with sync_playwright() as p:
     pg.click('[data-tr-space="RHN_PRES"]')
     pg.click('#tr-add'); first = pg.locator('.dialog [name="am"]').first.get_attribute('value')
     pg.check(f'.dialog [name="am"][value="{first}"]'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
-    ok(pg.locator('#tr-list tbody tr[data-tr]').count() >= 1, 'model added (its shared dimensions are translated in RHN_DSL)')
+    ok(pg.locator('#tr-list tbody tr[data-tr]').count() >= 2, 'model added, its dimensions came along from RHN_DSL')
     pg.check(f'[name="tr-sel"][value="{first}"]'); pg.click('#tr-edit')
-    pg.fill('.dialog [name="de"]', 'Verbrauch je Netzgebiet'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
+    pg.fill('.dialog [name="de|"]', 'Verbrauch je Netzgebiet'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
     ok('Partially Translated' in pg.inner_text(f'[data-tr="{first}"]'), 'partially translated (German only)')
     g.shot('ext-translation')
 

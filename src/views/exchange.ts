@@ -1,9 +1,9 @@
 import { ctx } from '../ctx';
 import {
-  MARKET, marketProducts, installProduct, uninstallProduct, LANGS, translatable, translationStatus, licenseKey, listError,
+  MARKET, marketProducts, installProduct, uninstallProduct, LANGS, translatable, translationStatus, translationColumns, translationDependencies, translationsIn, licenseKey, listError,
   type MarketProduct, type OwnProduct,
 } from '../extras';
-import { objectKey, findObject, readsFrom } from '../repo';
+import { objectKey, findObject } from '../repo';
 import { welcomeSpacesHtml, bindSpaceSearch } from './welcome';
 import { esc, openDialog, toast, ask } from '../ui';
 import { registerLocation } from '../nav';
@@ -209,13 +209,13 @@ export function renderTranslation(main: HTMLElement) {
   }
   main.classList.remove('flush');
   const x = t.extras;
-  const added = Object.keys(x.translations).filter((k) => k.split('.')[0] === trSpace).map((k) => findObject(t, k)).filter((o): o is NonNullable<typeof o> => !!o);
+  const added = translationsIn(t, trSpace);
   const rows = added.filter((o) => trFilter === 'all' || translationStatus(o, x.translations[objectKey(o)]) === trFilter);
   if (!added.some((o) => objectKey(o) === trSel)) trSel = '';
   main.innerHTML = `
     <div class="ext-page">
       <div class="ext-head"><div><h1 class="view-title">Translation</h1><p class="view-lead">Space <span class="mono">${esc(trSpace)}</span> · Source Language: English.
-        Add analytic models; their dimensions come along. Then translate their business names per target language.</p></div>
+        Add analytic models; their dimensions and hierarchies come along. Select an object and press Edit to translate its business name and column names.</p></div>
         <button class="btn" type="button" id="tr-back">Change Space</button></div>
       <section class="panel">
         <div class="ext-list-head"><h3>Objects (${rows.length})</h3><span class="spacer"></span>
@@ -233,8 +233,9 @@ export function renderTranslation(main: HTMLElement) {
           const list = x.translations[key];
           const st = translationStatus(o, list);
           return `<tr data-tr="${esc(key)}" class="${key === trSel ? 'selected' : ''}"><td><input type="radio" name="tr-sel" value="${esc(key)}" ${key === trSel ? 'checked' : ''} aria-label="Select ${esc(o.name)}"></td>
-            <td>${esc(o.businessName)}</td><td class="mono">${esc(o.name)}</td><td>${o.kind === 'SQL View' ? 'View' : esc(o.kind)}</td><td>DATA_ARCHITECT</td>
-            <td>${list?.filter((l) => l.businessName).map((l) => `${esc(l.lang)}${l.source !== o.businessName ? ' (expired)' : ''}`).join(', ') || '<span class="muted">—</span>'}</td>
+            <td>${esc(o.businessName)}</td><td class="mono">${esc(o.name)}${o.space !== trSpace ? ` <small class="muted">shared from ${esc(o.space)}</small>` : ''}</td>
+            <td>${o.kind === 'SQL View' ? esc(o.semanticUsage === 'Relational Dataset' ? 'View' : o.semanticUsage) : esc(o.kind)}</td><td>DATA_ARCHITECT</td>
+            <td>${list?.filter((l) => l.businessName || Object.keys(l.columns ?? {}).length).map((l) => `${esc(l.lang)}${l.source !== o.businessName ? ' (expired)' : ''}`).join(', ') || '<span class="muted">—</span>'}</td>
             <td><span class="ext-status ${st === 'Translated' ? 'ok' : st === 'Partially Translated' ? 'warn' : ''}">${st}</span></td></tr>`;
         }).join('') : `<tr><td colspan="7" class="muted">${added.length ? 'No object matches the filter.' : 'No objects selected for translation yet. Add an analytic model.'}</td></tr>`}</tbody></table></div></section>
       <p class="muted ext-note">A string made for an older business name is expired: the object falls back to Not Translated or Partially Translated until you translate it again.</p>
@@ -260,8 +261,8 @@ function addObjectsDialog(main: HTMLElement) {
   const x = t.extras;
   const models = t.objects.filter((o) => o.space === trSpace && o.kind === 'Analytic Model' && translatable(o));
   const { form, close } = openDialog('Add Objects', `
-    <p class="guide-lead">Only analytic models can be selected. Their dimensions of this space are added automatically; dimensions shared from
-      another space (in this game: from RHN_DSL) are translated in their own space.</p>
+    <p class="guide-lead">Only analytic models can be selected. The dimensions and hierarchies attached to them are added automatically,
+      also when they are shared from another space (in this game: from RHN_DSL).</p>
     <fieldset class="question share-targets"><legend>Analytic Models in ${esc(trSpace)}</legend>${models.map((o) => `<label><input type="checkbox" name="am" value="${esc(objectKey(o))}" ${x.translations[objectKey(o)] ? 'checked disabled' : ''}>
       ${esc(o.businessName)} <span class="mono muted">${esc(o.name)}</span></label>`).join('') || '<p class="muted">No analytic models in this space.</p>'}</fieldset>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Add Objects</button></div>`);
@@ -271,9 +272,9 @@ function addObjectsDialog(main: HTMLElement) {
       const am = findObject(t, key);
       x.translations[key] ??= [];
       ctx.track(`translation-add:${key}`);
-      for (const k of am ? readsFrom(am, t) : []) {
+      for (const k of am ? translationDependencies(t, am) : []) {
         const d = findObject(t, k);
-        if (d && d.space === trSpace && translatable(d) && (d.semanticUsage === 'Dimension' || d.semanticUsage === 'Hierarchy')) x.translations[k] ??= [];
+        if (d && translatable(d)) x.translations[k] ??= [];
       }
     }
     ctx.save();
@@ -286,15 +287,25 @@ function translateDialog(main: HTMLElement, key: string) {
   const t = ctx.tenant();
   const o = findObject(t, key)!;
   const list = t.extras.translations[key] ?? [];
+  const cols = translationColumns(o);
+  const cell = (g: { code: string; label: string }, i: number, field: string, value: string, note: string) =>
+    `<label class="tr-lang-input" data-lang="${g.code}" ${i ? 'hidden' : ''}><input name="${g.code}|${esc(field)}" value="${esc(value)}" autocomplete="off" aria-label="${g.label}: ${esc(field)}">
+      <small class="muted">${note}</small></label>`;
+  const row = (source: string, kind: string, field: string) => `<tr><td><b>${esc(source)}</b><br><small class="muted">${kind}</small></td><td>${LANGS.map((g, i) => {
+    const tr = list.find((l) => l.lang === g.code);
+    if (field === '') {
+      const outdated = tr?.businessName && tr.source !== o.businessName;
+      return cell(g, i, '', tr?.businessName ?? '', outdated ? `expired: made for “${esc(tr!.source)}”` : tr?.businessName ? 'Translated' : 'Not Translated');
+    }
+    const v = tr?.columns?.[field] ?? '';
+    return cell(g, i, field, v, v ? 'Translated' : 'Not Translated');
+  }).join('')}</td></tr>`;
   const { form, close } = openDialog(`Translate ${o.name}`, `
     <label class="ext-field">Target Language <select id="tr-lang">${LANGS.map((g) => `<option value="${g.code}">${g.label}</option>`).join('')}</select></label>
-    <table class="grid compact"><thead><tr><th>Source Text (English)</th><th>Translated Text</th></tr></thead><tbody>
-      <tr><td><b>${esc(o.businessName)}</b><br><small class="muted">Business Name</small></td><td>${LANGS.map((g, i) => {
-        const tr = list.find((l) => l.lang === g.code);
-        const outdated = tr && tr.source !== o.businessName;
-        return `<label class="tr-lang-input" data-lang="${g.code}" ${i ? 'hidden' : ''}><input name="${g.code}" value="${esc(tr?.businessName ?? '')}" autocomplete="off" aria-label="${g.label}">
-          <small class="muted">${outdated ? `expired: made for “${esc(tr!.source)}”` : tr ? 'translated' : 'Not Translated'}</small></label>`;
-      }).join('')}</td></tr></tbody></table>
+    <div class="table-scroll tr-strings"><table class="grid compact"><thead><tr><th>Source Text (English)</th><th>Translated Text</th></tr></thead><tbody>
+      ${row(o.businessName, 'Business Name', '')}
+      ${cols.map((c) => row(c, o.kind === 'Analytic Model' ? 'Measure or attribute' : 'Column', c)).join('')}
+    </tbody></table></div>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>`, 'wide');
   form.querySelector<HTMLSelectElement>('#tr-lang')!.addEventListener('change', (e) => {
     const lang = (e.target as HTMLSelectElement).value;
@@ -304,10 +315,15 @@ function translateDialog(main: HTMLElement, key: string) {
     ev.preventDefault();
     const f = new FormData(form);
     t.extras.translations[key] = LANGS.map((g) => {
-      const v = String(f.get(g.code) ?? '').trim();
+      const v = String(f.get(`${g.code}|`) ?? '').trim();
       const old = list.find((l) => l.lang === g.code);
-      return { lang: g.code, businessName: v, source: old && old.businessName === v ? old.source : o.businessName };
-    }).filter((l) => l.businessName);
+      const columns: Record<string, string> = {};
+      for (const c of cols) {
+        const cv = String(f.get(`${g.code}|${c}`) ?? '').trim();
+        if (cv) columns[c] = cv;
+      }
+      return { lang: g.code, businessName: v, source: old && old.businessName === v ? old.source : o.businessName, ...(Object.keys(columns).length ? { columns } : {}) };
+    }).filter((l) => l.businessName || l.columns);
     ctx.track(`translation-save:${key}`);
     ctx.save();
     toast('Translation updated successfully');
