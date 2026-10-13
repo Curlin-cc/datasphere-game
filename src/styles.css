@@ -1687,7 +1687,11 @@ td.wrap, dd.wrap, p.wrap { word-break: break-all; white-space: normal; overflow-
 .ext-status.bad { color: var(--critical); }
 .ext-status.bad::before { background: var(--critical); }
 .ext-status.run::before { background: var(--accent); }
-.ext-list-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.ext-list-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.ext-list-head .ext-field { margin: 0; }
+.tr-hint { padding: 14px 18px; margin-bottom: 14px; border-left: 4px solid var(--accent); }
+.tr-hint h3 { margin: 0 0 6px; font-size: 15px; }
+.tr-hint p { margin: 0 0 8px; }
 .ext-list-head h3 { margin: 0; font-size: 15px; }
 .ext-detail { padding: 16px 18px; margin-top: 14px; }
 .ext-detail .ext-list-head { padding: 0 0 10px; margin-bottom: 10px; }

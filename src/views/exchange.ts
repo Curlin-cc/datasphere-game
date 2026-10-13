@@ -212,11 +212,20 @@ export function renderTranslation(main: HTMLElement) {
   const added = translationsIn(t, trSpace);
   const rows = added.filter((o) => trFilter === 'all' || translationStatus(o, x.translations[objectKey(o)]) === trFilter);
   if (!added.some((o) => objectKey(o) === trSel)) trSel = '';
+  const hasModel = (sp: string) => t.objects.some((o) => o.space === sp && o.kind === 'Analytic Model' && o.status !== 'not_deployed' && translatable(o));
+  const modelSpaces = t.spaces.map((sp) => sp.id).filter(hasModel);
+  // A space without analytic models has nothing to add (SAP: only analytic models can be selected): say where they are.
+  const noModels = !added.length && !hasModel(trSpace);
   main.innerHTML = `
     <div class="ext-page">
       <div class="ext-head"><div><h1 class="view-title">Translation</h1><p class="view-lead">Space <span class="mono">${esc(trSpace)}</span> · Source Language: English.
         Add analytic models; their dimensions and hierarchies come along. Select an object and press Edit to translate its business name and column names.</p></div>
         <button class="btn" type="button" id="tr-back">Change Space</button></div>
+      ${noModels ? `<section class="panel tr-hint" id="tr-hint"><h3>Nothing to translate in ${esc(trSpace)}</h3>
+        <p>The Translation tool translates the texts business users see in SAP Analytics Cloud: analytic models, and the dimensions and
+          hierarchies that come along with them. <b>${esc(trSpace)}</b> has no analytic model.</p>
+        ${modelSpaces.length ? `<p>Analytic models are in: ${modelSpaces.map((sp) => `<button class="btn small primary" type="button" data-tr-go="${esc(sp)}">Open ${esc(sp)}</button>`).join(' ')}</p>`
+          : '<p class="muted">No space has a deployed analytic model yet. You build the first one in chapter 7.</p>'}</section>` : ''}
       <section class="panel">
         <div class="ext-list-head"><h3>Objects (${rows.length})</h3><span class="spacer"></span>
           <button class="btn small link" type="button" id="tr-add" title="Add Objects">+ Add</button>
@@ -242,6 +251,12 @@ export function renderTranslation(main: HTMLElement) {
     </div>`;
   main.querySelector('#tr-back')!.addEventListener('click', () => { trSpace = ''; trSel = ''; renderTranslation(main); });
   main.querySelector('#tr-refresh')!.addEventListener('click', () => renderTranslation(main));
+  main.querySelectorAll<HTMLButtonElement>('[data-tr-go]').forEach((b) => b.addEventListener('click', () => {
+    trSpace = b.dataset.trGo!;
+    trSel = '';
+    ctx.track(`translation-space:${trSpace}`);
+    renderTranslation(main);
+  }));
   main.querySelector<HTMLSelectElement>('#tr-filter')!.addEventListener('change', (e) => { trFilter = (e.target as HTMLSelectElement).value as typeof trFilter; renderTranslation(main); });
   main.querySelectorAll<HTMLInputElement>('[name="tr-sel"]').forEach((r) => r.addEventListener('change', () => { trSel = r.value; renderTranslation(main); }));
   main.querySelector('#tr-add')!.addEventListener('click', () => addObjectsDialog(main));
