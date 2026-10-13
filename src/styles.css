@@ -449,6 +449,9 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
   transition: left .2s, top .2s, width .2s, height .2s;
 }
 .tour-card { position: fixed; width: min(400px, calc(100vw - 32px)); padding: 16px 18px 14px; }
+/* Grand tour: the card docks on the mission panel; a light dim keeps the page readable. */
+.tour.docked .tour-spot, .tour.docked.acting .tour-spot { box-shadow: 0 0 0 3px var(--accent), 0 0 0 9999px rgba(11, 21, 36, .14); }
+.tour.docked .tour-card { max-height: calc(100vh - 32px); overflow: auto; }
 .tour-count { font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: .02em; }
 .tour-card h2 { margin: 2px 0 8px; font-size: 17px; letter-spacing: -0.01em; text-wrap: balance; }
 .tour-body p { margin: 0 0 8px; }

@@ -37,6 +37,11 @@ export interface TourStep {
   example?: string;
   /** Hands-on step: the player does it, the tour waits. */
   action?: TourAction;
+  /**
+   * The card sits on the mission panel at the right instead of next to the target, so the page in the middle stays
+   * readable (grand tour, c00-m00). Once a `stay` action is done, the spotlight moves to the page that opened.
+   */
+  dock?: boolean;
 }
 
 export interface TourHooks {
@@ -60,6 +65,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   let doneTimer = 0;
   let stepDone = false;
   let lastRect = '';
+  /** A docked stay step is done: light up the page that opened instead of the navigation entry. */
+  let spotPage = false;
 
   const root = document.createElement('div');
   root.className = 'tour';
@@ -111,9 +118,11 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (i >= steps.length) return close(true);
     index = i;
     stepDone = false;
+    spotPage = false;
     lastRect = '';
     const step = steps[i];
     root.classList.toggle('acting', !!step.action);
+    root.classList.toggle('docked', !!step.dock);
     if (step.view) hooks.setView(step.view);
     const target = step.target ? await waitFor(step.target) : null;
     if (index !== i) return;
@@ -147,6 +156,11 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (status) status.innerHTML = `<span class="tour-check">✓</span> Done`;
     const at = index;
     if (steps[index]?.action?.stay) {
+      if (steps[index].dock) {
+        spotPage = true;
+        lastRect = '';
+        place();
+      }
       card.querySelector('.tour-wait')?.remove();
       const next = card.querySelector<HTMLButtonElement>('[data-act="next"]');
       if (next) {
@@ -190,9 +204,25 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (!step.action) card.querySelector<HTMLButtonElement>('[data-act="next"]')!.focus();
   }
 
+  /** Grand tour: the card lies on the mission panel at the right. */
+  function dockCard(dock: HTMLElement) {
+    const m = dock.getBoundingClientRect();
+    card.style.width = `${m.width - 16}px`;
+    card.style.left = `${m.left + 8}px`;
+    card.style.top = `${Math.min(m.top + 8, Math.max(16, window.innerHeight - card.offsetHeight - 16))}px`;
+  }
+
   /** Spotlights the target and puts the card next to it where there is room. */
   function place() {
     const step = steps[index];
+    const dockEl = step?.dock ? firstVisible('#mission') : null;
+    if (spotPage && dockEl) {
+      // Done: no spotlight, no dimming. The page that opened is fully visible; the card waits on the mission panel.
+      spot.hidden = true;
+      root.classList.remove('centered');
+      lastRect = 'page';
+      return dockCard(dockEl);
+    }
     let target = step?.target ? firstVisible(step.target) : null;
     // A dialog opened by the player's click (e.g. Upload) is where the work goes on: follow it instead of covering it.
     const dialog = step?.action ? firstVisible('.guide-overlay .dialog') : null;
@@ -203,6 +233,11 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const ch = card.offsetHeight;
     const gap = 14;
 
+    if (!target && dockEl) {
+      spot.hidden = true;
+      lastRect = 'none';
+      return dockCard(dockEl);
+    }
     if (!target) {
       if (lastRect === 'none') return;
       lastRect = 'none';
@@ -224,6 +259,9 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     spot.style.top = `${r.top - pad}px`;
     spot.style.width = `${r.width + pad * 2}px`;
     spot.style.height = `${r.height + pad * 2}px`;
+
+    // Docked: the card covers the mission panel (game only), never the page or the navigation.
+    if (dockEl) return dockCard(dockEl);
 
     const clampY = (y: number) => Math.min(Math.max(16, y), vh - card.offsetHeight - 16);
     const clampX = (x: number) => Math.min(Math.max(16, x), vw - cw - 16);

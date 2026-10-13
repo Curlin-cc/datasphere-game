@@ -312,6 +312,9 @@ const visit = (id: string, label: string, what: string, why: string, when: strin
   };
 };
 
+/** Grand tour: every card sits on the mission panel, so the page it explains stays in view (questions excepted, they live there). */
+const docked = (lists: TourStep[][]): TourStep[][] => lists.map((l) => l.map((st) => (st.target === '#questions' ? st : { ...st, dock: true })));
+
 /** A passive step of the grand tour that points at something on the screen. */
 const look = (title: string, target: string, body: string): TourStep => ({ title, target, body });
 
@@ -334,9 +337,9 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Why a grand tour',
       body: `<p>SAP Datasphere has about twenty apps. In a project you use six of them every day and the rest a few times a year,
         but you must know that they exist, or you rebuild by hand what an app already does.</p>
-        <p>So before the first real ticket you click through <b>everything</b> once, from the top of the screen to the bottom of the side navigation.
+        <p>So before the first real ticket you click through <b>every function</b> once: the shellbar, then every app from the top of the side navigation to the bottom.
         For each app the card says what it does, why it exists and when you need it at Stadtwerke Rheinau.</p>
-        <p>It takes about fifteen minutes. You can leave with <b>Skip tutorial</b> and come back with <b>Show tutorial</b>; the <b>Show me</b>
+        <p>The cards sit on the right, where the mission panel is, so the app they explain stays in view. It takes about fifteen minutes. You can leave with <b>Skip tutorial</b> and come back with <b>Show tutorial</b>; the <b>Show me</b>
         button next to each task replays just that part.</p>`,
     },
     {
@@ -1017,24 +1020,15 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
 
 export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 0
-  'c00-m00': [
-    // ---------------------------------------------------------------- task 1: the frame
+  'c00-m00': docked([
+    // ---------------------------------------------------------------- task 1: functions in the shellbar
     [
-      look('The tenant banner', '#tenant-banner', `<p>The coloured band at the very top names the <b>tenant</b>: one SAP Datasphere system with its own
-        database, users and spaces. Companies usually have several, for example development, test and production.</p>
-        <p>Always glance at it before you change something: deploying in production by mistake is a classic.</p>`),
-      look('The shellbar', '#shell-app', `<p>Below the banner is the <b>shellbar</b>. On the left it names the app you are in, and in an editor
-        also the space or object (the <i>breadcrumb</i>). It is the quickest answer to "where am I?".</p>`),
       tryIt('Fold the navigation', '#nav-toggle', `<p>The <b>☰</b> button folds the side navigation down to icons. Useful in big editors,
         where every pixel of width counts.</p>`, { do: 'Click <b>☰</b>.', check: () => !!$('.app.nav-collapsed') }),
       tryIt('And unfold it', '#nav-toggle', `<p>Folded, the navigation shows only icons; pointing at one shows its name.
         Clicking a group such as Monitoring unfolds it again, too.</p>`, { do: 'Click <b>☰</b> again.', check: () => !$('.app.nav-collapsed') }),
       look('Back', '#shell-back', `<p>The arrow goes back one place, like the back button of a browser: from an editor to the object list,
         from a sub-page to the page before. You will use it all the time once you work in editors.</p>`),
-      look('Logo and app grid', '#brand-home', `<p>The logo takes you to <b>Home</b>, from anywhere. The grid icon at the far right does the same.
-        In a real tenant the SAP logo sits here; in this game it is <b>MSC</b>.</p>`),
-      look('Your rank and XP', '#rank', `<p>Only in the game: your rank and your <b>XP</b>. You earn XP by solving missions;
-        later, hints cost XP. Four ranks, from Junior Data Architect to Lead Data Architect.</p>`),
       tryIt('The glossary', '#glossary-open', `<p>The book icon opens the <b>glossary</b>: every Datasphere term the game uses, grouped by chapter,
         with where to find it in a real tenant. New terms appear as you reach their chapter.</p>`, { do: 'Click the <b>book</b> icon.', event: 'app:glossary' }),
       tryIt('How to play', '#guide-open', `<p>The question mark explains the rules of the game in four steps: ticket, tenant, hints, check.</p>`,
@@ -1226,7 +1220,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         Security and the Repository Explorer every week; the others when a ticket needs them. Each app unlocks in the chapter where you first need it.</p>`),
     ],
     questions('Each job belongs to one place you saw on the tour. Think of what the card said under "Why it exists".'),
-  ],
+  ]),
   'c00-m01': [
     [
       nav('repository', 'Repository Explorer', `<p>Searches every object in every space you are a member of, in one list.</p>`),

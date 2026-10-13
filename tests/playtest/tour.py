@@ -83,14 +83,16 @@ def play_grand_tour(g, shots=True):
             pg.wait_for_selector('.tour-card.done', timeout=8000)
             if title in APPS:
                 seen_apps.append(title)
-                if shots and title in ('Data Integration', 'Data Builder', 'Security'):
+                pg.wait_for_timeout(300)
+                if shots and title in ('Data Integration', 'Data Builder', 'Security', 'Glossary', 'The glossary', 'Your settings', 'Data Preview'):
                     g.shot(f'tour-{APPS[title]}')
             nxt = pg.locator('.tour-card [data-act="next"].primary')
             if nxt.count():
                 nxt.click()  # stay steps wait for Next
             pg.wait_for_timeout(900)
         else:
-            if shots and title in ('The project in one picture', 'The editor toolbar'):
+            pg.wait_for_timeout(300)
+            if shots and title in ('The project in one picture', 'The editor toolbar', 'Create something', 'Monitoring'):
                 g.shot('tour-' + title.lower().replace(' ', '-'))
             pg.click('[data-act="next"]')
             pg.wait_for_timeout(250)

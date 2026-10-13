@@ -38,11 +38,11 @@ export const CHAPTER_0: Mission[] = [
     title: 'The grand tour',
     from: CALIN,
     ticket: `<p>Welcome to Stadtwerke Rheinau! I am Calin, your mentor. Before you touch anything, I walk you through the
-      <b>whole</b> tenant once: every part of the screen and every app in the side navigation, top to bottom.</p>
+      <b>whole</b> tenant once: every function in the shellbar and every app in the side navigation, top to bottom.</p>
       <p>For each one you learn what it does, why it exists, and when you will need it in our project. You click everything yourself;
       the tutorial waits for you. Most apps are still locked and show an info page: that is fine, today you only look.</p>`,
     tasks: [
-      '<b>The frame:</b> tenant banner, shellbar, your XP, glossary, How to play and the user menu with Settings.',
+      '<b>The shellbar:</b> fold the navigation, Back, the glossary, How to play and Settings in the user menu.',
       '<b>Home</b> and the <b>Repository Explorer</b>.',
       '<b>Monitoring:</b> System and Spaces, Capacities, Task Logs, Expensive Statement Logs, Elastic Compute Nodes, Data Integration.',
       '<b>Catalog &amp; Marketplace:</b> Search and Marketplace Data Products.',
