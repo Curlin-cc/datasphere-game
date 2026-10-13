@@ -55,7 +55,8 @@ const state = {
   report: null as CheckReport | null,
   checking: false,
   solved: null as { xp: number; bonus: boolean; promotedTo?: string; badges?: Badge[] } | null,
-  navCollapsed: readPref('dsg-nav') === 'collapsed',
+  // Starts folded to icons (Wunsch von Curlin, 13.10.2026); ☰ opens it, and the choice is remembered.
+  navCollapsed: readPref('dsg-nav') !== 'expanded',
   /** Closed navigation groups. Monitoring and Catalog start closed, Apps and Utilities open, as in the tenant (Bild 3, 17). */
   closedGroups: new Set((readPref('dsg-nav-closed') ?? 'monitoring,catalog,transport').split(',').filter(Boolean)),
   /** Locations (app + page) visited before, for the Back button in the shellbar. */

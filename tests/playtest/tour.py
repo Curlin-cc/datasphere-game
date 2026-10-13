@@ -30,7 +30,7 @@ def act(g, title):
     pg = g.pg
     if title in APPS:
         return open_app(pg, APPS[title])
-    if title in ('Fold the navigation', 'And unfold it'):
+    if title == 'Open the navigation':
         return pg.click('#nav-toggle')
     if title == 'The glossary':
         return pg.click('#glossary-open')
@@ -107,8 +107,9 @@ def play_grand_tour(g, shots=True):
 if __name__ == '__main__':
     S = sys.argv[1] if len(sys.argv) > 1 else '.'
     with sync_playwright() as p:
-        g = Game(p, S)
+        g = Game(p, S, expanded_nav=False)  # the real default: folded
         g.start()
+        assert g.pg.locator('.app.nav-collapsed').count(), 'navigation should start folded'
         print('   MISSION:', g.pg.inner_text('.mission-head'))
         play_grand_tour(g)
         g.check('c00-m00 by tutorial', show_ok=True)

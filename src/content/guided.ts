@@ -1023,10 +1023,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   'c00-m00': docked([
     // ---------------------------------------------------------------- task 1: functions in the shellbar
     [
-      tryIt('Fold the navigation', '#nav-toggle', `<p>The <b>☰</b> button folds the side navigation down to icons. Useful in big editors,
-        where every pixel of width counts.</p>`, { do: 'Click <b>☰</b>.', check: () => !!$('.app.nav-collapsed') }),
-      tryIt('And unfold it', '#nav-toggle', `<p>Folded, the navigation shows only icons; pointing at one shows its name.
-        Clicking a group such as Monitoring unfolds it again, too.</p>`, { do: 'Click <b>☰</b> again.', check: () => !$('.app.nav-collapsed') }),
+      tryIt('Open the navigation', '#nav-toggle', `<p>The side navigation starts folded to icons. The <b>☰</b> button opens it with the names of all apps;
+        click it again later to fold it, which gives big editors more width. Your choice is remembered.</p>`,
+        { do: 'Click <b>☰</b>.', check: () => !$('.app.nav-collapsed') }),
       look('Back', '#shell-back', `<p>The arrow goes back one place, like the back button of a browser: from an editor to the object list,
         from a sub-page to the page before. You will use it all the time once you work in editors.</p>`),
       tryIt('The glossary', '#glossary-open', `<p>The book icon opens the <b>glossary</b>: every Datasphere term the game uses, grouped by chapter,

@@ -140,3 +140,4 @@ Format: Entscheidung · Grund · Datum. Neueste oben.
 | 2026-10-13 | Tour-Schritt-Option `stay`: nach dem eigenen Klick bleibt die Karte stehen, weiter mit *Next* | Sonst springt die Tour 0,75 s nach dem Klick weiter, bevor man die geöffnete Seite und den Kontext lesen kann |
 | 2026-10-13 | Alte Spielstände: c00-m00 gilt als gelöst (0 XP), sobald irgendeine andere Mission gelöst ist | Neue erste Mission würde sonst alle Kapitel wieder sperren (Freischaltung ist reihenfolgebasiert); Sandbox muss nicht neu erzeugt werden |
 | 2026-10-13 | Grand Tour: Karten auf dem Missions-Panel (`dock`), nach erledigtem Klick kein Spotlight | Wunsch von Curlin: Inhalt der erklärten App muss immer sichtbar sein; das Missions-Panel ist die einzige Fläche, die nicht zum Datasphere-Inhalt gehört |
+| 2026-10-13 | Seitennavigation startet eingeklappt (Icons), Wahl über ☰ wird gespeichert | Wunsch von Curlin; mehr Platz für die Apps, die Grand Tour öffnet sie im ersten Schritt |

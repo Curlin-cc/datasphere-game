@@ -37,7 +37,7 @@ def save_before(chapter, current, tenant=None, xp=200):
 
 
 class Game:
-    def __init__(self, p, shots='.'):
+    def __init__(self, p, shots='.', expanded_nav=True):
         self.shots = shots
         self.errors = []
         self.b = p.chromium.launch()
@@ -46,6 +46,9 @@ class Game:
         self.pg.on('dialog', lambda d: d.accept())
         # The game asks with its own dialog (ui.ts ask/tell, browser dialogs are blocked in the artifact): accept like before.
         # Like the artifact host: browser dialogs do nothing, so a leftover confirm() shows up as a failing playtest.
+        # The navigation starts folded since 13.10.2026; most scripts click entries by name, so they open it (tour.py tests the default).
+        if expanded_nav:
+            self.pg.add_init_script("try{localStorage.setItem('dsg-nav','expanded')}catch(e){}")
         self.pg.add_init_script("window.confirm = () => false; window.alert = () => {}; window.prompt = () => null;")
         self.pg.add_init_script("""setInterval(() => {
             const b = document.querySelector('.ask-dlg [type="submit"]');
