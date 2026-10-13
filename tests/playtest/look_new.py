@@ -35,12 +35,12 @@ with sync_playwright() as p:
     safe('settings', lambda: (pg.click('#shell-user'), pg.click('[data-um="settings"]')))
     pg.keyboard.press('Escape')
     safe('sharing', lambda: g.nav('sharing'))
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     for tile in ['table', 'dataflow', 'transformation', 'replication', 'dac', 'analytic']:
         def open_tile(tile=tile):
-            g.space('RHN_HARM') if not pg.locator('#new-tiles').count() else None
+            g.space('RHN_DSL') if not pg.locator('#new-tiles').count() else None
             pg.click(f'#new-tiles [data-new="{tile}"]')
             pg.wait_for_timeout(500)
         safe(f'editor-{tile}', open_tile)
-        g.space('RHN_HARM')
+        g.space('RHN_DSL')
     g.done()

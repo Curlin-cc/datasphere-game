@@ -1,6 +1,6 @@
 import type { Mission, RuleContext } from '../../missions/types';
 import type { TenantState } from '../../tenant';
-import { findObject, objectKey, addVersion } from '../../repo';
+import { findObject, objectKey, addVersion, readsFrom } from '../../repo';
 import { REF_CONTRACTS_KEYS, M02_COLS, project } from './c05';
 import { SAC_PLANNING } from '../../consumption';
 import { packageById } from '../../onboarding';
@@ -27,72 +27,82 @@ const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor',
 const SABINE = { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' };
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 
-const D_TARIFF = 'RHN_REP.RHN_REP_D_TARIFF';
-const DF_MONTHLY = 'RHN_REP.RHN_REP_DF_MONTHLY';
-const T_MONTHLY = 'RHN_REP.RHN_REP_T_MONTHLY_CONSUMPTION';
+const D_TARIFF = 'RHN_DSL.RHN_DS_D_TARIFF';
+/** c12-m01: consumption view of the presentation layer on the shared tariff dimension, exposed for Power BI. */
+const V_TARIFFS = 'RHN_PRES.RHN_PR_V_TARIFFS';
+const V_TARIFFS_COLS = ['TARIFF', 'TARIFF_NAME', 'COMMODITY'];
+const DF_MONTHLY = 'RHN_DSL.RHN_DS_DF_MONTHLY';
+const T_MONTHLY = 'RHN_DSL.RHN_DS_T_MONTHLY_CONSUMPTION';
 const MONTHLY_COLS = ['READING_MONTH', 'GRID_AREA', 'CONSUMPTION_KWH'];
-/** One row per month and grid area (c12-m10), from the deployed harmonized views the flow reads (they passed chapter 5). */
+/** One row per month and grid area (c12-m10), from the deployed base views the flow reads (they passed chapter 5). */
 const READINGS_X_CONTRACTS = `SELECT r.READING_DATE, c.GRID_AREA, r.CONSUMPTION_KWH
-  FROM RHN_HARM.RHN_HA_V_METER_READINGS r JOIN RHN_HARM.RHN_HA_V_CONTRACTS c ON r.CONTRACT_ID = c.CONTRACT_ID`;
+  FROM RHN_DSL.RHN_DS_V_METER_READINGS r JOIN RHN_DSL.RHN_DS_V_CONTRACTS c ON r.CONTRACT_ID = c.CONTRACT_ID`;
 const REF_MONTHLY = `SELECT strftime(READING_DATE, '%Y-%m') AS READING_MONTH, GRID_AREA, SUM(CONSUMPTION_KWH) AS CONSUMPTION_KWH
   FROM (${READINGS_X_CONTRACTS}) f GROUP BY 1, 2`;
-const CONTRACTS = 'RHN_HARM.RHN_HA_V_CONTRACTS';
-/** c12-m11: bank payments with Delta Capture, loaded into harmonization by a transformation flow. */
-const PAYMENTS = 'RHN_IN.RHN_IN_T_PAYMENTS';
-const TF_PAYMENTS = 'RHN_HARM.RHN_HA_TF_PAYMENTS';
-const T_PAYMENTS = 'RHN_HARM.RHN_HA_T_PAYMENTS';
+const CONTRACTS = 'RHN_DSL.RHN_DS_V_CONTRACTS';
+/** c12-m11: bank payments with Delta Capture, loaded into the data & semantic layer by a transformation flow. */
+const PAYMENTS = 'RHN_ENTRY.RHN_EN_T_PAYMENTS';
+const TF_PAYMENTS = 'RHN_DSL.RHN_DS_TF_PAYMENTS';
+const T_PAYMENTS = 'RHN_DSL.RHN_DS_T_PAYMENTS';
 const PAYMENT_COLS = ['PAYMENT_ID', 'INVOICE_ID', 'CONTRACT_ID', 'PAID_ON', 'AMOUNT'];
 const REF_PAYMENTS = `SELECT p.PAYMENT_ID, p.INVOICE_ID, i.CONTRACT_ID, p.PAID_ON, p.AMOUNT
-  FROM RHN_IN.RHN_IN_T_PAYMENTS p JOIN RHN_HARM.RHN_HA_V_INVOICES i ON p.INVOICE_ID = i.INVOICE_ID`;
+  FROM RHN_ENTRY.RHN_EN_T_PAYMENTS p JOIN RHN_DSL.RHN_DS_V_INVOICES i ON p.INVOICE_ID = i.INVOICE_ID`;
 /** Today's bank message (c12-m11): one new payment, one corrected amount, one returned direct debit. */
 export const BANK = { add: ['PAY-0096', 'INV-4000080', '2026-07-15', '874.39'], fix: ['PAY-0012', '286.38'], drop: 'PAY-0007' };
-/** c12-m12: the nightly chain of the harmonization layer, and today's new payment after Tim's clean-up. */
-const NIGHTLY = 'RHN_HARM.RHN_HARM_TC_NIGHTLY';
+/** c12-m12: the nightly chain of the data & semantic layer, and today's new payment after Tim's clean-up. */
+const NIGHTLY = 'RHN_DSL.RHN_DS_TC_NIGHTLY';
 export const NEW_PAYMENT = ['PAY-0097', 'INV-4000172', '2026-07-16', '994.69'];
 const LOST_DAY = '2026-02-12';
-const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
-export const IN_PKG = 'RHN_IN_PKG_INBOUND';
-export const HARM_PKG = 'RHN_HARM_PKG_HARMONIZED';
+const AM_CONS = 'RHN_PRES.RHN_PR_AM_CONSUMPTION';
+export const IN_PKG = 'RHN_EN_PKG_ENTRY';
+export const HARM_PKG = 'RHN_DS_PKG_MODEL';
 
 // ---------------------------------------------------------------- m01 consumption
 
 const exposedIn = (t: TenantState, space: string) => t.objects.filter((o) => o.space === space && o.kind === 'SQL View' && o.deployed?.exposed);
 
 function tariffsExposed({ tenant }: RuleContext): string | null {
-  const o = findObject(tenant, D_TARIFF);
-  if (!o?.deployed) return 'RHN_REP_D_TARIFF is not deployed.';
-  if (o.deployed.exposed) return o.status === 'changes' ? 'RHN_REP_D_TARIFF has saved changes that are not deployed yet.' : null;
+  const o = findObject(tenant, V_TARIFFS);
+  if (!o) {
+    const elsewhere = tenant.objects.find((x) => x.name === 'RHN_PR_V_TARIFFS');
+    return elsewhere ? `RHN_PR_V_TARIFFS is in ${elsewhere.space}. Power BI logs on to the presentation layer: build it in RHN_PRES.`
+      : 'There is no consumption view RHN_PR_V_TARIFFS in RHN_PRES yet.';
+  }
+  if (!o.deployed) return 'RHN_PR_V_TARIFFS is not deployed.';
+  const reads = readsFrom(o, tenant);
+  if (reads.join() !== D_TARIFF) return `RHN_PR_V_TARIFFS reads ${reads.join(', ') || 'nothing'}. It should read only the shared dimension ${D_TARIFF}.`;
+  if (o.deployed.exposed) return o.status === 'changes' ? 'RHN_PR_V_TARIFFS has saved changes that are not deployed yet.' : null;
   return o.exposed ? 'Expose for Consumption is switched on in the saved version only. Deploy the view: tools read the deployed version.'
-    : 'Power BI cannot see RHN_REP_D_TARIFF yet: switch on Expose for Consumption in its properties and deploy.';
+    : 'Power BI cannot see RHN_PR_V_TARIFFS yet: switch on Expose for Consumption in its properties and deploy.';
 }
 
 function onlyTariffs({ tenant }: RuleContext): string | null {
-  const extra = exposedIn(tenant, 'RHN_REP').filter((o) => objectKey(o) !== D_TARIFF);
+  const extra = [...exposedIn(tenant, 'RHN_PRES'), ...exposedIn(tenant, 'RHN_DSL')].filter((o) => objectKey(o) !== V_TARIFFS);
   if (!extra.length) return null;
-  const cust = extra.find((o) => o.name === 'RHN_REP_D_CUSTOMER');
-  if (cust) return 'RHN_REP_D_CUSTOMER is exposed: every database user of RHN_REP can now read customer names and cities. Switch it off and deploy.';
-  return `${extra.map((o) => o.name).join(', ')} ${extra.length === 1 ? 'is' : 'are'} exposed as well. Every database user of the space reads every exposed view: expose only what the ticket asks for.`;
+  const cust = extra.find((o) => o.name === 'RHN_DS_D_CUSTOMER');
+  if (cust) return 'RHN_DS_D_CUSTOMER is exposed: database users of RHN_DSL could read customer names and cities. Switch it off and deploy.';
+  return `${extra.map((o) => `${o.space}.${o.name}`).join(', ')} ${extra.length === 1 ? 'is' : 'are'} exposed as well. Every database user of a space reads every exposed view: expose only what the ticket asks for, in the presentation layer.`;
 }
 
 function powerBiUser({ tenant }: RuleContext): string | null {
-  const rep = tenant.dbUsers.filter((u) => u.space === 'RHN_REP');
+  const rep = tenant.dbUsers.filter((u) => u.space === 'RHN_PRES');
   if (!rep.length) {
     return tenant.dbUsers.length
-      ? `${tenant.dbUsers[0].space}#${tenant.dbUsers[0].suffix} belongs to ${tenant.dbUsers[0].space}. A database user reads the exposed views of its own space: create it in RHN_REP.`
-      : 'There is no database user in RHN_REP yet: Space Management › RHN_REP › Database Access.';
+      ? `${tenant.dbUsers[0].space}#${tenant.dbUsers[0].suffix} belongs to ${tenant.dbUsers[0].space}. A database user reads the exposed views of its own space: create it in RHN_PRES.`
+      : 'There is no database user in RHN_PRES yet: Space Management › RHN_PRES › Database Access.';
   }
   if (rep.some((u) => u.read && !u.write)) return null;
   if (rep.some((u) => u.write)) return 'The Power BI user has write access: it could create and fill tables in its own Open SQL schema. The pricing team only reads.';
-  return 'The database user in RHN_REP has no read access, so Power BI sees nothing.';
+  return 'The database user in RHN_PRES has no read access, so Power BI sees nothing.';
 }
 
 // ---------------------------------------------------------------- m02 transport
 
-const boardPackage = (t: TenantState) => t.packages.find((p) => p.space === 'RHN_REP' && p.objects.includes(AM_CONS));
+const boardPackage = (t: TenantState) => t.packages.find((p) => p.space === 'RHN_PRES' && p.objects.includes(AM_CONS));
 
 function packageValid({ tenant }: RuleContext): string | null {
   const p = boardPackage(tenant);
-  if (!p) return 'No package in RHN_REP contains RHN_REP_AM_CONSUMPTION yet: Transport › Packages › Create.';
+  if (!p) return 'No package in RHN_PRES contains RHN_PR_AM_CONSUMPTION yet: Transport › Packages › Create.';
   const msgs = validationMessages(validatePackage(p, tenant), p);
   return msgs.length ? `${p.name}: ${msgs[0]}${msgs.length > 1 ? ` (and ${msgs.length - 1} more, see Validation)` : ''}` : null;
 }
@@ -108,15 +118,15 @@ function packageExported({ tenant }: RuleContext): string | null {
 }
 
 function transportSetup(t: TenantState) {
-  presetPackage(t, 'RHN_IN', IN_PKG, 'Inbound layer', 'Jonas Becker');
-  presetPackage(t, 'RHN_HARM', HARM_PKG, 'Harmonized layer', 'Calin Mucea', [IN_PKG]);
+  presetPackage(t, 'RHN_ENTRY', IN_PKG, 'Entry layer', 'Jonas Becker');
+  presetPackage(t, 'RHN_DSL', HARM_PKG, 'Data & semantic layer', 'Calin Mucea', [IN_PKG]);
 }
 
 // ---------------------------------------------------------------- m03 catalog
 
 function assetReady({ tenant }: RuleContext): string | null {
   const a = findAsset(tenant, AM_CONS);
-  if (!a) return 'Find RHN_REP_AM_CONSUMPTION in the catalog and open it.';
+  if (!a) return 'Find RHN_PR_AM_CONSUMPTION in the catalog and open it.';
   if (a.description.length < 30) return 'The asset needs a description that tells people what it is and when to use it (a sentence or two).';
   if (!a.tags.includes('Subject Area/Consumption')) return 'Tag the asset with Subject Area › Consumption, so that a filter finds it.';
   return a.published ? null : 'The asset is not published: catalog users do not see it yet.';
@@ -127,33 +137,35 @@ function termReady({ tenant }: RuleContext): string | null {
   const own = tenant.catalog.terms.filter((x) => x.createdBy === 'You');
   if (!own.length) return 'Create a glossary term for the consumption figure, with a definition.';
   const linked = own.filter((x) => a?.terms.includes(x.id));
-  if (!linked.length) return 'Your glossary term is not linked to RHN_REP_AM_CONSUMPTION yet.';
+  if (!linked.length) return 'Your glossary term is not linked to RHN_PR_AM_CONSUMPTION yet.';
   return linked.some((x) => x.published) ? null : `"${linked[0].name}" is not published. Terms are published on their own.`;
 }
 
 // ---------------------------------------------------------------- m05/m06 hierarchies
 
-const H_GRID = 'RHN_REP.RHN_REP_H_GRID_AREA';
-const D_GRID = 'RHN_REP.RHN_REP_D_GRID_AREA';
-const T_NODES = 'RHN_REP.RHN_REP_T_PERMISSION_NODES';
-const DAC_REGION = 'RHN_REP.RHN_REP_DAC_REGION';
-const F_INV = 'RHN_REP.RHN_REP_F_INVOICES';
-const AM_INV = 'RHN_REP.RHN_REP_AM_INVOICES';
-const REGION = 'RHN_REP_D_GRID_AREA.REGION';
+const H_GRID = 'RHN_DSL.RHN_DS_H_GRID_AREA';
+const D_GRID = 'RHN_DSL.RHN_DS_D_GRID_AREA';
+const T_NODES = 'RHN_DSL.RHN_DS_T_PERMISSION_NODES';
+const DAC_REGION = 'RHN_DSL.RHN_DS_DAC_REGION';
+const F_INV = 'RHN_DSL.RHN_DS_F_INVOICES';
+const AM_INV = 'RHN_PRES.RHN_PR_AM_INVOICES';
+const REGION = 'RHN_DS_D_GRID_AREA.REGION';
+/** c12-m08: consumption view for the planners' OData import, on the shared grid area dimension. */
+const V_GRID = 'RHN_PRES.RHN_PR_V_GRID_AREAS';
 
 /** Company → regions → grid areas. Region nodes get a prefix: their codes NORTH and SOUTH are also grid area codes. */
 const REF_HIERARCHY = `SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID
-  UNION ALL SELECT DISTINCT 'R_' || REGION, 'RHEINAU' FROM RHN_IN.GRID_AREAS
-  UNION ALL SELECT GRID_AREA, 'R_' || REGION FROM RHN_IN.GRID_AREAS`;
+  UNION ALL SELECT DISTINCT 'R_' || REGION, 'RHEINAU' FROM RHN_ENTRY.GRID_AREAS
+  UNION ALL SELECT GRID_AREA, 'R_' || REGION FROM RHN_ENTRY.GRID_AREAS`;
 const NO_PREFIX = `SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID
-  UNION ALL SELECT DISTINCT REGION, 'RHEINAU' FROM RHN_IN.GRID_AREAS
-  UNION ALL SELECT GRID_AREA, REGION FROM RHN_IN.GRID_AREAS`;
+  UNION ALL SELECT DISTINCT REGION, 'RHEINAU' FROM RHN_ENTRY.GRID_AREAS
+  UNION ALL SELECT GRID_AREA, REGION FROM RHN_ENTRY.GRID_AREAS`;
 const NODES: [string, string][] = [['PLINDNER', 'RHEINAU'], ['MBRANDT', 'R_NORTH'], ['ADEMIR', 'R_SOUTH']];
 
 function hierarchySemantics({ tenant }: RuleContext): string | null {
   const d = findObject(tenant, H_GRID)?.deployed;
-  if (!d) return 'RHN_REP_H_GRID_AREA is not deployed yet.';
-  if (d.semanticUsage !== 'Hierarchy') return `RHN_REP_H_GRID_AREA is deployed as ${d.semanticUsage}. Set the semantic usage to Hierarchy and deploy.`;
+  if (!d) return 'RHN_DS_H_GRID_AREA is not deployed yet.';
+  if (d.semanticUsage !== 'Hierarchy') return `RHN_DS_H_GRID_AREA is deployed as ${d.semanticUsage}. Set the semantic usage to Hierarchy and deploy.`;
   const roles = d.columnRoles ?? {};
   if (roles.PARENT_ID !== 'Parent') return 'PARENT_ID needs the role Parent in the deployed hierarchy.';
   return roles.NODE_ID === 'Child' ? null : 'NODE_ID needs the role Child in the deployed hierarchy.';
@@ -164,31 +176,31 @@ function dimensionHasHierarchy({ tenant }: RuleContext): string | null {
   const a = (o?.deployed?.associations ?? []).find((x) => x.target === H_GRID);
   if (!a) {
     return (o?.associations ?? []).some((x) => x.target === H_GRID)
-      ? 'The association to the hierarchy is only saved. Deploy RHN_REP_D_GRID_AREA.'
-      : 'RHN_REP_D_GRID_AREA has no association to RHN_REP_H_GRID_AREA yet: the dimension does not know its hierarchy.';
+      ? 'The association to the hierarchy is only saved. Deploy RHN_DS_D_GRID_AREA.'
+      : 'RHN_DS_D_GRID_AREA has no association to RHN_DS_H_GRID_AREA yet: the dimension does not know its hierarchy.';
   }
   return a.mapping.some((m) => m.from === 'GRID_AREA' && m.to === 'NODE_ID') ? null : 'Map GRID_AREA of the dimension to NODE_ID of the hierarchy.';
 }
 
 function regionControl({ tenant }: RuleContext): string | null {
   const o = findObject(tenant, DAC_REGION);
-  if (!o) return 'There is no data access control RHN_REP_DAC_REGION in RHN_REP yet.';
+  if (!o) return 'There is no data access control RHN_DS_DAC_REGION in RHN_DSL yet.';
   const d = o.deployed?.dac;
-  if (!d) return 'RHN_REP_DAC_REGION is saved, but not deployed.';
-  if (d.type !== 'Hierarchy') return 'RHN_REP_DAC_REGION has the structure Single Values. A region node only covers its grid areas with the structure Hierarchy.';
-  if (d.entity !== T_NODES) return `RHN_REP_DAC_REGION reads ${d.entity.split('.')[1] ?? 'nothing'}. Its permissions entity is RHN_REP_T_PERMISSION_NODES.`;
+  if (!d) return 'RHN_DS_DAC_REGION is saved, but not deployed.';
+  if (d.type !== 'Hierarchy') return 'RHN_DS_DAC_REGION has the structure Single Values. A region node only covers its grid areas with the structure Hierarchy.';
+  if (d.entity !== T_NODES) return `RHN_DS_DAC_REGION reads ${d.entity.split('.')[1] ?? 'nothing'}. Its permissions entity is RHN_DS_T_PERMISSION_NODES.`;
   if (d.identifier !== 'USER_ID' || d.criteria.join() !== 'NODE_ID') return 'Identifier USER_ID, criterion NODE_ID.';
-  return d.hierarchy === H_GRID ? null : 'Choose RHN_REP_H_GRID_AREA as the hierarchy.';
+  return d.hierarchy === H_GRID ? null : 'Choose RHN_DS_H_GRID_AREA as the hierarchy.';
 }
 
 function invoicesByRegion({ tenant }: RuleContext): string | null {
   const o = findObject(tenant, F_INV);
   const dacs = o?.deployed?.dacs ?? [];
   const a = dacs.find((x) => x.dac === DAC_REGION);
-  if (!a) return (o?.dacs ?? []).some((x) => x.dac === DAC_REGION) ? 'The new control is only saved on RHN_REP_F_INVOICES. Deploy it.' : 'Assign RHN_REP_DAC_REGION to RHN_REP_F_INVOICES.';
+  if (!a) return (o?.dacs ?? []).some((x) => x.dac === DAC_REGION) ? 'The new control is only saved on RHN_DS_F_INVOICES. Deploy it.' : 'Assign RHN_DS_DAC_REGION to RHN_DS_F_INVOICES.';
   if (a.mapping.NODE_ID !== 'GRID_AREA') return 'Map the criterion NODE_ID to the column GRID_AREA of the fact: the leaves of the hierarchy are grid areas.';
   return dacs.some((x) => x.dac === DAC_VALUES)
-    ? 'RHN_REP_DAC_GRID_AREA is still assigned as well. Two controls are combined with AND; remove the old one from the invoices so that the node table alone decides.'
+    ? 'RHN_DS_DAC_GRID_AREA is still assigned as well. Two controls are combined with AND; remove the old one from the invoices so that the node table alone decides.'
     : null;
 }
 
@@ -202,24 +214,29 @@ export const CHAPTER_12: Mission[] = [
     from: JONAS,
     ticket: `<p>Jonas Becker. The pricing team builds its tariff comparisons in <b>Power BI</b>. They want to read our tariff list
       directly from Datasphere over ODBC instead of getting an Excel file every month.</p>
-      <p>Give them the tariff dimension of the reporting layer, read-only, and nothing else. Their tool logs on with a technical user.</p>`,
+      <p>Give them the tariffs, read-only, and nothing else. Their tool logs on with a technical user.</p>
+      <p><i>Calin adds:</i> External tools are consumers like SAP Analytics Cloud, so they go to the <b>presentation layer</b>. Build a
+      <b>consumption view</b> <code>RHN_PR_V_TARIFFS</code> in <code>RHN_PRES</code> on the shared dimension <code>RHN_DS_D_TARIFF</code>
+      (<code>TARIFF</code>, <code>TARIFF_NAME</code>, <code>COMMODITY</code>) and make that view, and only that view, readable for Power BI.</p>`,
     tasks: [
-      'Make <code>RHN_REP_D_TARIFF</code> readable for external tools, and only that view.',
-      'Create a database user in <code>RHN_REP</code> for Power BI that can read, not write.',
+      'In <code>RHN_PRES</code>, build the SQL view <code>RHN_PR_V_TARIFFS</code> on the shared tariff dimension.',
+      'Make it readable for external tools, and only that view.',
+      'Create a database user in <code>RHN_PRES</code> for Power BI that can read, not write.',
       'Answer the questions below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'An external tool sees only views that are exposed for consumption, and only through a database user of the same space.' },
-      { label: 'Hint 2: the concept', cost: 15, text: 'The switch Expose for Consumption is in the properties of the view (then Deploy). Database users are in Space Management › RHN_REP › Database Access.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'The switch Expose for Consumption is in the properties of the view (then Deploy). Database users are in Space Management › RHN_PRES › Database Access.' },
       { label: 'Hint 3: the options', cost: 25, text: 'Enable Read Access (SQL) only. Write access would give Power BI its own schema to create tables in.' },
     ],
     checks: [
-      { type: 'rule', label: 'Tariffs exposed', ok: 'RHN_REP_D_TARIFF is exposed for consumption and deployed.', test: tariffsExposed },
-      { type: 'rule', label: 'Nothing else exposed', ok: 'Only the tariffs are exposed in RHN_REP.', test: onlyTariffs },
-      { type: 'rule', label: 'Database user', ok: 'A database user of RHN_REP with read access only.', test: powerBiUser },
+      { type: 'result', label: 'The consumption view', object: V_TARIFFS, columns: V_TARIFFS_COLS, expected: `SELECT ${V_TARIFFS_COLS.join(', ')} FROM RHN_ENTRY.TARIFFS` },
+      { type: 'rule', label: 'Tariffs exposed', ok: 'RHN_PR_V_TARIFFS reads the shared dimension and is exposed for consumption.', test: tariffsExposed },
+      { type: 'rule', label: 'Nothing else exposed', ok: 'Only the tariffs are exposed in RHN_PRES.', test: onlyTariffs },
+      { type: 'rule', label: 'Database user', ok: 'A database user of RHN_PRES with read access only.', test: powerBiUser },
       {
         type: 'question', id: 'odbc-model', label: 'The model over ODBC',
-        prompt: 'Next month the pricing team also wants RHN_REP_AM_CONSUMPTION in Power BI through the same database user. What do you tell them?',
+        prompt: 'Next month the pricing team also wants RHN_PR_AM_CONSUMPTION in Power BI through the same database user. What do you tell them?',
         options: [
           'Switch on Expose for Consumption for the model, then it works',
           'ODBC reads exposed views; analytic models are consumed by SAP Analytics Cloud, its Excel add-in or the analytic OData API',
@@ -230,15 +247,27 @@ export const CHAPTER_12: Mission[] = [
         nudge: 'Not quite. Which objects can a database user read, and which tools read analytic models?',
       },
       {
+        type: 'question', id: 'why-pres', label: 'Why a consumption view',
+        prompt: 'Why not simply expose RHN_DS_D_TARIFF in RHN_DSL and create the database user there?',
+        options: [
+          'Dimensions cannot be exposed for consumption',
+          'A database user reads the exposed views of its own space. In RHN_DSL that space also holds base views with personal data; RHN_PRES is the layer built for consumers, and a view there decouples Power BI from changes to the dimension',
+          'Database users can only be created in the space with the highest priority',
+          'Power BI needs a view whose name starts with RHN_PR_',
+        ],
+        answer: 1,
+        nudge: 'Not quite. What else lives in RHN_DSL, and which layer is meant for consumers?',
+      },
+      {
         type: 'question', id: 'user-name', label: 'The logon',
         prompt: 'Under which name does Power BI log on to the database?',
-        options: ['The space ID RHN_REP', 'The space ID, a # and your suffix, e.g. RHN_REP#PRICING', 'Jonas\' SAP user', 'DWC_TENANT_OWNER'],
+        options: ['The space ID RHN_PRES', 'The space ID, a # and your suffix, e.g. RHN_PRES#PRICING', 'Jonas\' SAP user', 'DWC_TENANT_OWNER'],
         answer: 1,
         nudge: 'Not quite. Look at the column Database User Name in the Database Access dialog.',
       },
     ],
     xp: 40,
-    realTenant: `Same steps in a real tenant: Expose for Consumption in the view's properties, deploy; Space Management › the space ›
+    realTenant: `Same steps in a real tenant: a view on the shared object, Expose for Consumption in its properties, deploy; Space Management › the space ›
       Database Access › Database Users › Create, with Enable Read Access (SQL). Host, port and the one-time password come from the user's
       details. Many tenants also need the client's IP address in System › Configuration › IP Allowlist (handbook: not verified).`,
     debrief: `<p>The pricing team is reading the tariffs live. No more monthly Excel.</p>
@@ -251,18 +280,19 @@ export const CHAPTER_12: Mission[] = [
     title: 'Ship the board model',
     from: CALIN,
     ticket: `<p>The landscape is complete: next to this development tenant there is now <b>Test</b> and <b>Production</b>. The board model
-      <code>RHN_REP_AM_CONSUMPTION</code> goes to both, with everything it needs.</p>
-      <p>Jonas has packed the inbound layer (<code>${IN_PKG}</code>), I packed harmonization (<code>${HARM_PKG}</code>); both are exported.
-      You pack the reporting part in a package of <code>RHN_REP</code>, validate it and export it to Test and Production.</p>`,
+      <code>RHN_PR_AM_CONSUMPTION</code> goes to both, with everything it needs.</p>
+      <p>Jonas has packed the entry layer (<code>${IN_PKG}</code>), I packed the data &amp; semantic layer (<code>${HARM_PKG}</code>), facts,
+      dimensions and access controls included; both are exported. You pack the presentation part in a package of <code>RHN_PRES</code>,
+      validate it and export it to Test and Production.</p>`,
     tasks: [
-      'Create a package in <code>RHN_REP</code> with <code>RHN_REP_AM_CONSUMPTION</code> and everything it needs.',
+      'Create a package in <code>RHN_PRES</code> with <code>RHN_PR_AM_CONSUMPTION</code> and everything it needs.',
       'Validate it until it has no problems, and save it.',
       'Export it to Test and Production.',
       'Answer the questions below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'Transport › Packages. The editor shows what each object needs; Validate lists what is missing.' },
-      { label: 'Hint 2: the concept', cost: 15, text: 'The model needs its fact and dimensions; the fact needs its associated dimensions and its data access control, which needs its permissions table. Views of RHN_HARM come from a required package.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'The model needs its fact and dimensions, and they live in RHN_DSL: objects of another space come from a required package, not from yours.' },
       { label: 'Hint 3: the export', cost: 25, text: 'Transport › Export: select the package, Export, tick both target tenants.' },
     ],
     setup: transportSetup,
@@ -286,7 +316,7 @@ export const CHAPTER_12: Mission[] = [
         prompt: 'Production has not imported anything yet. In which order do the packages go in?',
         options: [
           'Yours first, the others when someone needs them',
-          'Inbound, then harmonization, then yours: a package needs its required packages in the target first, or imported together',
+          'Entry, then data & semantic, then yours: a package needs its required packages in the target first, or imported together',
           'Any order; the tenant sorts it out',
           'Only yours: required packages are copied automatically',
         ],
@@ -309,10 +339,10 @@ export const CHAPTER_12: Mission[] = [
     from: SABINE,
     ticket: `<p>Sabine Wolf. In every audit I get three different "consumption" numbers from three departments. I want to look up in one
       place which model is the official one and what exactly it counts.</p>
-      <p>Please put <code>RHN_REP_AM_CONSUMPTION</code> into the catalog with a proper description, tag it, and add a glossary term that
+      <p>Please put <code>RHN_PR_AM_CONSUMPTION</code> into the catalog with a proper description, tag it, and add a glossary term that
       defines the figure. Publish both, so that I find them.</p>`,
     tasks: [
-      'Find <code>RHN_REP_AM_CONSUMPTION</code> in the catalog, describe it and tag it with Subject Area › Consumption.',
+      'Find <code>RHN_PR_AM_CONSUMPTION</code> in the catalog, describe it and tag it with Subject Area › Consumption.',
       'Create a glossary term that defines the consumption figure and link it to the asset.',
       'Publish the asset and the term.',
       'Answer the question below.',
@@ -351,21 +381,21 @@ export const CHAPTER_12: Mission[] = [
     title: 'The old revenue perspective',
     from: CFO,
     ticket: `<p>Petra Lindner. In 2023 I had a story "Revenue 2023" with revenue by region. IT says it ran on a <b>perspective</b> in
-      something called the Business Builder, and that it still exists in RHN_REP.</p>
+      something called the Business Builder, and that it still exists in RHN_PRES.</p>
       <p>Should we bring it back? Please have a look and tell me what we would build today.</p>`,
     tasks: [
-      'Open the Business Builder in <code>RHN_REP</code> and find the consumption model behind the old story.',
+      'Open the Business Builder in <code>RHN_PRES</code> and find the consumption model behind the old story.',
       'Look at its perspectives and follow its sources back to the business entities.',
       'Answer the questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Business Builder › RHN_REP. The type column tells you which object is the consumption model.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Business Builder › RHN_PRES. The type column tells you which object is the consumption model.' },
       { label: 'Hint 2: the chain', cost: 15, text: 'Consumption model → fact model → business entity (fact) → Data Builder view. Each object\'s General tab names its source.' },
     ],
     checks: [
       {
         type: 'rule', label: 'The consumption model', ok: 'You read the consumption model and its perspectives.',
-        test: ({ events }) => (!events.has('bb-open:RHN_REP.RHN_CM_REVENUE') ? 'Open the consumption model in the Business Builder of RHN_REP.'
+        test: ({ events }) => (!events.has('bb-open:RHN_PRES.RHN_CM_REVENUE') ? 'Open the consumption model in the Business Builder of RHN_PRES.'
           : events.has('bb-tab:RHN_CM_REVENUE:Perspectives') ? null : 'Look at the tab Perspectives of the consumption model.'),
       },
       {
@@ -385,8 +415,8 @@ export const CHAPTER_12: Mission[] = [
         prompt: 'What do you recommend to Petra?',
         options: [
           'Rebuild the consumption model and perspective in the Business Builder',
-          'Nothing new in the Business Builder: RHN_REP_AM_INVOICES already offers net and tax by region; a new story on the analytic model replaces the perspective',
-          'Copy the fact model into RHN_HARM',
+          'Nothing new in the Business Builder: RHN_PR_AM_INVOICES already offers net and tax by region; a new story on the analytic model replaces the perspective',
+          'Copy the fact model into RHN_DSL',
           'Expose the old perspective for Power BI',
         ],
         answer: 1,
@@ -414,17 +444,17 @@ export const CHAPTER_12: Mission[] = [
     from: CALIN,
     ticket: `<p>The board thinks in a tree: <b>Stadtwerke Rheinau</b> → <b>regions</b> North and South → <b>grid areas</b>. Today the region is
       just a column. Build the tree as a parent-child <b>hierarchy</b> and attach it to the grid area dimension.</p>
-      <p>The view <code>RHN_REP_H_GRID_AREA</code> in <code>RHN_REP</code> has one row per node with <code>NODE_ID</code> and <code>PARENT_ID</code>:
+      <p>The view <code>RHN_DS_H_GRID_AREA</code> in <code>RHN_DSL</code>, next to the dimension, has one row per node with <code>NODE_ID</code> and <code>PARENT_ID</code>:
       the root <code>RHEINAU</code> without parent, one node per region, one node per grid area. Careful: the region codes NORTH and
       SOUTH are also grid area codes, and a node ID may appear only once. Give the regions the IDs <code>R_NORTH</code> and <code>R_SOUTH</code>.</p>`,
     tasks: [
-      'Create the SQL view <code>RHN_REP_H_GRID_AREA</code> with <code>NODE_ID</code> and <code>PARENT_ID</code> (and a name if you like) from the harmonized grid areas.',
+      'Create the SQL view <code>RHN_DS_H_GRID_AREA</code> with <code>NODE_ID</code> and <code>PARENT_ID</code> (and a name if you like) from the grid areas base view.',
       'Set its semantic usage to <b>Hierarchy</b>: <code>PARENT_ID</code> is the Parent, <code>NODE_ID</code> the Child. Deploy.',
-      'Associate <code>RHN_REP_D_GRID_AREA</code> with the hierarchy (GRID_AREA → NODE_ID) and deploy the dimension.',
+      'Associate <code>RHN_DS_D_GRID_AREA</code> with the hierarchy (GRID_AREA → NODE_ID) and deploy the dimension.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder › RHN_REP › New SQL View. RHN_HARM.RHN_HA_V_GRID_AREAS has GRID_AREA, GRID_AREA_NAME and REGION.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder › RHN_DSL › New SQL View. The base view RHN_DS_V_GRID_AREAS has GRID_AREA, GRID_AREA_NAME and REGION.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Three groups of rows stacked with UNION ALL: the root, the regions (DISTINCT, prefixed with R_), the grid areas with their region node as parent.' },
       { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT 'RHEINAU' AS NODE_ID, NULL AS PARENT_ID UNION ALL SELECT DISTINCT 'R_' || REGION, ______ FROM ______ UNION ALL SELECT GRID_AREA, ______ FROM ______" },
     ],
@@ -435,7 +465,7 @@ export const CHAPTER_12: Mission[] = [
         counts: { 5: 'Five nodes: the root or the regions are missing. The tree has 1 root, 2 regions and 4 grid areas.', 6: 'Six nodes: one level is incomplete. The tree has 1 root, 2 regions and 4 grid areas.' },
       },
       { type: 'rule', label: 'A hierarchy', ok: 'Deployed as Hierarchy: PARENT_ID is the Parent, NODE_ID the Child.', test: hierarchySemantics },
-      { type: 'rule', label: 'Attached to the dimension', ok: 'RHN_REP_D_GRID_AREA is associated with the hierarchy.', test: dimensionHasHierarchy },
+      { type: 'rule', label: 'Attached to the dimension', ok: 'RHN_DS_D_GRID_AREA is associated with the hierarchy.', test: dimensionHasHierarchy },
       {
         type: 'question', id: 'why-tree', label: 'Why a tree',
         prompt: 'The dimension already has a REGION column. What does the hierarchy add?',
@@ -452,7 +482,8 @@ export const CHAPTER_12: Mission[] = [
     xp: 50,
     realTenant: `In a real tenant: a SQL or graphical view with semantic usage <b>Hierarchy</b> (Parent and Child columns), or <b>Hierarchy with
       Directory</b> for several hierarchies in one entity; then an association from the dimension to the hierarchy. The analytic model and
-      SAP Analytics Cloud offer the hierarchy for drill-down. The game does not show the drill-down.`,
+      SAP Analytics Cloud offer the hierarchy for drill-down; when the dimension is shared with another space, share the hierarchy with it
+      (a supporting entity). The game does not show the drill-down.`,
     debrief: `<p>Seven nodes, one root. That is the tree the board draws on its slides.</p>
       <p>And now something useful: the next ticket uses the nodes for access.</p>`,
   },
@@ -463,30 +494,30 @@ export const CHAPTER_12: Mission[] = [
     from: { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' },
     ticket: `<p>Sabine Wolf. The permissions table has eight rows for three people, and next year a fifth grid area comes to the North.
       Then someone has to remember to give Markus an extra row.</p>
-      <p><i>Calin adds:</i> Grant nodes instead of values. A local table <code>RHN_REP_T_PERMISSION_NODES</code> (<code>USER_ID</code>, <code>NODE_ID</code>)
+      <p><i>Calin adds:</i> Grant nodes instead of values. A local table <code>RHN_DS_T_PERMISSION_NODES</code> (<code>USER_ID</code>, <code>NODE_ID</code>)
       with one row per person: Petra the whole company, Markus region North, Aylin region South. A data access control
-      <code>RHN_REP_DAC_REGION</code> of type <b>Hierarchy</b> on it, assigned to <code>RHN_REP_F_INVOICES</code> instead of the old control.
+      <code>RHN_DS_DAC_REGION</code> of type <b>Hierarchy</b> on it, assigned to <code>RHN_DS_F_INVOICES</code> instead of the old control.
       Same people, same numbers, three rows.</p>`,
     tasks: [
-      'Create the table <code>RHN_REP_T_PERMISSION_NODES</code> with one row per user and node. Deploy it.',
-      'Create the data access control <code>RHN_REP_DAC_REGION</code>: structure Hierarchy, hierarchy <code>RHN_REP_H_GRID_AREA</code>. Deploy it.',
-      'Assign it to <code>RHN_REP_F_INVOICES</code> in place of <code>RHN_REP_DAC_GRID_AREA</code> and deploy. Check the invoice model as MBRANDT.',
+      'Create the table <code>RHN_DS_T_PERMISSION_NODES</code> with one row per user and node. Deploy it.',
+      'Create the data access control <code>RHN_DS_DAC_REGION</code>: structure Hierarchy, hierarchy <code>RHN_DS_H_GRID_AREA</code>. Deploy it.',
+      'Assign it to <code>RHN_DS_F_INVOICES</code> in place of <code>RHN_DS_DAC_GRID_AREA</code> and deploy. Check the invoice model as MBRANDT.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'New Table and New Data Access Control on the start page of RHN_REP; the assignment is in the properties of the fact.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'New Table and New Data Access Control on the start page of RHN_DSL, next to the fact; the assignment is in the properties of the fact.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A Hierarchy control resolves each node to itself and everything below it. The leaves are grid areas, so the criterion maps to GRID_AREA of the fact.' },
-      { label: 'Hint 3: the rows', cost: 25, text: 'PLINDNER × RHEINAU, MBRANDT × R_NORTH, ADEMIR × R_SOUTH. Control: identifier USER_ID, criterion NODE_ID, hierarchy RHN_REP_H_GRID_AREA.' },
+      { label: 'Hint 3: the rows', cost: 25, text: 'PLINDNER × RHEINAU, MBRANDT × R_NORTH, ADEMIR × R_SOUTH. Control: identifier USER_ID, criterion NODE_ID, hierarchy RHN_DS_H_GRID_AREA.' },
     ],
     checks: [
-      { type: 'structure', label: 'The node table', space: 'RHN_REP', object: 'RHN_REP_T_PERMISSION_NODES', kind: 'Table', columns: ['USER_ID', 'NODE_ID'] },
+      { type: 'structure', label: 'The node table', space: 'RHN_DSL', object: 'RHN_DS_T_PERMISSION_NODES', kind: 'Table', columns: ['USER_ID', 'NODE_ID'] },
       {
         type: 'result', label: 'One row per person', object: T_NODES, columns: ['USER_ID', 'NODE_ID'], expected: values(NODES).replace(/GRID_AREA/g, 'NODE_ID'),
         diagnose: [{ sql: values([['PLINDNER', 'RHEINAU'], ['MBRANDT', 'NORTH'], ['ADEMIR', 'SOUTH']]).replace(/GRID_AREA/g, 'NODE_ID'), message: 'NORTH and SOUTH are grid area nodes. Markus and Aylin need the region nodes R_NORTH and R_SOUTH.' }],
         counts: { 8: 'Eight rows: that is the old table with grid areas. One row per person, one node each.' },
       },
-      { type: 'rule', label: 'The hierarchy control', ok: 'RHN_REP_DAC_REGION: Hierarchy on the node table.', test: regionControl },
-      { type: 'rule', label: 'The invoices use it', ok: 'RHN_REP_F_INVOICES is protected by the region control alone.', test: invoicesByRegion },
+      { type: 'rule', label: 'The hierarchy control', ok: 'RHN_DS_DAC_REGION: Hierarchy on the node table.', test: regionControl },
+      { type: 'rule', label: 'The invoices use it', ok: 'RHN_DS_F_INVOICES is protected by the region control alone.', test: invoicesByRegion },
       { type: 'model', label: 'Markus sees the North', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'MBRANDT', expected: netAs('MBRANDT'), ok: 'MBRANDT sees region NORTH only.' },
       { type: 'model', label: 'Aylin sees the South', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'ADEMIR', expected: netAs('ADEMIR'), ok: 'ADEMIR sees region SOUTH only.' },
       { type: 'model', label: 'Petra sees everything', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], asUser: 'PLINDNER', expected: netAs('PLINDNER'), ok: 'PLINDNER sees both regions.' },
@@ -518,11 +549,11 @@ export const CHAPTER_12: Mission[] = [
     from: CFO,
     ticket: `<p>Petra Lindner. This morning's board figures show 91 contracts fewer than yesterday, and the revenue of region West dropped.
       Nobody told me about a change.</p>
-      <p><i>Calin adds:</i> Tim deployed a "clean-up" of <code>RHN_HA_V_CONTRACTS</code> after your last change. Do not rewrite the view from memory:
+      <p><i>Calin adds:</i> Tim deployed a "clean-up" of <code>RHN_DS_V_CONTRACTS</code> after your last change. Do not rewrite the view from memory:
       every deployment is a version. Open the <b>version history</b>, compare Tim's version with the one before, <b>restore</b> the good one
       and deploy it. Everything built on the view gets the contracts back.</p>`,
     tasks: [
-      'In <code>RHN_HARM</code>, open <code>RHN_HA_V_CONTRACTS</code> and press <b>Versions</b> in the toolbar.',
+      'In <code>RHN_DSL</code>, open <code>RHN_DS_V_CONTRACTS</code> and press <b>Versions</b> in the toolbar.',
       'Look at Tim\'s version and the one before it: what did he change?',
       '<b>Restore</b> the version before Tim\'s change and <b>Deploy</b> it.',
       'Answer the question below.',
@@ -553,7 +584,7 @@ export const CHAPTER_12: Mission[] = [
       {
         type: 'rule', label: 'You used the version history', ok: 'The good version was restored from the history, not typed again.',
         test: ({ events }) => ([...events].some((e) => e.startsWith(`version-restore:${CONTRACTS}:`))
-          ? null : 'Open Versions in the editor of RHN_HA_V_CONTRACTS, select the version before Tim\'s and press Restore.'),
+          ? null : 'Open Versions in the editor of RHN_DS_V_CONTRACTS, select the version before Tim\'s and press Restore.'),
       },
       {
         type: 'result', label: 'All contracts are back', object: CONTRACTS, columns: M02_COLS, expected: project(M02_COLS, REF_CONTRACTS_KEYS),
@@ -588,13 +619,15 @@ export const CHAPTER_12: Mission[] = [
     ticket: `<p>Jonas here. The planning team runs its own SAP Analytics Cloud tenant and wants our grid areas there, refreshed every week through an
       <b>import connection</b> that reads the <b>OData API</b>. They gave me the redirect URI of their tenant:</p>
       <p><code>${SAC_PLANNING.redirectUri}</code></p>
-      <p><i>Calin adds:</i> Two things on our side. The grid area dimension <code>RHN_REP_D_GRID_AREA</code> must be readable from outside, and the
-      planners need an <b>OAuth client</b> to sign in with (System › Administration › App Integration). Choose its purpose with care: OData reads
+      <p><i>Calin adds:</i> Two things on our side. The grid areas must be readable from outside: like the tariffs for Power BI, through a
+      consumption view of the presentation layer, <code>RHN_PR_V_GRID_AREAS</code> in <code>RHN_PRES</code> on the shared dimension
+      (<code>GRID_AREA</code>, <code>GRID_AREA_NAME</code>, <code>REGION</code>). And the planners need an <b>OAuth client</b> to sign in with
+      (System › Administration › App Integration). Choose its purpose with care: OData reads
       data in the name of a person. Then test the call before you send them client ID and secret.</p>`,
     tasks: [
-      'Make <code>RHN_REP_D_GRID_AREA</code> readable for external tools and deploy it.',
+      'In <code>RHN_PRES</code>, build <code>RHN_PR_V_GRID_AREAS</code> on the shared grid area dimension, make it readable for external tools and deploy it.',
       'System › Administration › <b>App Integration</b>: add an OAuth client for the planners with the right purpose and their redirect URI.',
-      '<b>Test</b> the client: read <code>RHN_REP.RHN_REP_D_GRID_AREA</code> the way their import connection would, until it answers with HTTP 200.',
+      '<b>Test</b> the client: read <code>RHN_PRES.RHN_PR_V_GRID_AREAS</code> the way their import connection would, until it answers with HTTP 200.',
       'Answer the question below.',
     ],
     hints: [
@@ -603,9 +636,14 @@ export const CHAPTER_12: Mission[] = [
     ],
     checks: [
       {
-        type: 'rule', label: 'The grid areas are exposed', ok: 'RHN_REP_D_GRID_AREA is deployed with Expose for Consumption on.',
-        test: ({ tenant }) => (findObject(tenant, D_GRID)?.deployed?.exposed ? null
-          : 'RHN_REP_D_GRID_AREA is not exposed in its deployed version. Switch on Expose for Consumption and deploy.'),
+        type: 'rule', label: 'The grid areas are exposed', ok: 'RHN_PR_V_GRID_AREAS reads the shared dimension and is deployed with Expose for Consumption on.',
+        test: ({ tenant }) => {
+          const o = findObject(tenant, V_GRID);
+          if (!o) return 'There is no consumption view RHN_PR_V_GRID_AREAS in RHN_PRES yet.';
+          const reads = readsFrom(o, tenant);
+          if (reads.join() !== D_GRID) return `RHN_PR_V_GRID_AREAS reads ${reads.join(', ') || 'nothing'}. It should read only the shared dimension ${D_GRID}.`;
+          return o.deployed?.exposed ? null : 'RHN_PR_V_GRID_AREAS is not exposed in its deployed version. Switch on Expose for Consumption and deploy.';
+        },
       },
       {
         type: 'rule', label: 'An OAuth client for the planners', ok: 'Interactive Usage, Authorization Code, with the redirect URI of the planning tenant.',
@@ -619,8 +657,8 @@ export const CHAPTER_12: Mission[] = [
       },
       {
         type: 'rule', label: 'The call works', ok: 'The test call read the grid areas with HTTP 200.',
-        test: ({ events }) => ([...events].some((e) => e.startsWith('odata-test:') && e.endsWith(`:${D_GRID}:200`)) ? null
-          : 'Use Test on the client and read RHN_REP.RHN_REP_D_GRID_AREA until the answer is HTTP 200. The message of a failed call says what is missing.'),
+        test: ({ events }) => ([...events].some((e) => e.startsWith('odata-test:') && e.endsWith(`:${V_GRID}:200`)) ? null
+          : 'Use Test on the client and read RHN_PRES.RHN_PR_V_GRID_AREAS until the answer is HTTP 200. The message of a failed call says what is missing.'),
       },
       {
         type: 'question', id: 'purpose', label: 'Why this purpose',
@@ -636,7 +674,7 @@ export const CHAPTER_12: Mission[] = [
       },
     ],
     xp: 45,
-    realTenant: `In a real tenant: expose the view and deploy (Handbuch 12.3); System › Administration › App Integration › Add a New OAuth Client
+    realTenant: `In a real tenant: a consumption view in the presentation space, exposed and deployed (Handbuch 12.3); System › Administration › App Integration › Add a New OAuth Client
       with purpose <b>Interactive Usage</b> and the redirect URI of the tool (Handbuch 12.7.3, SAP KBA 3563695); give client ID, secret, authorization and
       token URL to the tool. Field names, the secret shown once and the service URL structure are simplified (not verified in the handbook).`,
     debrief: `<p>Thanks, client ID and secret are on their way to the planners. They see what they would see in our tenant, nothing more.</p>
@@ -687,7 +725,7 @@ export const CHAPTER_12: Mission[] = [
         options: [
           'The package is broken; ask SAP for a new version',
           'The connection SAP_S4H in space SAP_UTIL: the package brings definitions, not data or connections. Create and validate the connection, then deploy the views',
-          'Our RHN_IN space has to be shared with SAP_UTIL',
+          'Our RHN_ENTRY space has to be shared with SAP_UTIL',
           'Nothing: content packages are only meant to be read, never deployed',
         ],
         answer: 1,
@@ -709,31 +747,32 @@ export const CHAPTER_12: Mission[] = [
     title: 'A table for Excel',
     from: { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' },
     ticket: `<p>Sabine again. For the yearly audit I compare our consumption with the grid operator's figures in Excel, every month.
-      I need a plain <b>table</b>, not a model: <code>RHN_REP_T_MONTHLY_CONSUMPTION</code> with <code>READING_MONTH</code> (text YYYY-MM),
+      I need a plain <b>table</b>, not a model: <code>RHN_DS_T_MONTHLY_CONSUMPTION</code> with <code>READING_MONTH</code> (text YYYY-MM),
       <code>GRID_AREA</code> and <code>CONSUMPTION_KWH</code> (sum), one row per month and grid area.</p>
-      <p><i>Calin adds:</i> A table that gets filled is a job for a <b>data flow</b>: <code>RHN_REP_DF_MONTHLY</code> in <code>RHN_REP</code>, reading the
-      harmonized readings joined with the contracts, aggregating, and writing the target. It will run every night. Run it at least twice before you
+      <p><i>Calin adds:</i> A table that gets filled is a job for a <b>data flow</b>: <code>RHN_DS_DF_MONTHLY</code> in <code>RHN_DSL</code>: it reads
+      the base views of the readings and the contracts, so it belongs to the data &amp; semantic layer, aggregates, and writes the target there.
+      Sabine reads every layer anyway. It will run every night. Run it at least twice before you
       tell Sabine it is ready: the numbers must be the same after the second night.</p>`,
     tasks: [
-      'In <code>RHN_REP</code>, create a <b>New Data Flow</b>: source <code>RHN_HA_V_METER_READINGS</code>, join <code>RHN_HA_V_CONTRACTS</code> on <code>CONTRACT_ID</code>.',
-      'Projection: <code>READING_MONTH</code>, <code>GRID_AREA</code>, <code>CONSUMPTION_KWH</code>; Aggregation: sum of the kWh. Target <code>RHN_REP_T_MONTHLY_CONSUMPTION</code> with the right mode.',
-      'Name it <code>RHN_REP_DF_MONTHLY</code>, save, deploy, and <b>Run</b> it twice.',
+      'In <code>RHN_DSL</code>, create a <b>New Data Flow</b>: source <code>RHN_DS_V_METER_READINGS</code>, join <code>RHN_DS_V_CONTRACTS</code> on <code>CONTRACT_ID</code>.',
+      'Projection: <code>READING_MONTH</code>, <code>GRID_AREA</code>, <code>CONSUMPTION_KWH</code>; Aggregation: sum of the kWh. Target <code>RHN_DS_T_MONTHLY_CONSUMPTION</code> with the right mode.',
+      'Name it <code>RHN_DS_DF_MONTHLY</code>, save, deploy, and <b>Run</b> it twice.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'New Data Flow is a tile of the Data Builder in RHN_REP. Click the nodes of the canvas to set them up; the SQL below shows what the flow runs.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'New Data Flow is a tile of the Data Builder in RHN_DSL. Click the nodes of the canvas to set them up; the SQL below shows what the flow runs.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Every night the flow delivers the complete result again. Which target mode makes the second run replace the first instead of adding to it?' },
     ],
     checks: [
       {
-        type: 'rule', label: 'The data flow', ok: 'RHN_REP_DF_MONTHLY is deployed and writes RHN_REP_T_MONTHLY_CONSUMPTION with mode Truncate.',
+        type: 'rule', label: 'The data flow', ok: 'RHN_DS_DF_MONTHLY is deployed and writes RHN_DS_T_MONTHLY_CONSUMPTION with mode Truncate.',
         test: ({ tenant }) => {
           const f = findObject(tenant, DF_MONTHLY);
-          if (!f) return 'There is no data flow RHN_REP_DF_MONTHLY in RHN_REP yet.';
+          if (!f) return 'There is no data flow RHN_DS_DF_MONTHLY in RHN_DSL yet.';
           const d = f.deployed?.dataflow;
-          if (!d) return 'RHN_REP_DF_MONTHLY is not deployed.';
-          if (f.status === 'changes') return 'RHN_REP_DF_MONTHLY has saved changes that are not deployed.';
-          if (d.target.table !== 'RHN_REP_T_MONTHLY_CONSUMPTION') return `The flow writes ${d.target.table}; Sabine needs RHN_REP_T_MONTHLY_CONSUMPTION.`;
+          if (!d) return 'RHN_DS_DF_MONTHLY is not deployed.';
+          if (f.status === 'changes') return 'RHN_DS_DF_MONTHLY has saved changes that are not deployed.';
+          if (d.target.table !== 'RHN_DS_T_MONTHLY_CONSUMPTION') return `The flow writes ${d.target.table}; Sabine needs RHN_DS_T_MONTHLY_CONSUMPTION.`;
           if (d.target.mode === 'Append') return 'Mode Append: every night adds the complete result again, and the second night doubles every month. The flow delivers everything each time: Truncate.';
           if (d.target.mode === 'Delete') return 'Mode Delete removes rows from the target; it does not load. The flow delivers everything each time: Truncate.';
           return null;
@@ -770,28 +809,28 @@ export const CHAPTER_12: Mission[] = [
       table with mode Append, Truncate or Delete (Handbuch 6.7.1). Deploy, then Run or schedule it; runs are in the Data Integration Monitor.
       The game shows the canvas as a fixed row of nodes, and Union and Script only explain themselves.`,
     debrief: `<p>Same numbers after two nights, one row per month and grid area. That goes straight into my audit workbook.</p>
-      <p><i>Calin adds:</i> Put the flow into a task chain of RHN_REP after the nightly load, and Sabine's table is always one day old at most.</p>`,
+      <p><i>Calin adds:</i> Put the flow into the nightly task chain of RHN_DSL after the load, and Sabine's table is always one day old at most.</p>`,
   },
   {
     id: 'c12-m11',
     chapter: 12,
     title: 'Only what changed',
     from: CFO,
-    ticket: `<p>Accounts Receivable has collected the bank's payment advice since February in a new table <code>RHN_IN_T_PAYMENTS</code> in <code>RHN_IN</code>
-      (one row per payment, key <code>PAYMENT_ID</code>). Jonas saved it with all rows but has <b>not deployed</b> it yet. For my cash report I need the payments in harmonization with their contract:
-      <code>RHN_HA_T_PAYMENTS</code> with <code>PAYMENT_ID</code>, <code>INVOICE_ID</code>, <code>CONTRACT_ID</code>, <code>PAID_ON</code> and <code>AMOUNT</code>, every night.</p>
+    ticket: `<p>Accounts Receivable has collected the bank's payment advice since February in a new table <code>RHN_EN_T_PAYMENTS</code> in <code>RHN_ENTRY</code>
+      (one row per payment, key <code>PAYMENT_ID</code>). Jonas saved it with all rows but has <b>not deployed</b> it yet. For my cash report I need the payments in the data & semantic layer with their contract:
+      <code>RHN_DS_T_PAYMENTS</code> with <code>PAYMENT_ID</code>, <code>INVOICE_ID</code>, <code>CONTRACT_ID</code>, <code>PAID_ON</code> and <code>AMOUNT</code>, every night.</p>
       <p><i>Calin adds:</i> The table will grow to thousands of payments while only a handful change each day. Do not reload everything every night:
-      a <b>transformation flow</b> <code>RHN_HA_TF_PAYMENTS</code> in <code>RHN_HARM</code> with load type <b>Initial and Delta</b>. For that the source has to record its
+      a <b>transformation flow</b> <code>RHN_DS_TF_PAYMENTS</code> in <code>RHN_DSL</code> with load type <b>Initial and Delta</b>. For that the source has to record its
       changes, so switch on <b>Delta Capture</b> in the table <b>before its first deploy</b>: once a table is deployed, Delta Capture can no longer be switched on or off. Run the initial load, then enter today's bank message and run again: the second run must process the changes only.</p>
       <p><b>Today's bank message</b></p>
       <ul><li>New payment <code>PAY-0096</code>: invoice <code>INV-4000080</code>, paid on <code>2026-07-15</code>, <code>874.39</code></li>
         <li>Correction: <code>PAY-0012</code> was a partial payment, the amount is <code>286.38</code></li>
         <li>Returned direct debit: <code>PAY-0007</code> did not go through. Delete the row.</li></ul>`,
     tasks: [
-      'In <code>RHN_IN</code>, open <code>RHN_IN_T_PAYMENTS</code> (saved, not deployed), switch on <b>Delta Capture</b>, then deploy the table for the first time.',
-      'In <code>RHN_HARM</code>, create a <b>New Transformation Flow</b>: a SQL view transform that adds <code>CONTRACT_ID</code> from <code>RHN_HA_V_INVOICES</code>, target <code>RHN_HA_T_PAYMENTS</code>, load type <b>Initial and Delta</b>.',
-      'Name it <code>RHN_HA_TF_PAYMENTS</code>, deploy it and <b>Run</b> it: the initial load.',
-      'Enter today\'s bank message in the Data Editor of <code>RHN_IN_T_PAYMENTS</code>, deploy the table, and <b>Run</b> the flow again.',
+      'In <code>RHN_ENTRY</code>, open <code>RHN_EN_T_PAYMENTS</code> (saved, not deployed), switch on <b>Delta Capture</b>, then deploy the table for the first time.',
+      'In <code>RHN_DSL</code>, create a <b>New Transformation Flow</b>: a SQL view transform that adds <code>CONTRACT_ID</code> from <code>RHN_DS_V_INVOICES</code>, target <code>RHN_DS_T_PAYMENTS</code>, load type <b>Initial and Delta</b>.',
+      'Name it <code>RHN_DS_TF_PAYMENTS</code>, deploy it and <b>Run</b> it: the initial load.',
+      'Enter today\'s bank message in the Data Editor of <code>RHN_EN_T_PAYMENTS</code>, deploy the table, and <b>Run</b> the flow again.',
       'Answer the question below.',
     ],
     hints: [
@@ -806,47 +845,47 @@ export const CHAPTER_12: Mission[] = [
         rows: [] as string[][],
       };
       // Handed over saved, not deployed: Delta Capture can still be chosen (SAP sets it at the first deployment).
-      t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_T_PAYMENTS', kind: 'Local Table', businessName: 'Bank payments', semanticUsage: 'Relational Dataset',
+      t.objects.push({ space: 'RHN_ENTRY', name: 'RHN_EN_T_PAYMENTS', kind: 'Local Table', businessName: 'Bank payments', semanticUsage: 'Relational Dataset',
         table, status: 'not_deployed', changedAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString() });
-      if (!t.shares.some((x) => x.object === PAYMENTS && x.to === 'RHN_HARM')) t.shares.push({ object: PAYMENTS, to: 'RHN_HARM' });
+      if (!t.shares.some((x) => x.object === PAYMENTS && x.to === 'RHN_DSL')) t.shares.push({ object: PAYMENTS, to: 'RHN_DSL' });
     },
     setupAgain: {
       when: (t) => !findObject(t, PAYMENTS),
-      note: 'Accounts Receivable handed RHN_IN_T_PAYMENTS over again: saved with its rows, not deployed. Switch on Delta Capture before you deploy it.',
+      note: 'Accounts Receivable handed RHN_EN_T_PAYMENTS over again: saved with its rows, not deployed. Switch on Delta Capture before you deploy it.',
     },
     setupAsync: async (t) => {
       const o = findObject(t, PAYMENTS);
       if (!o?.table || o.table.rows.length) return;
       // The payments of the invoices paid from 12 February 2026 on: PAY-0001 … PAY-0095.
       const res = await runSql(`SELECT INVOICE_ID, CAST(PAID_DATE AS VARCHAR), CAST(NET_AMOUNT + TAX_AMOUNT AS VARCHAR)
-        FROM RHN_IN.BILLING_INVOICES WHERE PAID_DATE >= DATE '2026-02-12' ORDER BY PAID_DATE, INVOICE_ID`);
+        FROM RHN_ENTRY.BILLING_INVOICES WHERE PAID_DATE >= DATE '2026-02-12' ORDER BY PAID_DATE, INVOICE_ID`);
       o.table.rows = res.rows.map((r, i) => [`PAY-${String(i + 1).padStart(4, '0')}`, String(r[0]), String(r[1]), String(r[2])]);
     },
     checks: [
       {
-        type: 'rule', label: 'The source records its changes', ok: 'RHN_IN_T_PAYMENTS is deployed with Delta Capture.',
+        type: 'rule', label: 'The source records its changes', ok: 'RHN_EN_T_PAYMENTS is deployed with Delta Capture.',
         test: ({ tenant }) => {
           const o = findObject(tenant, PAYMENTS);
-          if (!o) return 'RHN_IN_T_PAYMENTS is missing in RHN_IN.';
+          if (!o) return 'RHN_EN_T_PAYMENTS is missing in RHN_ENTRY.';
           if (o.deployed?.table?.deltaCapture) return null;
           if (o.deployed?.table)
-            return 'RHN_IN_T_PAYMENTS was deployed without Delta Capture, and it cannot be switched on afterwards. Delete the table in RHN_IN (Data Builder, Delete in its row): Accounts Receivable hands it over again, saved and not deployed. Then switch Delta Capture on before the first deploy.';
-          return o.table?.deltaCapture ? 'Delta Capture is switched on but the table is not deployed yet. Deploy RHN_IN_T_PAYMENTS.'
-            : 'RHN_IN_T_PAYMENTS is not deployed yet. Open it in RHN_IN, switch on Delta Capture in its properties first, then deploy.';
+            return 'RHN_EN_T_PAYMENTS was deployed without Delta Capture, and it cannot be switched on afterwards. Delete the table in RHN_ENTRY (Data Builder, Delete in its row): Accounts Receivable hands it over again, saved and not deployed. Then switch Delta Capture on before the first deploy.';
+          return o.table?.deltaCapture ? 'Delta Capture is switched on but the table is not deployed yet. Deploy RHN_EN_T_PAYMENTS.'
+            : 'RHN_EN_T_PAYMENTS is not deployed yet. Open it in RHN_ENTRY, switch on Delta Capture in its properties first, then deploy.';
         },
       },
       {
-        type: 'rule', label: 'The transformation flow', ok: 'RHN_HA_TF_PAYMENTS is deployed in RHN_HARM and loads RHN_HA_T_PAYMENTS by delta.',
+        type: 'rule', label: 'The transformation flow', ok: 'RHN_DS_TF_PAYMENTS is deployed in RHN_DSL and loads RHN_DS_T_PAYMENTS by delta.',
         test: ({ tenant }) => {
           const f = findObject(tenant, TF_PAYMENTS);
           if (!f) {
-            const elsewhere = tenant.objects.find((x) => x.name === 'RHN_HA_TF_PAYMENTS');
-            return elsewhere ? `RHN_HA_TF_PAYMENTS is in ${elsewhere.space}; it belongs in RHN_HARM, the harmonization layer.` : 'There is no transformation flow RHN_HA_TF_PAYMENTS in RHN_HARM yet.';
+            const elsewhere = tenant.objects.find((x) => x.name === 'RHN_DS_TF_PAYMENTS');
+            return elsewhere ? `RHN_DS_TF_PAYMENTS is in ${elsewhere.space}; it belongs in RHN_DSL, the data & semantic layer.` : 'There is no transformation flow RHN_DS_TF_PAYMENTS in RHN_DSL yet.';
           }
           const d = f.deployed?.transform;
-          if (!d) return 'RHN_HA_TF_PAYMENTS is not deployed.';
-          if (f.status === 'changes') return 'RHN_HA_TF_PAYMENTS has saved changes that are not deployed.';
-          if (d.target !== 'RHN_HA_T_PAYMENTS') return `The flow writes ${d.target}; Petra needs RHN_HA_T_PAYMENTS.`;
+          if (!d) return 'RHN_DS_TF_PAYMENTS is not deployed.';
+          if (f.status === 'changes') return 'RHN_DS_TF_PAYMENTS has saved changes that are not deployed.';
+          if (d.target !== 'RHN_DS_T_PAYMENTS') return `The flow writes ${d.target}; Petra needs RHN_DS_T_PAYMENTS.`;
           if (d.loadType !== 'Initial and Delta') return 'Load type Initial Only: every night reads all payments again and replaces the target. Switch to Initial and Delta, so later runs read only the changes.';
           return null;
         },
@@ -868,7 +907,7 @@ export const CHAPTER_12: Mission[] = [
           };
           const live = ok(byId);
           if (!live) return null;
-          return ok(saved) ? live : 'The bank message is in the Data Editor but not deployed. Deploy RHN_IN_T_PAYMENTS: only deployed changes reach the delta table.';
+          return ok(saved) ? live : 'The bank message is in the Data Editor but not deployed. Deploy RHN_EN_T_PAYMENTS: only deployed changes reach the delta table.';
         },
       },
       {
@@ -886,11 +925,11 @@ export const CHAPTER_12: Mission[] = [
         },
       },
       {
-        type: 'result', label: 'The payments in harmonization', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
+        type: 'result', label: 'The payments in the data & semantic layer', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
       },
       {
         type: 'question', id: 'delta-run', label: 'What the second night reads',
-        prompt: 'The flow runs every night with Initial and Delta. What does the run of the second night read from RHN_IN_T_PAYMENTS?',
+        prompt: 'The flow runs every night with Initial and Delta. What does the run of the second night read from RHN_EN_T_PAYMENTS?',
         options: [
           'All payments again, but it writes only the changed ones',
           'The change records since the last run, including deletions, and only the rows of those keys',
@@ -908,27 +947,27 @@ export const CHAPTER_12: Mission[] = [
       Data Integration Monitor › Flows, where the delta can be reset. Simplified in the game: SQL only, one delta source per flow, Initial Only replaces
       the target, and a changed flow starts over with an initial load.`,
     debrief: `<p>95 payments, the returned direct debit is gone and the partial payment shows the right amount. The second run touched three keys, not all of them.</p>
-      <p><i>Calin adds:</i> Add the flow to the nightly chain of RHN_HARM after the inbound load. When the table holds a hundred thousand payments, the night still processes only the day's changes.</p>`,
+      <p><i>Calin adds:</i> Add the flow to the nightly chain of RHN_DSL after the entry layer load. When the table holds a hundred thousand payments, the night still processes only the day's changes.</p>`,
   },
   {
     id: 'c12-m12',
     chapter: 12,
     title: 'The night shift',
     from: { name: 'Lena Hoffmann', role: 'Integration Engineer', initials: 'LH' },
-    ticket: `<p>Petra's cash report is short this morning: <code>RHN_HA_T_PAYMENTS</code> lacks all payments of 12 February. Tim tested something in the
+    ticket: `<p>Petra's cash report is short this morning: <code>RHN_DS_T_PAYMENTS</code> lacks all payments of 12 February. Tim tested something in the
       Data Editor of the target table yesterday and deleted that day. The delta run of the flow brings in today's new payment, but not the lost ones.</p>
-      <p>Please repair the table, and make sure the flow runs every night: it should be a step of our nightly chain <code>RHN_HARM_TC_NIGHTLY</code>
+      <p>Please repair the table, and make sure the flow runs every night: it should be a step of our nightly chain <code>RHN_DS_TC_NIGHTLY</code>
       (I get the failure emails).</p>
       <p><i>Calin adds:</i> A delta only carries what changed in the <b>source</b>. Nothing changed there; the target was damaged. In the Data Integration Monitor
       you can <b>reset the watermark</b> of a transformation flow: the next run is an initial load again, and the delta continues from there.</p>`,
     tasks: [
-      'In the <b>Data Integration Monitor › Flows</b> of <code>RHN_HARM</code>, select <code>RHN_HA_TF_PAYMENTS</code>, press <b>Reset Watermark</b> and <b>Run</b> it.',
-      'Open <code>RHN_HARM_TC_NIGHTLY</code>, add <code>RHN_HA_TF_PAYMENTS</code> as its last step and deploy the chain.',
+      'In the <b>Data Integration Monitor › Flows</b> of <code>RHN_DSL</code>, select <code>RHN_DS_TF_PAYMENTS</code>, press <b>Reset Watermark</b> and <b>Run</b> it.',
+      'Open <code>RHN_DS_TC_NIGHTLY</code>, add <code>RHN_DS_TF_PAYMENTS</code> as its last step and deploy the chain.',
       '<b>Run</b> the chain once, as tonight would.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Monitoring › Data Integration › Flows, space RHN_HARM: the flow\'s detail has Run and Reset Watermark. The chain is a Task Chain of RHN_HARM in the Data Builder; Add Step lists transformation flows too.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Monitoring › Data Integration › Flows, space RHN_DSL: the flow\'s detail has Run and Reset Watermark. The chain is a Task Chain of RHN_DSL in the Data Builder; Add Step lists transformation flows too.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A delta run reads the change records of the source since the last run. The lost rows never changed in the source, so only a full read brings them back: reset, then run.' },
     ],
     setup: (t) => {
@@ -961,39 +1000,39 @@ export const CHAPTER_12: Mission[] = [
     },
     checks: [
       {
-        type: 'rule', label: 'All payments are back', ok: 'RHN_HA_T_PAYMENTS holds every payment of the source again.',
+        type: 'rule', label: 'All payments are back', ok: 'RHN_DS_T_PAYMENTS holds every payment of the source again.',
         test: ({ tenant }) => {
           const src = findObject(tenant, PAYMENTS)?.deployed?.table?.rows ?? [];
           const tgt = findObject(tenant, T_PAYMENTS)?.deployed?.table?.rows;
-          if (!tgt) return 'RHN_HA_T_PAYMENTS is missing in RHN_HARM. Solve "Only what changed" first.';
+          if (!tgt) return 'RHN_DS_T_PAYMENTS is missing in RHN_DSL. Solve "Only what changed" first.';
           const have = new Set(tgt.map((r) => r[0]));
           const missing = src.filter((r) => !have.has(r[0])).length;
           if (!missing) return null;
           return missing === 1 && !have.has(NEW_PAYMENT[0])
             ? `Today's payment ${NEW_PAYMENT[0]} is not in the target yet. Run the flow.`
-            : `${missing} payments are still missing in RHN_HA_T_PAYMENTS. A delta run only brings what changed in the source; reset the watermark, then run.`;
+            : `${missing} payments are still missing in RHN_DS_T_PAYMENTS. A delta run only brings what changed in the source; reset the watermark, then run.`;
         },
       },
       {
         type: 'rule', label: 'Reset, not rebuilt', ok: 'The delta was reset in the monitor, and the next run was an initial load.',
         test: ({ tenant, events }) => {
-          if (![...events].some((e) => e === `tf-reset:${TF_PAYMENTS}`)) return 'Reset the watermark of RHN_HA_TF_PAYMENTS in the Data Integration Monitor › Flows (RHN_HARM), then run it.';
+          if (![...events].some((e) => e === `tf-reset:${TF_PAYMENTS}`)) return 'Reset the watermark of RHN_DS_TF_PAYMENTS in the Data Integration Monitor › Flows (RHN_DSL), then run it.';
           const f = findObject(tenant, TF_PAYMENTS);
-          if (f?.deployed?.transform?.loadType !== 'Initial and Delta') return 'RHN_HA_TF_PAYMENTS no longer loads by delta. Keep Initial and Delta: tonight should process the changes only.';
+          if (f?.deployed?.transform?.loadType !== 'Initial and Delta') return 'RHN_DS_TF_PAYMENTS no longer loads by delta. Keep Initial and Delta: tonight should process the changes only.';
           return tenant.runs.some((r) => r.object === TF_PAYMENTS && r.status === 'Completed' && r.messages[0]?.startsWith('Initial load'))
             ? null : 'After the reset, run the flow (or the chain): that run is the initial load.';
         },
       },
       {
-        type: 'rule', label: 'A step of the night', ok: 'RHN_HARM_TC_NIGHTLY runs the flow, deployed.',
+        type: 'rule', label: 'A step of the night', ok: 'RHN_DS_TC_NIGHTLY runs the flow, deployed.',
         test: ({ tenant }) => {
           const c = findObject(tenant, NIGHTLY);
-          if (!c) return 'RHN_HARM_TC_NIGHTLY is missing in RHN_HARM.';
-          if (!c.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'Add RHN_HA_TF_PAYMENTS as a step of RHN_HARM_TC_NIGHTLY (Add Step › Transformation Flow).';
-          if (!c.deployed?.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'The step is saved but the chain is not deployed. Deploy RHN_HARM_TC_NIGHTLY.';
-          if (c.status === 'changes') return 'RHN_HARM_TC_NIGHTLY has saved changes that are not deployed.';
+          if (!c) return 'RHN_DS_TC_NIGHTLY is missing in RHN_DSL.';
+          if (!c.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'Add RHN_DS_TF_PAYMENTS as a step of RHN_DS_TC_NIGHTLY (Add Step › Transformation Flow).';
+          if (!c.deployed?.chain?.steps.some((s) => s.object === TF_PAYMENTS)) return 'The step is saved but the chain is not deployed. Deploy RHN_DS_TC_NIGHTLY.';
+          if (c.status === 'changes') return 'RHN_DS_TC_NIGHTLY has saved changes that are not deployed.';
           const steps = c.deployed.chain.steps;
-          if (steps[steps.length - 1]?.object !== TF_PAYMENTS) return 'Put the flow at the end of the chain: the steps before it load the inbound data of the night.';
+          if (steps[steps.length - 1]?.object !== TF_PAYMENTS) return 'Put the flow at the end of the chain: the steps before it load the entry data of the night.';
           return null;
         },
       },
@@ -1002,13 +1041,13 @@ export const CHAPTER_12: Mission[] = [
         test: ({ tenant }) => {
           const r = tenant.runs.find((x) => x.object === NIGHTLY && x.status !== 'Running');
           const step = r?.steps?.find((s) => s.object === TF_PAYMENTS);
-          if (!r || !step) return 'Run RHN_HARM_TC_NIGHTLY once after deploying it with the new step.';
-          if (r.status === 'Failed') return `The last run of RHN_HARM_TC_NIGHTLY failed: ${r.steps?.find((s) => s.status === 'Failed')?.message ?? 'see the Task Chains monitor'}.`;
+          if (!r || !step) return 'Run RHN_DS_TC_NIGHTLY once after deploying it with the new step.';
+          if (r.status === 'Failed') return `The last run of RHN_DS_TC_NIGHTLY failed: ${r.steps?.find((s) => s.status === 'Failed')?.message ?? 'see the Task Chains monitor'}.`;
           return step.status === 'Completed' ? null : 'The flow step did not complete. Open the run in the Task Chains monitor.';
         },
       },
       {
-        type: 'result', label: 'The payments in harmonization', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
+        type: 'result', label: 'The payments in the data & semantic layer', object: T_PAYMENTS, columns: PAYMENT_COLS, expected: REF_PAYMENTS,
       },
       {
         type: 'question', id: 'why-reset', label: 'Why the delta did not repair it',
@@ -1027,7 +1066,7 @@ export const CHAPTER_12: Mission[] = [
     realTenant: `In a real tenant: Data Integration Monitor › Flows, open the transformation flow, tab <i>Delta Capture Settings</i>; <b>Reset Watermark</b> makes the next run load
       everything again (Handbuch 6.7.3; SAP release 2024.2: the watermark tracks how far a delta flow has read, resetting it transfers all data on the next run). Task chains run transformation flows as steps (6.8);
       the chain's schedule then runs the flow every night.`,
-    debrief: `<p>The report is complete again, and tonight the flow runs after the inbound load. If it fails, I get the email.</p>
+    debrief: `<p>The report is complete again, and tonight the flow runs after the entry layer load. If it fails, I get the email.</p>
       <p><i>Calin adds:</i> Targets of a flow are no place for manual edits. If you need test data, copy the table; and if a target is damaged, a delta reset is the repair.</p>`,
   },
 ];

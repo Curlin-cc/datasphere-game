@@ -6,8 +6,8 @@ from common import Game, save_before
 from chapter8_data import TENANT8
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-F_INV, F_CONS, D_GRID = 'RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_GRID_AREA'
-DAC = 'RHN_REP.RHN_REP_DAC_GRID_AREA'
+F_INV, F_CONS, D_GRID = 'RHN_DSL.RHN_DS_F_INVOICES', 'RHN_DSL.RHN_DS_F_CONSUMPTION', 'RHN_DSL.RHN_DS_D_GRID_AREA'
+DAC = 'RHN_DSL.RHN_DS_DAC_GRID_AREA'
 
 with sync_playwright() as p:
     g = Game(p, S)
@@ -35,13 +35,13 @@ with sync_playwright() as p:
     g.walk_tutorial(show=False)
 
     # ---------------- m01: permissions table without Petra, then right
-    g.space('RHN_REP')
+    g.space('RHN_DSL')
     pg.click('[data-new="table"]'); pg.wait_for_selector('#tbl-columns')
     pg.fill('[data-col-name="0"]', 'USER_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'GRID_AREA'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.check('[data-col-key="1"]'); pg.wait_for_timeout(100)
     add_rows([('MBRANDT', 'NORTH'), ('MBRANDT', 'EAST'), ('ADEMIR', 'SOUTH'), ('ADEMIR', 'WEST')])
-    pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_REP_T_PERMISSIONS')
+    pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_DS_T_PERMISSIONS')
     deploy()
     g.shot('c8-table')
     g.answer('why-area', 1); g.answer('who', 1)
@@ -56,11 +56,11 @@ with sync_playwright() as p:
     g.next_mission()
 
     # ---------------- m02: DAC without criterion, then right
-    g.space('RHN_REP')
+    g.space('RHN_DSL')
     pg.click('[data-new="dac"]'); pg.wait_for_selector('#dac-entity')
-    pg.select_option('#dac-entity', 'RHN_REP.RHN_REP_T_PERMISSIONS'); pg.wait_for_selector('#dac-identifier:not([disabled])')
+    pg.select_option('#dac-entity', 'RHN_DSL.RHN_DS_T_PERMISSIONS'); pg.wait_for_selector('#dac-identifier:not([disabled])')
     pg.select_option('#dac-identifier', 'USER_ID'); pg.wait_for_timeout(100)
-    pg.fill('#prop-business', 'Grid Area Access'); pg.fill('#prop-technical', 'RHN_REP_DAC_GRID_AREA')
+    pg.fill('#prop-business', 'Grid Area Access'); pg.fill('#prop-technical', 'RHN_DS_DAC_GRID_AREA')
     deploy()
     pg.check('[data-criterion="GRID_AREA"]')
     pg.click('#run'); pg.wait_for_selector('#results .result-status')
@@ -72,7 +72,7 @@ with sync_playwright() as p:
     g.next_mission()
 
     # ---------------- m03: assigned but only saved, then deployed; preview as Markus
-    g.space('RHN_REP')
+    g.space('RHN_DSL')
     assign(F_INV)
     pg.click('#ed-save'); pg.wait_for_timeout(300)
     g.answer('markus', 2)
@@ -86,7 +86,7 @@ with sync_playwright() as p:
     g.next_mission()
 
     # ---------------- m04: control on the dimension (shortcut), then on the fact
-    g.space('RHN_REP')
+    g.space('RHN_DSL')
     assign(D_GRID); deploy()
     g.answer('shortcut', 1)
     g.check('m04 dimension only')
@@ -97,10 +97,10 @@ with sync_playwright() as p:
 
     # ---------------- analytic model preview as Aylin, reload survives
     g.reload()
-    g.space('RHN_REP')
+    g.space('RHN_PRES')
     pg.click('[data-list="models"]')
-    pg.click('#object-list [data-open="RHN_REP.RHN_REP_AM_CONSUMPTION"]'); pg.wait_for_selector('#am-pivot')
-    pg.check('[data-prow="RHN_REP_D_GRID_AREA.REGION"]'); pg.select_option('#am-as', 'ADEMIR'); pg.click('#run')
+    pg.click('#object-list [data-open="RHN_PRES.RHN_PR_AM_CONSUMPTION"]'); pg.wait_for_selector('#am-pivot')
+    pg.check('[data-prow="RHN_DS_D_GRID_AREA.REGION"]'); pg.select_option('#am-as', 'ADEMIR'); pg.click('#run')
     pg.wait_for_selector('#am-out .result-status')
     print('   model as ADEMIR:', pg.locator('#am-out tbody tr').all_inner_texts())
     pg.click('[data-list="all"]') if pg.locator('[data-list="all"]').count() else None

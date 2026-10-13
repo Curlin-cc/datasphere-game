@@ -295,7 +295,7 @@ async function checkModel(check: ModelCheck, tenant: TenantState): Promise<Check
   const def = o.deployed?.model;
   if (!def) return fail(`${name} is saved, but not deployed. SAP Analytics Cloud only sees deployed models: press Deploy.`);
   if (o.status === 'changes') return fail(`${name} has saved changes that are not deployed yet. Deploy them.`);
-  const src = modelSources(tenant, def.fact);
+  const src = modelSources(tenant, def.fact, o.space);
   if (typeof src === 'string') return fail(src);
   const catalog = attributeCatalog(def, src);
   for (const r of check.rows) {

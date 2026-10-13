@@ -63,7 +63,7 @@ export const APPS: AppInfo[] = [
     who: 'Data stewards, analysts, catalog administrators',
   },
   {
-    id: 'semantic', label: 'Semantic Onboarding', section: 'apps', chapter: 3, interactive: 12,
+    id: 'semantic', label: 'Semantic Onboarding', section: 'apps', chapter: 3, interactive: 3,
     icon: '<path d="M8 2.5v7M5 6.5l3 3 3-3M3 12.5h10"/>',
     summary: 'Import objects with their semantics from SAP systems.',
     does: ['Imports entities from S/4HANA, BW/4HANA or SAP BW bridge with labels, associations and hierarchies', 'Installs SAP business content packages', 'Saves rebuilding semantics by hand'],
@@ -231,7 +231,7 @@ export const NEW_TILES: NewTile[] = [
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M12 17h9M12 21h9M12 25h6"/>' },
   { id: 'csn', label: 'Objects from CSN/JSON File', verb: 'Import', importTile: true, menuLabel: 'Import Objects from CSN/JSON File', text: 'Creates objects from a CSN/JSON definition file, for example one exported from another tenant or written by a tool. Definitions only, no data.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
-  { id: 'entities', label: 'Entities', verb: 'Import', importTile: true, menuLabel: 'Import Entities', text: 'Imports entities with their semantics from an SAP source system (for example CDS views of S/4HANA) as remote tables plus views. The guided version of this is Semantic Onboarding.',
+  { id: 'entities', label: 'Entities', verb: 'Import', importTile: true, menuLabel: 'Import Entities', chapter: 3, text: 'Imports entities with their semantics from an SAP source system (for example CDS views of S/4HANA): tables plus views with semantic usage, and their texts. Opens the same wizard as Semantic Onboarding, for the connections of this space.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
   { id: 'remote', label: 'Remote Tables', verb: 'Import', importTile: true, menuLabel: 'Import Remote Tables', chapter: 3, text: 'Makes objects of a connection available in the space without copying them. Data access is remote (live) or a replicated snapshot.',
     icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M16 15.5v8M12.5 20l3.5 3.5 3.5-3.5"/>' },

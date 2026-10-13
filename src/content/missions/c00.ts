@@ -63,23 +63,23 @@ export const CHAPTER_0: Mission[] = [
     chapter: 0,
     title: 'Pick a space',
     from: CALIN,
-    ticket: `<p>IT has loaded the first extracts from billing, metering and the CRM into the space <code>RHN_IN</code>.</p>
+    ticket: `<p>IT has loaded the first extracts from billing, metering and the CRM into the space <code>RHN_ENTRY</code>.</p>
       <p>Open the <b>Data Builder</b>, pick that space, and open the table with the supply contracts. Look at its columns and use
       <b>Data Preview</b> to see real rows. Then answer my two questions.</p>`,
     tasks: [
-      'Open the <b>Data Builder</b> and select the space <code>RHN_IN</code>.',
+      'Open the <b>Data Builder</b> and select the space <code>RHN_ENTRY</code>.',
       'Open the contracts table from the object list.',
       'Look at its columns, run <b>Data Preview</b>, and answer the questions below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Data Builder in the side navigation. The first screen asks for a space. The start page lists the objects of the space.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'An object opens in its editor: properties on the right, columns in the middle, Data Preview at the bottom.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Data Builder → RHN_IN → BILLING_CONTRACTS → Data Preview. Count the rows of the column list.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Data Builder → RHN_ENTRY → BILLING_CONTRACTS → Data Preview. Count the rows of the column list.' },
     ],
     checks: [
-      { type: 'rule', label: 'Space selected', ok: 'You picked RHN_IN.', test: did('space:builder:RHN_IN', 'Open the Data Builder from the side navigation and select the space RHN_IN.') },
-      { type: 'rule', label: 'Table opened', ok: 'You opened BILLING_CONTRACTS.', test: did('open:RHN_IN.BILLING_CONTRACTS', 'Open BILLING_CONTRACTS from the object list of RHN_IN.') },
-      { type: 'rule', label: 'Data previewed', ok: 'You looked at real rows.', test: did('preview:RHN_IN.BILLING_CONTRACTS', 'In the editor of BILLING_CONTRACTS, press Data Preview.') },
+      { type: 'rule', label: 'Space selected', ok: 'You picked RHN_ENTRY.', test: did('space:builder:RHN_ENTRY', 'Open the Data Builder from the side navigation and select the space RHN_ENTRY.') },
+      { type: 'rule', label: 'Table opened', ok: 'You opened BILLING_CONTRACTS.', test: did('open:RHN_ENTRY.BILLING_CONTRACTS', 'Open BILLING_CONTRACTS from the object list of RHN_ENTRY.') },
+      { type: 'rule', label: 'Data previewed', ok: 'You looked at real rows.', test: did('preview:RHN_ENTRY.BILLING_CONTRACTS', 'In the editor of BILLING_CONTRACTS, press Data Preview.') },
       { type: 'question', id: 'cols', label: 'Columns', prompt: 'How many columns does BILLING_CONTRACTS have?', options: ['5', '7', '9', '12'], answer: 1, nudge: 'Not quite. Count the rows in the column list of the editor.' },
       {
         type: 'question', id: 'src', label: 'Source system', prompt: 'Which column tells you which source system a row came from?',
@@ -111,19 +111,19 @@ export const CHAPTER_0: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Repository Explorer is near the top of the side navigation. Type part of a name into the search field.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'The search looks at business names and technical names. Clicking a result opens it in its editor in the Data Builder.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Search "meter" → open METER_READINGS. For the count, filter Space = RHN_IN.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Search "meter" → open METER_READINGS. For the count, filter Space = RHN_ENTRY.' },
     ],
     checks: [
       { type: 'rule', label: 'Searched', ok: 'You used the search.', test: ({ events }) => ([...events].some((e) => e.startsWith('search:repository:')) ? null : 'Type a search term into the Repository Explorer.') },
-      { type: 'rule', label: 'Opened from the search', ok: 'You opened METER_READINGS from the Repository Explorer.', test: did('repository-open:RHN_IN.METER_READINGS', 'Open the meter readings by clicking the result in the Repository Explorer.') },
-      { type: 'question', id: 'space', label: 'Which space', prompt: 'In which space are the meter readings?', options: ['RHN_IN', 'RHN_HARM', 'RHN_REP', 'MDM'], answer: 0, nudge: 'Not quite. Look at the Space column of the search result.' },
+      { type: 'rule', label: 'Opened from the search', ok: 'You opened METER_READINGS from the Repository Explorer.', test: did('repository-open:RHN_ENTRY.METER_READINGS', 'Open the meter readings by clicking the result in the Repository Explorer.') },
+      { type: 'question', id: 'space', label: 'Which space', prompt: 'In which space are the meter readings?', options: ['RHN_ENTRY', 'RHN_DSL', 'RHN_PRES', 'MDM'], answer: 0, nudge: 'Not quite. Look at the Space column of the search result.' },
       { type: 'question', id: 'kind', label: 'Which kind of object', prompt: 'What kind of object holds the meter readings?', options: ['SQL View', 'Local Table', 'Remote Table', 'Analytic Model'], answer: 1, nudge: 'Not quite. Look at the Type column.' },
-      { type: 'question', id: 'count', label: 'Objects in RHN_IN', prompt: 'How many objects does the space RHN_IN contain?', options: ['4', '7', '12', '15'], answer: 1, nudge: 'Not quite. Filter the Repository Explorer by space and read the counter.' },
+      { type: 'question', id: 'count', label: 'Objects in RHN_ENTRY', prompt: 'How many objects does the space RHN_ENTRY contain?', options: ['4', '7', '12', '15'], answer: 1, nudge: 'Not quite. Filter the Repository Explorer by space and read the counter.' },
     ],
     xp: 20,
     realTenant: `The real <b>Repository Explorer</b> searches across all your spaces and also shows folders, dependencies and the impact
       of a change. For data assets beyond Datasphere, there is the <b>Catalog</b>.`,
-    debrief: `<p>Thanks, I sent the metering team the answer. A Local Table in RHN_IN: stored in the tenant, loaded from the meter data system.</p>`,
+    debrief: `<p>Thanks, I sent the metering team the answer. A Local Table in RHN_ENTRY: stored in the tenant, loaded from the meter data system.</p>`,
   },
   {
     id: 'c00-m04',
@@ -150,7 +150,7 @@ export const CHAPTER_0: Mission[] = [
         label: 'Business name',
         ok: 'BILLING_CONTRACTS is called Billing Contracts, and that is deployed.',
         test: ({ tenant }) => {
-          const o = findObject(tenant, 'RHN_IN.BILLING_CONTRACTS');
+          const o = findObject(tenant, 'RHN_ENTRY.BILLING_CONTRACTS');
           if (!o) return 'BILLING_CONTRACTS is missing.';
           if (o.businessName.trim().toLowerCase() !== 'billing contracts') return `The business name is "${o.businessName}". Set it to Billing Contracts and save.`;
           if (o.status !== 'deployed') return `You saved it, but the status is ${STATUS_LABEL[o.status]}. Everyone still sees the old name until you deploy.`;

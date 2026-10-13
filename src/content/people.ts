@@ -20,19 +20,19 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'cmucea', name: 'Calin Mucea', initials: 'CM', title: 'Senior Data Architect',
-    job: 'Leads the modeling team. Runs the harmonization and reporting spaces and decides who works in them.',
+    job: 'Leads the modeling team. Runs the data & semantic and presentation spaces and decides who works in them.',
   },
   {
     id: 'lhoffmann', name: 'Lena Hoffmann', initials: 'LH', title: 'Integration Engineer',
-    job: 'Connects the source systems and runs the loads into the inbound space. "Just make me admin, it saves us tickets."',
+    job: 'Connects the source systems and runs the loads into the entry space. "Just make me admin, it saves us tickets."',
   },
   {
     id: 'tschulz', name: 'Tim Schulz', initials: 'TS', title: 'Data Modeler',
-    job: 'Builds the harmonization views: cleans grid areas, tariffs and customer keys.',
+    job: 'Builds the base views: cleans grid areas, tariffs and customer keys.',
   },
   {
     id: 'swolf', name: 'Sabine Wolf', initials: 'SW', title: 'Internal Auditor',
-    job: 'Checks once a quarter how figures are derived, from inbound to reporting. Must not change anything.',
+    job: 'Checks once a quarter how figures are derived, from the entry layer to the presentation layer. Must not change anything.',
   },
   {
     id: 'plindner', name: 'Petra Lindner', initials: 'PL', title: 'CFO',
@@ -48,7 +48,7 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'nkrueger', name: 'Nina Krüger', initials: 'NK', title: 'Data Modeler (new)',
-    job: 'Starts on Monday in the harmonization team.',
+    job: 'Starts on Monday as a modeler in the data & semantic layer.',
     from: 'c02-m03',
   },
 ];

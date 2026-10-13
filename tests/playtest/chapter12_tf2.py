@@ -9,7 +9,7 @@ from chapter12_data import TENANT12
 from chapter12_tf_data import SQL, F, P, bank_message
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-C = 'RHN_HARM.RHN_HARM_TC_NIGHTLY'
+C = 'RHN_DSL.RHN_DS_TC_NIGHTLY'
 save = save_before(12, 'c12-m11', TENANT12)
 for m in ['c12-m01', 'c12-m02', 'c12-m03', 'c12-m04', 'c12-m05', 'c12-m06', 'c12-m07', 'c12-m08', 'c12-m09', 'c12-m10']:
     save["missions"][m] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
@@ -22,19 +22,19 @@ def open_obj(g, space, key):
 
 def solve_m11(g):
     pg = g.pg
-    open_obj(g, 'RHN_IN', P)
+    open_obj(g, 'RHN_ENTRY', P)
     pg.check('#prop-delta'); pg.click('#ed-deploy'); pg.wait_for_timeout(700)
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)
-    pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_HA_T_PAYMENTS'); pg.keyboard.press('Tab'); pg.wait_for_timeout(200)
+    pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_DS_T_PAYMENTS'); pg.keyboard.press('Tab'); pg.wait_for_timeout(200)
     pg.click('#tf-general'); pg.select_option('#tf-load', 'Initial and Delta'); pg.wait_for_timeout(200)
-    pg.fill('#prop-business', 'Payments (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_TF_PAYMENTS')
+    pg.fill('#prop-business', 'Payments (clean)'); pg.fill('#prop-technical', 'RHN_DS_TF_PAYMENTS')
     pg.click('#ed-deploy'); pg.wait_for_timeout(800)
     pg.click('#tf-run'); pg.wait_for_timeout(1000)
-    open_obj(g, 'RHN_IN', P)
+    open_obj(g, 'RHN_ENTRY', P)
     bank_message(pg)
-    open_obj(g, 'RHN_HARM', F)
+    open_obj(g, 'RHN_DSL', F)
     pg.click('#tf-run'); pg.wait_for_timeout(1000)
     g.answer('delta-run', 1)
     return g.check('m11 (setup for m12)')
@@ -42,9 +42,9 @@ def solve_m11(g):
 
 def monitor_flow(g):
     pg = g.pg
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     g.nav('monitor'); pg.click('[data-mon-tab="flows"]'); pg.wait_for_selector('#flow-list')
-    pg.click('[data-flow="RHN_HA_TF_PAYMENTS"]'); pg.wait_for_selector('#flow-run')
+    pg.click('[data-flow="RHN_DS_TF_PAYMENTS"]'); pg.wait_for_selector('#flow-run')
 
 
 with sync_playwright() as p:
@@ -55,7 +55,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1500)
     assert solve_m11(g)
     g.next_mission(); pg.wait_for_timeout(1500)
-    open_obj(g, 'RHN_HARM', 'RHN_HARM.RHN_HA_T_PAYMENTS')
+    open_obj(g, 'RHN_DSL', 'RHN_DSL.RHN_DS_T_PAYMENTS')
     print('   target after Tim:', pg.locator('[data-del-row]').count(), 'rows')
     g.check('m12 nothing done')
 
@@ -73,9 +73,9 @@ with sync_playwright() as p:
     g.answer('why-reset', 1)
     g.check('m12 repaired, no chain')
 
-    open_obj(g, 'RHN_HARM', C)
+    open_obj(g, 'RHN_DSL', C)
     pg.click('#chain-add'); pg.wait_for_timeout(300)
-    pg.check('.dialog [name="step"][value="RHN_HARM.RHN_HA_TF_PAYMENTS"]'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(300)
+    pg.check('.dialog [name="step"][value="RHN_DSL.RHN_DS_TF_PAYMENTS"]'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(300)
     pg.click('#ed-save'); pg.wait_for_timeout(400)
     g.check('m12 step saved only')
     pg.click('#ed-deploy'); pg.wait_for_timeout(600)
@@ -103,12 +103,12 @@ with sync_playwright() as p:
     assert solve_m11(g)
     pg.click('#next-mission'); pg.wait_for_timeout(500)
     tour(pg, 'When a delta cannot help'); pg.click('.tour-card [data-act="next"]')
-    tour(pg, 'The flows of RHN_HARM'); pg.click('[data-flow="RHN_HA_TF_PAYMENTS"]')
+    tour(pg, 'The flows of RHN_DSL'); pg.click('[data-flow="RHN_DS_TF_PAYMENTS"]')
     tour(pg, 'Reset Watermark'); pg.click('#flow-reset')
     tour(pg, 'Run'); pg.click('#flow-run')
     tour(pg, 'Open the nightly chain'); pg.click(f'#object-list [data-open="{C}"]')
     tour(pg, 'Add Step'); pg.click('#chain-add'); pg.wait_for_timeout(300)
-    pg.check('.dialog [name="step"][value="RHN_HARM.RHN_HA_TF_PAYMENTS"]'); pg.click('.dialog button[type="submit"]')
+    pg.check('.dialog [name="step"][value="RHN_DSL.RHN_DS_TF_PAYMENTS"]'); pg.click('.dialog button[type="submit"]')
     tour(pg, 'Deploy'); pg.click('#ed-deploy')
     tour(pg, 'Run the chain'); pg.click('#chain-run')
     tour(pg, 'Your answers'); g.answer('why-reset', 1)

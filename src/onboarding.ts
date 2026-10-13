@@ -1,8 +1,9 @@
 import type { TenantState } from './tenant';
 import { assigned, CAPACITY } from './tenant';
-import { deploy, findObject, type RepoObject, type SemanticUsage } from './repo';
+import { deploy, findObject, type ColumnRole, type RepoObject, type SemanticUsage } from './repo';
 import { exec } from './db';
 import type { TableDef } from './localtable';
+import { cdsEntity, createRemoteView, emptyTable, sourceObject, supports, type CdsEntity, type Connection } from './integration';
 
 /**
  * Semantic Onboarding › Content Network (excursion c12-m09, Handbuch 8.6): packages from SAP and partners bring their own space
@@ -52,7 +53,7 @@ const S = (cols: [string, 'String' | 'Integer' | 'Decimal' | 'Date', boolean?][]
 export const PACKAGES: ContentPackage[] = [
   {
     id: 'SAP_UTIL_BILLING', area: 'business', title: 'Utilities – Billing Analysis', provider: 'SAP', version: '2.4.0',
-    description: 'Billing documents, contract accounts and installations of SAP S/4HANA Utilities, modeled as remote tables on CDS views, harmonized views and a billing fact. A starting point for revenue and consumption reporting of energy suppliers.',
+    description: 'Billing documents, contract accounts and installations of SAP S/4HANA Utilities, modeled as remote tables on CDS views, base views and a billing fact. A starting point for revenue and consumption reporting of energy suppliers.',
     prerequisites: [
       'A space administrator imports the package; it creates its own space SAP_UTIL.',
       'Connection SAP_S4H (type SAP S/4HANA On-Premise, feature Remote Tables) in space SAP_UTIL, created after the import.',
@@ -93,11 +94,17 @@ export const PACKAGES: ContentPackage[] = [
 ];
 
 export interface ImportLog {
+  /** Content package ID, or ENTITY_IMPORT for Import Entities from an SAP system. */
   pkg: string;
   at: string;
   options: { overwrite: boolean; deploy: boolean };
   lines: { level: 'ok' | 'warn' | 'error' | 'info'; text: string }[];
+  /** Import Entities: target space, connection, data access and the selected entities. */
+  entities?: { space: string; connection: string; access: EntityAccess; selected: string[] };
 }
+
+/** Marks an Import Entities log (Semantic Onboarding › Open Import Logs). */
+export const ENTITY_IMPORT = 'IMPORT_ENTITIES';
 
 export const packageById = (id: string) => PACKAGES.find((p) => p.id === id);
 
@@ -164,8 +171,15 @@ function keep(t: TenantState, log: ImportLog) {
 export function sanitizeImportLogs(d: unknown): ImportLog[] {
   const out: ImportLog[] = [];
   for (const l of Array.isArray(d) ? d.slice(0, 20) : []) {
-    if (!l || !packageById(l.pkg)) continue;
+    if (!l || (!packageById(l.pkg) && l.pkg !== ENTITY_IMPORT)) continue;
+    const e = l.entities;
+    const entities = l.pkg === ENTITY_IMPORT && e && typeof e.space === 'string' && typeof e.connection === 'string'
+      ? { space: e.space.slice(0, 20), connection: e.connection.slice(0, 50), access: (ACCESS_OPTIONS.includes(e.access) ? e.access : 'Remote Tables') as EntityAccess,
+        selected: (Array.isArray(e.selected) ? e.selected : []).filter((x: unknown) => typeof x === 'string' && !!cdsEntity(x)).slice(0, 10) }
+      : undefined;
+    if (l.pkg === ENTITY_IMPORT && !entities) continue;
     out.push({
+      entities,
       pkg: l.pkg, at: typeof l.at === 'string' ? l.at.slice(0, 40) : '',
       options: { overwrite: !!l.options?.overwrite, deploy: !!l.options?.deploy },
       lines: (Array.isArray(l.lines) ? l.lines : []).slice(0, 40)
@@ -174,4 +188,173 @@ export function sanitizeImportLogs(d: unknown): ImportLog[] {
     });
   }
   return out;
+}
+
+// ---------------------------------------------------------------- Import Entities (SAP systems, c03-m07)
+
+/**
+ * Import Entities from an SAP S/4HANA connection (SAP help "Importing Entities with Semantics from SAP S/4HANA"):
+ * the wizard picks a connection (its space is the target space) and the data access, the player selects CDS views, the
+ * review lists what will be created, and "Import and Deploy" creates it with semantics:
+ *  - ANALYTICAL_DIMENSION: a table (Relational Dataset) and a view with semantic usage Dimension; associated text entities
+ *    come along as tables with semantic usage Text, and the view gets the association to them
+ *  - LANGUAGE_DEPENDENT_TEXT: a table with semantic usage Text
+ *  - not released (custom CDS views): only a local table without data and without associations; data needs a data flow
+ * Data access "Replication Flow to Local Tables" (default) creates local tables and one replication flow that fills them on its first run;
+ * "Remote Tables" creates remote tables that read the source live. Business Builder objects are listed in the review but not created
+ * (simplified: the Business Builder is deprecated, excursion c12-m04). Object names are simplified: tables keep the CDS ID, the
+ * dimension view gets the suffix _DIM (not verified against a real tenant).
+ */
+
+export type EntityAccess = 'Replication Flow to Local Tables' | 'Remote Tables';
+export const ACCESS_OPTIONS: EntityAccess[] = ['Replication Flow to Local Tables', 'Remote Tables'];
+
+export interface PlannedObject {
+  name: string;
+  businessName: string;
+  kind: 'Remote Table' | 'Local Table' | 'SQL View' | 'Replication Flow';
+  semanticUsage: SemanticUsage;
+  /** The CDS view it comes from. */
+  cds: string;
+  /** Supporting entity (followed through an association), not selected by the player. */
+  supporting: boolean;
+  status: 'Ready for Import' | 'Already Imported';
+}
+
+/** Business Builder objects a real import would create (shown in the review only). */
+export interface PlannedBusinessObject {
+  businessName: string;
+  type: 'Business Entity (Dimension)';
+  cds: string;
+}
+
+export const dimViewName = (id: string) => `${id}_DIM`;
+export const flowName = (selected: string[]) => `RF_${selected[0] ?? 'IMPORT'}`.slice(0, 50);
+
+/** The selected entities plus the text entities their associations lead to (only released views follow associations). */
+export function withSupporting(selected: string[]): { e: CdsEntity; supporting: boolean }[] {
+  const out: { e: CdsEntity; supporting: boolean }[] = [];
+  const add = (id: string, supporting: boolean) => {
+    const e = cdsEntity(id);
+    if (!e || out.some((x) => x.e.id === id)) return;
+    out.push({ e, supporting });
+    if (e.release === 'C1') for (const tx of e.texts ?? []) add(tx, true);
+  };
+  for (const id of selected) add(id, false);
+  return out;
+}
+
+/** What the import will create in the target space (Review Entities). */
+export function planImport(t: TenantState, space: string, access: EntityAccess, selected: string[]) {
+  const data: PlannedObject[] = [];
+  const business: PlannedBusinessObject[] = [];
+  const status = (name: string): PlannedObject['status'] => (findObject(t, `${space}.${name}`)?.importedFrom ? 'Already Imported' : 'Ready for Import');
+  const entities = withSupporting(selected);
+  let needsFlow = false;
+  for (const { e, supporting } of entities) {
+    const released = e.release === 'C1';
+    const kind: PlannedObject['kind'] = released && access === 'Remote Tables' ? 'Remote Table' : 'Local Table';
+    if (kind === 'Local Table' && released) needsFlow = true;
+    const usage: SemanticUsage = e.pattern === 'LANGUAGE_DEPENDENT_TEXT' ? 'Text' : 'Relational Dataset';
+    data.push({ name: e.id, businessName: e.label, kind, semanticUsage: usage, cds: e.id, supporting, status: status(e.id) });
+    if (e.pattern === 'ANALYTICAL_DIMENSION') {
+      data.push({ name: dimViewName(e.id), businessName: e.label, kind: 'SQL View', semanticUsage: 'Dimension', cds: e.id, supporting, status: status(dimViewName(e.id)) });
+      business.push({ businessName: e.label, type: 'Business Entity (Dimension)', cds: e.id });
+    }
+  }
+  if (needsFlow) {
+    const name = flowName(selected);
+    data.push({ name, businessName: `Replication of ${selected.join(', ')}`, kind: 'Replication Flow', semanticUsage: 'Relational Dataset', cds: selected[0], supporting: false, status: status(name) });
+  }
+  return { data, business, entities };
+}
+
+const keyRoles = (e: CdsEntity): Record<string, ColumnRole> => Object.fromEntries(e.columns.map(([c, key]) => [c, key ? 'Key' : 'Attribute']));
+
+/** Import and Deploy. Returns the log (also kept in the tenant, Open Import Logs). */
+export async function importEntities(t: TenantState, conn: Connection, access: EntityAccess, selected: string[]): Promise<ImportLog> {
+  const space = conn.space;
+  const log: ImportLog = { pkg: ENTITY_IMPORT, at: new Date().toISOString(), options: { overwrite: true, deploy: true }, lines: [],
+    entities: { space, connection: conn.name, access, selected: [...selected] } };
+  const add = (level: ImportLog['lines'][number]['level'], text: string) => log.lines.push({ level, text });
+  if (!supports(conn, 'Model Import')) {
+    add('error', `Import stopped: connection ${conn.name} does not support Model Import. Validate it in the Connections app.`);
+    return keep(t, log);
+  }
+  if (!selected.length) {
+    add('error', 'Import stopped: no entity selected.');
+    return keep(t, log);
+  }
+  const plan = planImport(t, space, access, selected);
+  const now = new Date().toISOString();
+  add('info', `Started: import of ${selected.join(', ')} from ${conn.name} into ${space}. Data access: ${access}.`);
+  const replace = (o: RepoObject) => {
+    t.objects = t.objects.filter((x) => !(x.space === o.space && x.name === o.name));
+    t.objects.push(o);
+  };
+  /** A new import may turn a remote table (a view in the database) into a local table or back: drop whatever is there. */
+  const clear = async (name: string) => {
+    for (const kind of ['VIEW', 'TABLE']) await exec(`DROP ${kind} IF EXISTS "${space}"."${name}"`).catch(() => undefined);
+  };
+  const flowObjects: { source: string; target: string }[] = [];
+  for (const { e, supporting } of plan.entities) {
+    if (supporting) add('info', `${e.id} follows from an association (${e.pattern === 'LANGUAGE_DEPENDENT_TEXT' ? 'text entity' : 'supporting entity'}) and is imported too.`);
+    const src = sourceObject(t, space, conn.name, e.id);
+    if (!src) {
+      add('error', `${e.id}: not found in ${conn.name}.`);
+      continue;
+    }
+    const released = e.release === 'C1';
+    const usage: SemanticUsage = e.pattern === 'LANGUAGE_DEPENDENT_TEXT' ? 'Text' : 'Relational Dataset';
+    const roles = usage === 'Text' ? keyRoles(e) : undefined;
+    const base = { space, name: e.id, businessName: e.label, semanticUsage: usage, columnRoles: roles, status: 'deployed' as const, changedAt: now, importedFrom: e.id };
+    if (released && access === 'Remote Tables') {
+      const o: RepoObject = { ...base, kind: 'Remote Table', remote: { connection: conn.name, source: e.id, access: 'Remote' },
+        deployed: { businessName: e.label, semanticUsage: usage, columnRoles: roles } };
+      replace(o);
+      await clear(e.id);
+      await createRemoteView(t, o);
+      add('ok', `${e.id}: remote table created and deployed (data access Remote, reads ${conn.name} live).`);
+    } else {
+      const o: RepoObject = { ...base, kind: 'Local Table', loadFrom: { connection: conn.name, source: e.id, extra: [] }, loadPending: true,
+        deployed: { businessName: e.label, semanticUsage: usage, columnRoles: roles } };
+      replace(o);
+      await clear(e.id);
+      await emptyTable(space, e.id, src);
+      if (released) {
+        flowObjects.push({ source: e.id, target: e.id });
+        add('ok', `${e.id}: local table created and deployed, still empty. The replication flow fills it.`);
+      } else {
+        add('warn', `${e.id}: not released for extraction (release contract ${e.release}). Only a local table was created, without data and without associations; load it with a data flow.`);
+      }
+    }
+  }
+  // Views after all tables, so that their associations find the text entities.
+  for (const { e } of plan.entities) {
+    const released = e.release === 'C1';
+    if (e.pattern === 'ANALYTICAL_DIMENSION') {
+      const view = dimViewName(e.id);
+      const cols = e.columns.map(([c]) => c);
+      const sql = `SELECT ${cols.join(', ')}\nFROM ${space}.${e.id}`;
+      const texts = released ? (e.texts ?? []).filter((x) => plan.entities.some((p) => p.e.id === x)) : [];
+      const keyCol = e.columns.find(([, k]) => k)![0];
+      const associations = texts.map((x) => ({ target: `${space}.${x}`, mapping: [{ from: keyCol, to: keyCol }] }));
+      const o: RepoObject = { space, name: view, kind: 'SQL View', businessName: e.label, semanticUsage: 'Dimension', columnRoles: keyRoles(e),
+        associations, sql, status: 'not_deployed', changedAt: now, importedFrom: e.id };
+      replace(o);
+      const err = await deploy(o);
+      if (err) add('error', `${view}: created, but not deployed. ${err}`);
+      else add('ok', `${view}: view with semantic usage Dimension created and deployed${associations.length ? `, with a text association to ${texts.join(', ')}` : ''}.`);
+    }
+  }
+  if (flowObjects.length) {
+    const name = flowName(selected);
+    const flow = { connection: conn.name, objects: flowObjects.map((f) => ({ ...f, loadType: 'Initial Only' as const, truncate: false, extra: [] })) };
+    replace({ space, name, kind: 'Replication Flow', businessName: `Replication of ${selected.join(', ')}`, semanticUsage: 'Relational Dataset',
+      flow, deployed: { businessName: `Replication of ${selected.join(', ')}`, flow: structuredClone(flow) }, status: 'deployed', changedAt: now, importedFrom: selected[0] });
+    add('warn', `${name}: replication flow created and deployed, but not run. Open it and run it (or schedule it) to load the data.`);
+  }
+  add('info', `Business Builder: ${plan.business.length ? `${plan.business.length} business entit${plan.business.length > 1 ? 'ies' : 'y'} would be created in a real tenant. The game skips the deprecated Business Builder.` : 'nothing to create.'}`);
+  add('info', `Import of ${selected.join(', ')} finished.`);
+  return keep(t, log);
 }

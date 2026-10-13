@@ -7,15 +7,15 @@ URL = 'http://localhost:5199/'
 # Chain mode (sandbox.sh): each script starts from the save the previous one left in this file and stops after its first pass.
 CHAIN = os.environ.get('DSG_CHAIN')
 SPACES = [
-    {"id": "RHN_IN", "name": "Rheinau Inbound", "diskGB": 40, "memoryGB": 8, "priority": 3},
-    {"id": "RHN_HARM", "name": "Rheinau Harmonization", "diskGB": 36, "memoryGB": 8, "priority": 3},
-    {"id": "RHN_REP", "name": "Rheinau Reporting", "diskGB": 20, "memoryGB": 10, "priority": 5},
+    {"id": "RHN_ENTRY", "name": "Rheinau Entry", "diskGB": 40, "memoryGB": 8, "priority": 3},
+    {"id": "RHN_DSL", "name": "Rheinau Data & Semantic", "diskGB": 36, "memoryGB": 8, "priority": 3},
+    {"id": "RHN_PRES", "name": "Rheinau Presentation", "diskGB": 20, "memoryGB": 10, "priority": 5},
 ]
 CH = {
     0: ['c00-m01', 'c00-m02', 'c00-m03', 'c00-m04'],
     1: ['c01-m01', 'c01-m02', 'c01-m03', 'c01-m04'],
     2: ['c02-m01', 'c02-m02', 'c02-m03'],
-    3: ['c03-m01', 'c03-m02', 'c03-m03', 'c03-m04', 'c03-m05', 'c03-m06'],
+    3: ['c03-m01', 'c03-m02', 'c03-m03', 'c03-m04', 'c03-m05', 'c03-m06', 'c03-m07'],
     4: ['c04-m01', 'c04-m02', 'c04-m03', 'c04-m04'],
     5: ['c05-m01', 'c05-m02', 'c05-m03', 'c05-m04', 'c05-m05'],
     6: ['c06-m01', 'c06-m02', 'c06-m03', 'c06-m04', 'c06-m05'],
@@ -31,9 +31,9 @@ CH = {
 def save_before(chapter, current, tenant=None, xp=200):
     """A v4 save with every mission of the chapters before `chapter` solved."""
     done = [m for c, ms in CH.items() if c < chapter for m in ms]
-    return {"version": 4, "xp": xp, "currentMission": current, "tutorialsSeen": [],
+    return {"version": 5, "xp": xp, "currentMission": current, "tutorialsSeen": [],
             "missions": {m: {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 25, "events": []} for m in done},
-            "tenant": tenant or {"spaces": SPACES[:1], "shares": [], "activeSpace": "RHN_IN"}}
+            "tenant": tenant or {"spaces": SPACES[:1], "shares": [], "activeSpace": "RHN_ENTRY"}}
 
 
 class Game:

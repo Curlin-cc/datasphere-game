@@ -2,11 +2,11 @@ import type { Mission, RuleContext } from '../../missions/types';
 import type { TenantState } from '../../tenant';
 import { objectKey, type RepoObject } from '../../repo';
 import { findConnection, lastRun, runsOf, validateConnection, addRun, type Connection } from '../../integration';
-import { round1 } from '../../tenant';
+import { round1, isShared } from '../../tenant';
 
 /**
- * Chapter 3, Data integration. Connections per space, on-premise connectivity, remote tables versus
- * replication, replication flows with delta, extra columns while loading, and a failed load.
+ * Chapter 3, Data integration into the entry layer RHN_ENTRY. Connections per space, on-premise connectivity, remote tables versus
+ * replication, replication flows with delta, extra columns while loading, a failed load, and Import Entities from S/4HANA (c03-m07).
  * Content follows the SAP Datasphere handbook, chapters 5, 6 and 10 (see src/integration.ts).
  */
 
@@ -18,22 +18,22 @@ const S4_HOST = 'billing.rheinau-s4.example';
 const MDM_HOST = 'mdm-db.rheinau.local';
 const CRM_BUCKET = 'rheinau-crm-export';
 
-const conn = (t: TenantState, name: string) => findConnection(t, 'RHN_IN', name);
+const conn = (t: TenantState, name: string) => findConnection(t, 'RHN_ENTRY', name);
 const byHost = (t: TenantState, host: string) => t.connections.filter((c) => c.host.toLowerCase() === host);
-const flowIn = (t: TenantState, name: string) => t.objects.find((o) => o.space === 'RHN_IN' && o.name === name && o.kind === 'Replication Flow');
+const flowIn = (t: TenantState, name: string) => t.objects.find((o) => o.space === 'RHN_ENTRY' && o.name === name && o.kind === 'Replication Flow');
 const remoteFor = (t: TenantState, source: string) =>
-  t.objects.filter((o) => o.space === 'RHN_IN' && o.kind === 'Remote Table' && o.remote?.connection === 'RHN_S4U' && o.remote.source === source);
+  t.objects.filter((o) => o.space === 'RHN_ENTRY' && o.kind === 'Remote Table' && o.remote?.connection === 'RHN_S4U' && o.remote.source === source);
 
 /** Common feedback for "the connection X is right". */
 function connectionRule(ctx: RuleContext, name: string, host: string, type: string, typeLabel: string): string | null {
   const t = ctx.tenant;
   const c = conn(t, name);
-  const elsewhere = byHost(t, host).filter((x) => x.space !== 'RHN_IN');
+  const elsewhere = byHost(t, host).filter((x) => x.space !== 'RHN_ENTRY');
   if (!c) {
-    if (elsewhere.length) return `There is a connection to ${host} in ${elsewhere[0].space}, but all loads land in RHN_IN. A connection belongs to exactly one space: create it in RHN_IN.`;
-    const other = byHost(t, host).find((x) => x.space === 'RHN_IN');
+    if (elsewhere.length) return `There is a connection to ${host} in ${elsewhere[0].space}, but all loads land in RHN_ENTRY. A connection belongs to exactly one space: create it in RHN_ENTRY.`;
+    const other = byHost(t, host).find((x) => x.space === 'RHN_ENTRY');
     if (other) return `The connection to ${host} is called ${other.name}. The ticket asks for ${name}; the technical name cannot be changed, so create it again with the right name and delete ${other.name}.`;
-    return `There is no connection ${name} in RHN_IN yet. Open Connections, select RHN_IN and press Create.`;
+    return `There is no connection ${name} in RHN_ENTRY yet. Open Connections, select RHN_ENTRY and press Create.`;
   }
   if (c.type !== type) return `${name} has the wrong connection type. The source is ${typeLabel}.`;
   if (c.host.toLowerCase() !== host) return `${name} points to ${c.host || 'no host'}, but the source is ${host}.`;
@@ -48,13 +48,13 @@ function validRule(t: TenantState, name: string): string | null {
 }
 
 const flowDeployed = (f: RepoObject | undefined, name: string): string | null => {
-  if (!f) return `There is no replication flow ${name} in RHN_IN yet.`;
+  if (!f) return `There is no replication flow ${name} in RHN_ENTRY yet.`;
   if (!f.deployed) return `${name} is saved but not deployed. Deploy it, then run it.`;
   if (f.status === 'changes') return `${name} has saved changes that are not deployed. The run uses the deployed version: deploy again.`;
   return null;
 };
 
-const noStray = (c: Connection[]) => c.filter((x) => x.space !== 'RHN_IN');
+const noStray = (c: Connection[]) => c.filter((x) => x.space !== 'RHN_ENTRY');
 
 export const CHAPTER_3: Mission[] = [
   {
@@ -62,17 +62,17 @@ export const CHAPTER_3: Mission[] = [
     chapter: 3,
     title: 'Connect the billing system',
     from: LENA,
-    ticket: `<p>Hi, Lena from integration. Everything in <code>RHN_IN</code> so far is a one-off copy IT made for the pilot.
+    ticket: `<p>Hi, Lena from integration. Everything in <code>RHN_ENTRY</code> so far is a one-off copy IT made for the pilot.
       Time to connect the real systems, starting with billing: our <b>SAP S/4HANA Cloud</b>.</p>
       <ul>
-        <li>Create the connection in the inbound space; every load lands there.</li>
+        <li>Create the connection in the entry space; every load lands there.</li>
         <li>Host <code>${S4_HOST}</code>, authentication <b>OAuth 2.0</b>. I already set up the technical user.</li>
         <li>Technical name <code>RHN_S4U</code>: our prefix plus the source system ID, the same code you see in <code>SRC_SYS_ID</code>.
           Business name "S/4HANA Billing".</li>
       </ul>
       <p>Then validate it and tell me what we can use it for.</p>`,
     tasks: [
-      'Open <b>Connections</b> and select the space <code>RHN_IN</code>.',
+      'Open <b>Connections</b> and select the space <code>RHN_ENTRY</code>.',
       'Create the connection: pick the connection type that matches the source, then enter the details from the ticket.',
       'Select the connection and press <b>Validate</b>. Read which features it offers.',
       'Answer the questions below.',
@@ -80,10 +80,10 @@ export const CHAPTER_3: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Connections is in the upper group of the side navigation. The space selection is at the top right, Create above the list.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'A connection belongs to one space; only that space can use it. The type decides which features are possible; Validate shows which ones really work.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_IN → Create → SAP S/4HANA Cloud → Host billing.rheinau-s4.example, OAuth 2.0, business name S/4HANA Billing, technical name RHN_S4U → select → Validate.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_ENTRY → Create → SAP S/4HANA Cloud → Host billing.rheinau-s4.example, OAuth 2.0, business name S/4HANA Billing, technical name RHN_S4U → select → Validate.' },
     ],
     checks: [
-      { type: 'rule', label: 'Connection in the inbound space', ok: 'RHN_S4U connects RHN_IN to S/4HANA Cloud.', test: (ctx) => connectionRule(ctx, 'RHN_S4U', S4_HOST, 'S4HANA_CLOUD', 'SAP S/4HANA Cloud') },
+      { type: 'rule', label: 'Connection in the entry space', ok: 'RHN_S4U connects RHN_ENTRY to S/4HANA Cloud.', test: (ctx) => connectionRule(ctx, 'RHN_S4U', S4_HOST, 'S4HANA_CLOUD', 'SAP S/4HANA Cloud') },
       {
         type: 'rule', label: 'Authentication', ok: 'OAuth 2.0, as Lena set it up.',
         test: ({ tenant }) => {
@@ -93,16 +93,16 @@ export const CHAPTER_3: Mission[] = [
       },
       { type: 'rule', label: 'Validated', ok: 'Validation passed.', test: ({ tenant }) => validRule(tenant, 'RHN_S4U') },
       {
-        type: 'rule', label: 'No connections in other spaces', ok: 'Only RHN_IN has connections.',
+        type: 'rule', label: 'No connections in other spaces', ok: 'Only RHN_ENTRY has connections.',
         test: ({ tenant }) => {
           const stray = noStray(tenant.connections);
-          return stray.length ? `Delete ${stray.map((c) => `${c.space}.${c.name}`).join(', ')}. Sources are connected in the inbound space only; the other layers read what inbound shares.` : null;
+          return stray.length ? `Delete ${stray.map((c) => `${c.space}.${c.name}`).join(', ')}. Sources are connected in the entry space only; the other layers read what the entry layer shares.` : null;
         },
       },
       {
         type: 'question', id: 'who', label: 'Who can use it',
         prompt: 'Who can use RHN_S4U in remote tables and flows?',
-        options: ['Everyone in the tenant', 'The members of RHN_IN', 'Only you, because you created it', 'Every space you share it with'],
+        options: ['Everyone in the tenant', 'The members of RHN_ENTRY', 'Only you, because you created it', 'Every space you share it with'],
         answer: 1,
         nudge: 'Not quite. Think about where the connection lives, and what is true for everything that lives in a space.',
       },
@@ -137,11 +137,11 @@ export const CHAPTER_3: Mission[] = [
         <li>We installed the SAP Cloud Connector there; its location ID is <code>RHEINAU_DC</code>.</li>
         <li>Security policy: every connection is encrypted with <b>TLS</b>. Our servers carry certificates signed by the <b>Rheinau Root CA</b>;
           the file is in your downloads.</li>
-        <li>Technical name <code>RHN_MDM</code> in <code>RHN_IN</code>, business name "Meter Data (MDM)".</li>
+        <li>Technical name <code>RHN_MDM</code> in <code>RHN_ENTRY</code>, business name "Meter Data (MDM)".</li>
       </ul>
       <p>If validation complains, read what it says. It is usually right.</p>`,
     tasks: [
-      'In <b>Connections</b> (<code>RHN_IN</code>), create the connection with the type that matches the source, as an on-premise source.',
+      'In <b>Connections</b> (<code>RHN_ENTRY</code>), create the connection with the type that matches the source, as an on-premise source.',
       'Validate it. Each failed validation names one missing piece.',
       'In <b>System › Configuration</b>, look up the Cloud Connector and upload the certificate the server needs.',
       'Validate again until it passes.',
@@ -203,8 +203,8 @@ export const CHAPTER_3: Mission[] = [
     chapter: 3,
     title: 'Live or copied?',
     from: CALIN,
-    ticket: `<p>Two master data sets from S/4HANA should be available in <code>RHN_IN</code> as <b>remote tables</b>: the structure lives here, the data in S/4.
-      Our convention: <code>RHN_IN_RT_&lt;NAME&gt;</code>.</p>
+    ticket: `<p>Two master data sets from S/4HANA should be available in <code>RHN_ENTRY</code> as <b>remote tables</b>: the structure lives here, the data in S/4.
+      Our convention: <code>RHN_EN_RT_&lt;NAME&gt;</code>.</p>
       <ul>
         <li><b>Tariffs</b>: customer service quotes prices on the phone. A price change in S/4 must show up at once. The table is tiny.</li>
         <li><b>Grid areas</b>: change at most once a year, but every report reads them. Do not ask S/4 on every query:
@@ -212,7 +212,7 @@ export const CHAPTER_3: Mission[] = [
       </ul>
       <p>Contracts and invoices do <b>not</b> become remote tables. They get their own load in the next ticket.</p>`,
     tasks: [
-      'In the <b>Data Builder</b> of <code>RHN_IN</code>, use <b>Import Remote Tables</b> with <code>RHN_S4U</code> for the two objects.',
+      'In the <b>Data Builder</b> of <code>RHN_ENTRY</code>, use <b>Import Remote Tables</b> with <code>RHN_S4U</code> for the two objects.',
       'Open the tariffs remote table and run <b>Data Preview</b>. Then look at <b>Remote Queries</b> in the Data Integration Monitor.',
       'In the <b>Data Integration Monitor</b> › Remote Tables, give the grid areas the data access the ticket describes, with its schedule.',
       'Answer the question below.',
@@ -220,21 +220,21 @@ export const CHAPTER_3: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Import Remote Tables is in the Import menu of the object list on the Data Builder start page (the icon next to +). Data access and schedules are set in the Data Integration Monitor, not in the editor.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Remote reads the source on every query: always current, but every query loads the source. A snapshot is a copy: fast and independent, but only as fresh as the last load. A schedule refreshes it, and schedules need your consent.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Import TARIFFS and GRID_AREAS as RHN_IN_RT_… · Tariffs stay Remote · Grid areas: Load New Snapshot, then Schedule → Weekly (give consent first).' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Import TARIFFS and GRID_AREAS as RHN_EN_RT_… · Tariffs stay Remote · Grid areas: Load New Snapshot, then Schedule → Weekly (give consent first).' },
     ],
     checks: [
       {
-        type: 'rule', label: 'Two remote tables', ok: 'Tariffs and grid areas are remote tables in RHN_IN.',
+        type: 'rule', label: 'Two remote tables', ok: 'Tariffs and grid areas are remote tables in RHN_ENTRY.',
         test: ({ tenant }) => {
           const missing = ['TARIFFS', 'GRID_AREAS'].filter((s) => !remoteFor(tenant, s).length);
-          return missing.length ? `No remote table on ${missing.join(' and ')} from RHN_S4U in RHN_IN yet. Use Import Remote Tables in the Data Builder.` : null;
+          return missing.length ? `No remote table on ${missing.join(' and ')} from RHN_S4U in RHN_ENTRY yet. Use Import Remote Tables in the Data Builder.` : null;
         },
       },
       {
-        type: 'rule', label: 'Names follow the convention', ok: 'RHN_IN_RT_… as agreed.',
+        type: 'rule', label: 'Names follow the convention', ok: 'RHN_EN_RT_… as agreed.',
         test: ({ tenant }) => {
-          const bad = [...remoteFor(tenant, 'TARIFFS'), ...remoteFor(tenant, 'GRID_AREAS')].filter((o) => !o.name.startsWith('RHN_IN_RT_'));
-          return bad.length ? `${bad.map((o) => o.name).join(', ')} does not follow RHN_IN_RT_<NAME>. Technical names cannot change: delete and import again.` : null;
+          const bad = [...remoteFor(tenant, 'TARIFFS'), ...remoteFor(tenant, 'GRID_AREAS')].filter((o) => !o.name.startsWith('RHN_EN_RT_'));
+          return bad.length ? `${bad.map((o) => o.name).join(', ')} does not follow RHN_EN_RT_<NAME>. Technical names cannot change: delete and import again.` : null;
         },
       },
       {
@@ -297,8 +297,8 @@ export const CHAPTER_3: Mission[] = [
     chapter: 3,
     title: 'Contracts and invoices by delta',
     from: LENA,
-    ticket: `<p>Now the big ones. Please build a <b>replication flow</b> <code>RHN_IN_RF_S4U</code> from <code>RHN_S4U</code> that keeps
-      <code>BILLING_CONTRACTS</code> and <code>BILLING_INVOICES</code> in <code>RHN_IN</code> up to date.</p>
+    ticket: `<p>Now the big ones. Please build a <b>replication flow</b> <code>RHN_EN_RF_S4U</code> from <code>RHN_S4U</code> that keeps
+      <code>BILLING_CONTRACTS</code> and <code>BILLING_INVOICES</code> in <code>RHN_ENTRY</code> up to date.</p>
       <ul>
         <li>Write into the <b>existing pilot tables</b>, so everything built on them keeps working.</li>
         <li>Load everything once, then <b>only the changes</b>.</li>
@@ -306,7 +306,7 @@ export const CHAPTER_3: Mission[] = [
           Those rows must stay.</li>
       </ul>`,
     tasks: [
-      'In the <b>Data Builder</b> of <code>RHN_IN</code>, create a <b>New Replication Flow</b> with the source connection <code>RHN_S4U</code>.',
+      'In the <b>Data Builder</b> of <code>RHN_ENTRY</code>, create a <b>New Replication Flow</b> with the source connection <code>RHN_S4U</code>.',
       'Add the two source objects and point each to its existing table.',
       'Choose the load type and the Truncate option for each object.',
       'Save, deploy and run the flow. Look at the run in the <b>Data Integration Monitor</b> › Flows.',
@@ -319,16 +319,16 @@ export const CHAPTER_3: Mission[] = [
     ],
     checks: [
       {
-        type: 'rule', label: 'Flow deployed', ok: 'RHN_IN_RF_S4U is deployed.',
+        type: 'rule', label: 'Flow deployed', ok: 'RHN_EN_RF_S4U is deployed.',
         test: ({ tenant }) => {
-          const f = flowIn(tenant, 'RHN_IN_RF_S4U');
-          return flowDeployed(f, 'RHN_IN_RF_S4U') ?? (f!.deployed!.flow!.connection === 'RHN_S4U' ? null : 'The flow reads from the wrong connection. Its source is RHN_S4U.');
+          const f = flowIn(tenant, 'RHN_EN_RF_S4U');
+          return flowDeployed(f, 'RHN_EN_RF_S4U') ?? (f!.deployed!.flow!.connection === 'RHN_S4U' ? null : 'The flow reads from the wrong connection. Its source is RHN_S4U.');
         },
       },
       {
         type: 'rule', label: 'Into the pilot tables', ok: 'Both objects write into the existing tables.',
         test: ({ tenant }) => {
-          const objs = flowIn(tenant, 'RHN_IN_RF_S4U')?.deployed?.flow?.objects ?? [];
+          const objs = flowIn(tenant, 'RHN_EN_RF_S4U')?.deployed?.flow?.objects ?? [];
           for (const name of ['BILLING_CONTRACTS', 'BILLING_INVOICES']) {
             const o = objs.find((x) => x.source === name);
             if (!o) return `${name} is not part of the deployed flow. Add it as a source object.`;
@@ -341,7 +341,7 @@ export const CHAPTER_3: Mission[] = [
       {
         type: 'rule', label: 'Only the changes', ok: 'Initial and Delta for both.',
         test: ({ tenant }) => {
-          const objs = flowIn(tenant, 'RHN_IN_RF_S4U')?.deployed?.flow?.objects ?? [];
+          const objs = flowIn(tenant, 'RHN_EN_RF_S4U')?.deployed?.flow?.objects ?? [];
           const full = objs.filter((o) => o.loadType !== 'Initial and Delta');
           return full.length ? `${full.map((o) => o.source).join(' and ')} ${full.length > 1 ? 'are' : 'is'} loaded once and never again. Lena wants the changes too.` : null;
         },
@@ -349,7 +349,7 @@ export const CHAPTER_3: Mission[] = [
       {
         type: 'rule', label: 'Legacy rows kept', ok: 'Truncate is off; the LEGACY rows stay.',
         test: ({ tenant }) => {
-          const objs = flowIn(tenant, 'RHN_IN_RF_S4U')?.deployed?.flow?.objects ?? [];
+          const objs = flowIn(tenant, 'RHN_EN_RF_S4U')?.deployed?.flow?.objects ?? [];
           const t = objs.filter((o) => o.truncate);
           return t.length ? `Truncate is on for ${t.map((o) => o.target).join(' and ')}. It would empty the table, including the LEGACY rows nobody can load again.` : null;
         },
@@ -357,7 +357,7 @@ export const CHAPTER_3: Mission[] = [
       {
         type: 'rule', label: 'Flow running', ok: 'Initial load done, delta active.',
         test: ({ tenant }) => {
-          const r = lastRun(tenant, 'RHN_IN.RHN_IN_RF_S4U');
+          const r = lastRun(tenant, 'RHN_ENTRY.RHN_EN_RF_S4U');
           if (!r) return 'Run the deployed flow, from the editor or the Data Integration Monitor.';
           return r.status === 'Running' ? null : r.status === 'Failed' ? `The last run failed: ${r.messages[r.messages.length - 1]}` : 'The last run loaded once and stopped. Deploy the flow with delta and run it again.';
         },
@@ -393,8 +393,8 @@ export const CHAPTER_3: Mission[] = [
       <p>Remember that <code>CRM_CUSTOMERS</code> has no <code>SRC_SYS_ID</code>? Our rule: the source system is set <b>while loading</b>, never
       guessed later. So every customer row gets <code>SRC_SYS_ID = 'CRM'</code>.</p>
       <ul>
-        <li>Connection <code>RHN_CRM</code> in <code>RHN_IN</code>, business name "CRM Export".</li>
-        <li>Replication flow <code>RHN_IN_RF_CRM</code> into the existing <code>CRM_CUSTOMERS</code>. Each file is complete, so each run
+        <li>Connection <code>RHN_CRM</code> in <code>RHN_ENTRY</code>, business name "CRM Export".</li>
+        <li>Replication flow <code>RHN_EN_RF_CRM</code> into the existing <code>CRM_CUSTOMERS</code>. Each file is complete, so each run
           <b>replaces</b> the table content. Schedule it <b>daily</b>.</li>
       </ul>`,
     tasks: [
@@ -407,16 +407,16 @@ export const CHAPTER_3: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'The connection type is Amazon Simple Storage Service; the bucket name goes where the form asks for it. Projection is a button per object in the flow editor.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'A full export each night: without Truncate every run would append all customers again. A file has no delta, so Initial Only plus a schedule.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_CRM (Amazon S3, bucket rheinau-crm-export) · Flow RHN_IN_RF_CRM: customers/CRM_CUSTOMERS.csv → CRM_CUSTOMERS, Initial Only, Truncate ✓, Projection SRC_SYS_ID = CRM · Deploy · Run · Monitor › Flows › Schedule › Daily.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_CRM (Amazon S3, bucket rheinau-crm-export) · Flow RHN_EN_RF_CRM: customers/CRM_CUSTOMERS.csv → CRM_CUSTOMERS, Initial Only, Truncate ✓, Projection SRC_SYS_ID = CRM · Deploy · Run · Monitor › Flows › Schedule › Daily.' },
     ],
     checks: [
       { type: 'rule', label: 'Connection to the bucket', ok: 'RHN_CRM reaches the export bucket.', test: (ctx) => connectionRule(ctx, 'RHN_CRM', CRM_BUCKET, 'S3', 'Amazon Simple Storage Service') },
       { type: 'rule', label: 'Validated', ok: 'Validation passed.', test: ({ tenant }) => validRule(tenant, 'RHN_CRM') },
       {
-        type: 'rule', label: 'Flow into CRM_CUSTOMERS', ok: 'RHN_IN_RF_CRM loads the file into CRM_CUSTOMERS.',
+        type: 'rule', label: 'Flow into CRM_CUSTOMERS', ok: 'RHN_EN_RF_CRM loads the file into CRM_CUSTOMERS.',
         test: ({ tenant }) => {
-          const f = flowIn(tenant, 'RHN_IN_RF_CRM');
-          const err = flowDeployed(f, 'RHN_IN_RF_CRM');
+          const f = flowIn(tenant, 'RHN_EN_RF_CRM');
+          const err = flowDeployed(f, 'RHN_EN_RF_CRM');
           if (err) return err;
           const o = f!.deployed!.flow!.objects;
           if (o.length !== 1) return 'The flow should have exactly one object: the export file.';
@@ -426,7 +426,7 @@ export const CHAPTER_3: Mission[] = [
       {
         type: 'rule', label: 'Source system set while loading', ok: "Every row gets SRC_SYS_ID = 'CRM'.",
         test: ({ tenant }) => {
-          const o = flowIn(tenant, 'RHN_IN_RF_CRM')?.deployed?.flow?.objects[0];
+          const o = flowIn(tenant, 'RHN_EN_RF_CRM')?.deployed?.flow?.objects[0];
           if (!o) return 'Build the flow first.';
           const e = o.extra.find((x) => x.name === 'SRC_SYS_ID');
           if (!e) return o.extra.length ? `The projection adds ${o.extra.map((x) => x.name).join(', ')}. The column is called SRC_SYS_ID, like in every other table.` : 'The projection adds no column yet. Add SRC_SYS_ID there.';
@@ -436,16 +436,16 @@ export const CHAPTER_3: Mission[] = [
       {
         type: 'rule', label: 'Replace, do not append', ok: 'Truncate on: each run replaces the table.',
         test: ({ tenant }) => {
-          const o = flowIn(tenant, 'RHN_IN_RF_CRM')?.deployed?.flow?.objects[0];
+          const o = flowIn(tenant, 'RHN_EN_RF_CRM')?.deployed?.flow?.objects[0];
           return !o || o.truncate ? null : 'Truncate is off. Each file holds all customers; without Truncate every night adds them all again, and the table fills with duplicates.';
         },
       },
       {
         type: 'rule', label: 'Daily, and run once', ok: 'Scheduled daily; the first run completed.',
         test: ({ tenant }) => {
-          const f = flowIn(tenant, 'RHN_IN_RF_CRM');
+          const f = flowIn(tenant, 'RHN_EN_RF_CRM');
           if (!f?.deployed) return 'Deploy the flow first.';
-          const r = runsOf(tenant, 'RHN_IN.RHN_IN_RF_CRM').find((x) => x.status === 'Completed');
+          const r = runsOf(tenant, 'RHN_ENTRY.RHN_EN_RF_CRM').find((x) => x.status === 'Completed');
           if (!r) return 'Run the flow once now, so the column arrives today and not tomorrow night.';
           if (!tenant.appliedColumns.some((a) => a.table === 'CRM_CUSTOMERS' && a.column === 'SRC_SYS_ID')) return 'The run completed without the projection. Deploy the flow with SRC_SYS_ID and run it again.';
           return f.deployed.flow?.schedule === 'Daily' ? null : 'Nothing runs the flow tomorrow. Schedule it daily in the Data Integration Monitor › Flows.';
@@ -469,7 +469,7 @@ export const CHAPTER_3: Mission[] = [
       <b>projection</b> of each object can filter rows, map columns and add columns. For a one-off file, <b>Import CSV File</b> on the Data Builder
       start page is quicker, but someone would have to upload it again every day.`,
     debrief: `<p>Look at <code>CRM_CUSTOMERS</code> now: every row knows where it came from. When we merge customers with the legacy system in
-      harmonization, that column will tell us which record wins.</p>
+      a base view of <code>RHN_DSL</code>, that column will tell us which record wins.</p>
       <p>All three sources flow. Which means sooner or later one of them breaks at night.</p>`,
   },
   {
@@ -477,72 +477,72 @@ export const CHAPTER_3: Mission[] = [
     chapter: 3,
     title: 'Last night\'s load failed',
     from: LENA,
-    ticket: `<p>Help! Last night I started my new replication flow <code>RHN_IN_RF_MDM</code> for the meter readings, and this morning nothing works
-      in <code>RHN_IN</code>: no loads, no deployments.</p>
+    ticket: `<p>Help! Last night I started my new replication flow <code>RHN_EN_RF_MDM</code> for the meter readings, and this morning nothing works
+      in <code>RHN_ENTRY</code>: no loads, no deployments.</p>
       <p>Please find out in the Data Integration Monitor what happened, and fix it. Jonas says: take what is needed from the tenant's reserve,
-      plan <b>6 GB headroom</b> above what <code>RHN_IN</code> uses now, and do not touch the other spaces. Then run my flow again.</p>`,
+      plan <b>6 GB headroom</b> above what <code>RHN_ENTRY</code> uses now, and do not touch the other spaces. Then run my flow again.</p>`,
     tasks: [
-      'In the <b>Data Integration Monitor</b> › Flows of <code>RHN_IN</code>, open <code>RHN_IN_RF_MDM</code> and read the messages of the failed run.',
-      'In <b>Space Management</b>, give <code>RHN_IN</code> enough disk storage and unlock it.',
+      'In the <b>Data Integration Monitor</b> › Flows of <code>RHN_ENTRY</code>, open <code>RHN_EN_RF_MDM</code> and read the messages of the failed run.',
+      'In <b>Space Management</b>, give <code>RHN_ENTRY</code> enough disk storage and unlock it.',
       'Run the flow again and check its status.',
       'Answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'The last message of the failed run names the cause. Space Management shows each space\'s storage, its use and an Unlock button when it is locked.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'A space that uses more disk than it is assigned gets locked: nothing can be written until it has enough storage and is unlocked.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Used + 6 GB = new disk of RHN_IN · Edit → Disk · Unlock · Monitor › Flows › RHN_IN_RF_MDM › Run.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Used + 6 GB = new disk of RHN_ENTRY · Edit → Disk · Unlock · Monitor › Flows › RHN_EN_RF_MDM › Run.' },
     ],
     setup: (t) => {
-      let mdm = findConnection(t, 'RHN_IN', 'RHN_MDM');
+      let mdm = findConnection(t, 'RHN_ENTRY', 'RHN_MDM');
       if (!mdm) {
-        mdm = { space: 'RHN_IN', name: 'RHN_MDM', businessName: 'Meter Data (MDM)', type: 'HANA', host: MDM_HOST, onprem: true, locationId: 'RHEINAU_DC', tls: true, auth: 'User Name and Password', changedAt: new Date().toISOString() };
+        mdm = { space: 'RHN_ENTRY', name: 'RHN_MDM', businessName: 'Meter Data (MDM)', type: 'HANA', host: MDM_HOST, onprem: true, locationId: 'RHEINAU_DC', tls: true, auth: 'User Name and Password', changedAt: new Date().toISOString() };
         t.connections.push(mdm);
         if (!t.certificates.includes('Rheinau Root CA')) t.certificates.push('Rheinau Root CA');
       }
       if (!mdm.validation?.ok) mdm.validation = validateConnection(t, mdm);
-      if (!flowIn(t, 'RHN_IN_RF_MDM')) {
+      if (!flowIn(t, 'RHN_EN_RF_MDM')) {
         const flow = { connection: 'RHN_MDM', objects: [{ source: 'METER_READINGS', target: 'METER_READINGS', loadType: 'Initial and Delta' as const, truncate: false, extra: [] }] };
         t.objects.push({
-          space: 'RHN_IN', name: 'RHN_IN_RF_MDM', kind: 'Replication Flow', businessName: 'Meter readings from MDM (Lena)', semanticUsage: 'Relational Dataset',
+          space: 'RHN_ENTRY', name: 'RHN_EN_RF_MDM', kind: 'Replication Flow', businessName: 'Meter readings from MDM (Lena)', semanticUsage: 'Relational Dataset',
           flow, deployed: { businessName: 'Meter readings from MDM (Lena)', flow: structuredClone(flow) }, status: 'deployed', changedAt: new Date().toISOString(),
         });
       }
-      const inbound = t.spaces.find((s) => s.id === 'RHN_IN')!;
+      const inbound = t.spaces.find((s) => s.id === 'RHN_ENTRY')!;
       inbound.usedDiskGB = round1(inbound.diskGB + 1.6);
       inbound.locked = true;
       const night = new Date();
       night.setHours(2, 13, 0, 0);
       addRun(t, {
-        object: 'RHN_IN.RHN_IN_RF_MDM', kind: 'Replication Flow', start: night.toISOString(), status: 'Failed', records: 0,
+        object: 'RHN_ENTRY.RHN_EN_RF_MDM', kind: 'Replication Flow', start: night.toISOString(), status: 'Failed', records: 0,
         messages: [
           'METER_READINGS: initial load started from RHN_MDM.',
           'METER_READINGS: records read from RHN_MDM. First load: the source delivers its full history.',
-          `Writing RHN_IN.METER_READINGS failed. Space RHN_IN exceeded its assigned disk storage (${inbound.diskGB} GB assigned, ${inbound.usedDiskGB} GB used) and was locked.`,
+          `Writing RHN_ENTRY.METER_READINGS failed. Space RHN_ENTRY exceeded its assigned disk storage (${inbound.diskGB} GB assigned, ${inbound.usedDiskGB} GB used) and was locked.`,
         ],
       });
     },
     checks: [
       {
         type: 'rule', label: 'Found the cause', ok: 'You read the log of the failed run.',
-        test: ({ events }) => (events.has('monitor-open:RHN_IN.RHN_IN_RF_MDM') ? null : 'Open RHN_IN_RF_MDM in the Data Integration Monitor › Flows and read the messages of the failed run.'),
+        test: ({ events }) => (events.has('monitor-open:RHN_ENTRY.RHN_EN_RF_MDM') ? null : 'Open RHN_EN_RF_MDM in the Data Integration Monitor › Flows and read the messages of the failed run.'),
       },
       {
-        type: 'rule', label: 'Enough storage', ok: 'RHN_IN has its 6 GB headroom.',
+        type: 'rule', label: 'Enough storage', ok: 'RHN_ENTRY has its 6 GB headroom.',
         test: ({ tenant }) => {
-          const s = tenant.spaces.find((x) => x.id === 'RHN_IN')!;
+          const s = tenant.spaces.find((x) => x.id === 'RHN_ENTRY')!;
           const need = round1((s.usedDiskGB ?? 0) + 6);
-          return s.diskGB >= need ? null : `RHN_IN has ${s.diskGB} GB disk and uses ${s.usedDiskGB} GB. With 6 GB headroom it needs at least ${need} GB.`;
+          return s.diskGB >= need ? null : `RHN_ENTRY has ${s.diskGB} GB disk and uses ${s.usedDiskGB} GB. With 6 GB headroom it needs at least ${need} GB.`;
         },
       },
       {
-        type: 'rule', label: 'Unlocked', ok: 'RHN_IN is open for loads again.',
-        test: ({ tenant }) => (tenant.spaces.find((x) => x.id === 'RHN_IN')!.locked ? 'RHN_IN is still locked. More storage alone does not unlock it: press Unlock in Space Management.' : null),
+        type: 'rule', label: 'Unlocked', ok: 'RHN_ENTRY is open for loads again.',
+        test: ({ tenant }) => (tenant.spaces.find((x) => x.id === 'RHN_ENTRY')!.locked ? 'RHN_ENTRY is still locked. More storage alone does not unlock it: press Unlock in Space Management.' : null),
       },
       {
-        type: 'rule', label: 'Load repeated', ok: 'RHN_IN_RF_MDM runs again.',
+        type: 'rule', label: 'Load repeated', ok: 'RHN_EN_RF_MDM runs again.',
         test: ({ tenant }) => {
-          const r = lastRun(tenant, 'RHN_IN.RHN_IN_RF_MDM');
-          return r && r.status !== 'Failed' ? null : 'The last run of RHN_IN_RF_MDM is still the failed one. Run the flow again in the Data Integration Monitor.';
+          const r = lastRun(tenant, 'RHN_ENTRY.RHN_EN_RF_MDM');
+          return r && r.status !== 'Failed' ? null : 'The last run of RHN_EN_RF_MDM is still the failed one. Run the flow again in the Data Integration Monitor.';
         },
       },
       {
@@ -564,7 +564,118 @@ export const CHAPTER_3: Mission[] = [
       <b>System Monitor</b> shows storage and failed tasks across all spaces. Email notifications for failed replication flows and task chains
       are set up per object: for a replication flow in Monitor › Flows › its details › <i>Runtime Email Notification</i> (per replicated object).`,
     debrief: `<p>Saved the morning. Lena's flow asked for the full history, which was more than the pilot ever loaded, and the space ran full at 2 a.m.</p>
-      <p>That closes chapter 3: three sources connected, each loaded the way that fits it. Next we look closely at what arrived:
-      the inbound layer, with SQL.</p>`,
+      <p>Three sources connected, each loaded the way that fits it. One more thing before we look at the data: S/4HANA can deliver more
+      than tables.</p>`,
+  },
+  {
+    id: 'c03-m07',
+    chapter: 3,
+    title: 'Entities with meaning',
+    from: CALIN,
+    ticket: `<p>Our tariffs only say POWER or GAS. S/4HANA knows the <b>division</b> of every utility contract, with names in English and German.
+      We could rebuild that by hand, table, view, texts, association. Or we let S/4HANA hand it over with its semantics: <b>Import Entities</b>.</p>
+      <ul>
+        <li><b>Semantic Onboarding › SAP Systems › SAP S/4HANA Cloud</b> opens the wizard. Connection <code>RHN_S4U</code>, so the target space is
+          the entry layer.</li>
+        <li>Keep the data access SAP proposes, <b>Replication Flow to Local Tables</b>.</li>
+        <li>Find the entity with the label <b>Division</b> (<code>I_UTILSDIVISION</code>, pattern ANALYTICAL_DIMENSION, release C1). Check in the
+          review what it brings along, then <b>Import and Deploy</b>.</li>
+        <li>The tables are empty until the replication flow ran: run it. Then read the <b>import log</b>.</li>
+        <li>Imported objects stay in <code>RHN_ENTRY</code> as delivered. Share the dimension view and its text entity with <code>RHN_DSL</code>:
+          a dimension and its texts travel together.</li>
+      </ul>`,
+    tasks: [
+      'Open <b>Semantic Onboarding</b> and start Import Entities on the <b>SAP S/4HANA Cloud</b> card: connection <code>RHN_S4U</code>, data access as proposed.',
+      'Select <code>I_UTILSDIVISION</code>, review what will be created, then <b>Import and Deploy</b>.',
+      'Run the replication flow the import created, and read the import log (<b>Open Import Logs</b>).',
+      'In <code>RHN_ENTRY</code>, share <code>I_UTILSDIVISION_DIM</code> and <code>I_UTILSDIVISIONTEXT</code> with <code>RHN_DSL</code>.',
+      'Answer the questions below.',
+    ],
+    hints: [
+      { label: 'Hint 1: where to look', cost: 5, text: 'Semantic Onboarding is in the Apps group of the side navigation. The SAP S/4HANA Cloud card counts your connections; click it. The wizard has three steps: Configuration, Select Entities, Review Entities.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'A dimension from S/4HANA comes with its supporting entities: here a text entity with one name per language. The import creates tables, a view with semantic usage Dimension and the association to the texts, and a replication flow that still has to run.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Card SAP S/4HANA Cloud → RHN_S4U, Replication Flow to Local Tables → search "Division" → tick I_UTILSDIVISION → Review → Import and Deploy. Data Builder › RHN_ENTRY › RF_I_UTILSDIVISION › Run. Share I_UTILSDIVISION_DIM and I_UTILSDIVISIONTEXT with RHN_DSL.' },
+    ],
+    checks: [
+      {
+        type: 'rule', label: 'Imported with semantics', ok: 'I_UTILSDIVISION_DIM is a deployed dimension in RHN_ENTRY with its text association.',
+        test: ({ tenant }) => {
+          const v = tenant.objects.find((o) => o.name === 'I_UTILSDIVISION_DIM');
+          if (!v) return 'Nothing imported yet. Semantic Onboarding › SAP S/4HANA Cloud › Import Entities, entity I_UTILSDIVISION.';
+          if (v.space !== 'RHN_ENTRY') return `The import went to ${v.space}. Imports from S/4HANA land in the entry layer: use the connection RHN_S4U of RHN_ENTRY.`;
+          if (v.deployed?.semanticUsage !== 'Dimension') return 'I_UTILSDIVISION_DIM is not deployed as a Dimension. Import it again: an existing imported object is updated and redeployed.';
+          return (v.deployed.associations ?? []).some((a) => a.target === 'RHN_ENTRY.I_UTILSDIVISIONTEXT') ? null
+            : 'The dimension has no association to its texts. The text entity comes along when you import the released entity I_UTILSDIVISION.';
+        },
+      },
+      {
+        type: 'rule', label: 'Data access as proposed', ok: 'Local tables, loaded by the replication flow the import created.',
+        test: ({ tenant }) => {
+          const tb = tenant.objects.find((o) => o.space === 'RHN_ENTRY' && o.name === 'I_UTILSDIVISION');
+          if (!tb) return 'The table I_UTILSDIVISION is missing.';
+          return tb.kind === 'Local Table' ? null
+            : 'I_UTILSDIVISION is a remote table. The ticket asks for the proposed data access, Replication Flow to Local Tables: import again with that option.';
+        },
+      },
+      {
+        type: 'metric', label: 'The divisions are loaded', sql: 'SELECT count(*) FROM RHN_ENTRY.I_UTILSDIVISION_DIM',
+        missing: 'Import the entity first.', ok: 'The replication flow ran: the dimension shows the divisions of S/4HANA.',
+        test: (n) => (n ? null : 'The dimension is empty: the local tables are only filled when the replication flow runs. Open RF_I_UTILSDIVISION in the Data Builder of RHN_ENTRY and press Run.'),
+      },
+      {
+        type: 'rule', label: 'You read the log', ok: 'You opened the import log.',
+        test: ({ events }) => ([...events].some((e) => e.startsWith('entity-log-open:')) ? null : 'Semantic Onboarding › Open Import Logs: select RHN_ENTRY and open the import to read its messages.'),
+      },
+      {
+        type: 'rule', label: 'Dimension and texts shared', ok: 'I_UTILSDIVISION_DIM and I_UTILSDIVISIONTEXT are shared with RHN_DSL.',
+        test: ({ tenant }) => {
+          const missing = ['I_UTILSDIVISION_DIM', 'I_UTILSDIVISIONTEXT'].filter((n) => !isShared(tenant, `RHN_ENTRY.${n}`, 'RHN_DSL'));
+          if (missing.length) return `Not shared with RHN_DSL yet: ${missing.join(', ')}. Share in RHN_ENTRY, where the objects live.`;
+          const leak = tenant.shares.filter((x) => x.to === 'RHN_PRES' && x.object.startsWith('RHN_ENTRY.'));
+          return leak.length ? `${leak.map((x) => x.object).join(', ')} is shared with RHN_PRES. The presentation layer never reads the entry layer.` : null;
+        },
+      },
+      {
+        type: 'question', id: 'created', label: 'What came in',
+        prompt: 'What did the import create in RHN_ENTRY for the one entity you selected?',
+        options: [
+          'One remote table, nothing else',
+          'Two local tables (division and its texts), a view with semantic usage Dimension and its text association, and a replication flow',
+          'A copy of the S/4HANA business logic as SQL',
+          'An analytic model on the divisions',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Look at the Data Builder tab of the review, or the messages of the import log.',
+      },
+      {
+        type: 'question', id: 'water', label: 'One division too many',
+        prompt: 'S/4HANA delivers one division Stadtwerke Rheinau has no tariffs for. What is its German name?',
+        options: ['Strom', 'Gas', 'Wasser', 'Wärme'],
+        answer: 2,
+        nudge: 'Not quite. Preview I_UTILSDIVISIONTEXT, or the dimension with its texts, in the Data Builder of RHN_ENTRY.',
+      },
+      {
+        type: 'question', id: 'layer', label: 'A dimension in the entry layer',
+        prompt: 'The import put a view with semantic usage Dimension into RHN_ENTRY, although semantics belong to RHN_DSL. What is right?',
+        options: [
+          'Move it to RHN_DSL by copying its SQL there, then delete the imported view',
+          'Leave imported objects as delivered: a new import updates and redeploys them, so changes would be lost. Share them with RHN_DSL and build on them there, like on any entry table',
+          'Change the imported view to read the legacy codes too',
+          'Share it with RHN_PRES so the board can use it right away',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Read the review again: what does the import do with an object that is Already Imported?',
+      },
+    ],
+    xp: 50,
+    realTenant: `Same wizard in a real tenant, from Semantic Onboarding, the Repository Explorer or the Data Builder (Import › Import Entities):
+      connection and target space, data access (Replication Flow to Local Tables by default, or Remote Tables), Select Entities with the
+      filters Application Component, Modeling Pattern and Release Contract, Review Entities with the tabs Business Builder and Data Builder,
+      Import and Deploy. Two notifications follow: the imported objects and the import log. Only released (C1) CDS views follow associations.
+      Simplified in the game: entity names and data are invented, the Business Builder objects are not created, and the object names are shortened.`,
+    debrief: `<p>A dimension with texts in two languages, and you wrote no SQL for it. The same import works for hundreds of S/4HANA entities.</p>
+      <p><i>Calin adds:</i> Notice where it landed: everything that comes from a source enters through <code>RHN_ENTRY</code>, even when it brings
+      semantics along. We use it from <code>RHN_DSL</code>, like the other entry data. That closes chapter 3. Next we look closely at what arrived:
+      the entry layer, with SQL.</p>`,
   },
 ];

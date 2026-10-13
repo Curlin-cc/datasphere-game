@@ -46,13 +46,18 @@ export const CONN_TYPES: ConnType[] = [
 
 export const connType = (id: string) => CONN_TYPES.find((c) => c.id === id);
 
-/** One object a source system offers. `table` is the RHN_IN table that holds its data in this game. */
+/** Schema that holds the data of the CDS views behind Import Entities (c03-m07). Not a space: the player never sees it directly. */
+export const CDS_SCHEMA = 'S4U_CDS';
+
+/** One object a source system offers. `table` is the RHN_ENTRY table that holds its data in this game. */
 export interface SourceObject {
   name: string;
   container: string;
   description: string;
   delta: boolean;
   table: string;
+  /** DuckDB schema of `table` when it is not one of the tables IT loaded into RHN_ENTRY (CDS entities for Import Entities). */
+  schema?: string;
   /** Rows of `table` that belong to this source (SRC_SYS_ID), if the table mixes sources. */
   srcSysId?: string;
 }
@@ -79,6 +84,10 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
       { name: 'BILLING_INVOICES', container: 'CDS Views', description: 'Invoices', delta: true, table: 'BILLING_INVOICES', srcSysId: 'S4U' },
       { name: 'TARIFFS', container: 'CDS Views', description: 'Tariffs with current prices', delta: false, table: 'TARIFFS' },
       { name: 'GRID_AREAS', container: 'CDS Views', description: 'Grid areas and regions', delta: false, table: 'GRID_AREAS' },
+      // Released CDS views offered to Import Entities (c03-m07). Their data lives in a hidden schema of the source system.
+      ...['I_UTILSDIVISION', 'I_UTILSDIVISIONTEXT', 'I_UTILSRATECATEGORY', 'I_UTILSRATECATEGORYTEXT', 'ZI_RHN_DIVISIONMAP'].map((id) => ({
+        name: id, container: 'CDS Views', description: `CDS view ${id}`, delta: false, table: id, schema: CDS_SCHEMA,
+      })),
     ],
   },
   {
@@ -91,6 +100,72 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     objects: [{ name: 'customers/CRM_CUSTOMERS.csv', container: 'customers', description: 'Nightly full export of all customers', delta: false, table: 'CRM_CUSTOMERS' }],
   },
 ];
+
+// ---------------------------------------------------------------- Import Entities (Semantic Onboarding, c03-m07)
+
+/**
+ * Modeling patterns of CDS views (SAP help "Importing Entities with Semantics from SAP S/4HANA"). The pattern decides what the
+ * import creates: a dimension gets a remote or local table plus a view with semantic usage Dimension, and its associated text
+ * entities come along as tables with semantic usage Text.
+ */
+export type ModelingPattern = 'ANALYTICAL_DIMENSION' | 'LANGUAGE_DEPENDENT_TEXT' | 'NONE';
+
+export interface CdsEntity {
+  id: string;
+  label: string;
+  component: string;
+  pattern: ModelingPattern;
+  /** C1: released for extraction; can be imported as remote table or with a replication flow and follows associations. */
+  release: 'C1' | 'Not Released';
+  /** Text entities the dimension is associated with (imported along). */
+  texts?: string[];
+  /** Columns: name, key. */
+  columns: [string, boolean][];
+  rows: string[][];
+}
+
+/** The CDS views the game offers. IDs, labels and components are invented for the game, modeled on S/4HANA Utilities. */
+export const CDS_ENTITIES: CdsEntity[] = [
+  {
+    id: 'I_UTILSDIVISION', label: 'Division', component: 'IS-U-MD', pattern: 'ANALYTICAL_DIMENSION', release: 'C1', texts: ['I_UTILSDIVISIONTEXT'],
+    columns: [['DIVISION', true], ['DIVISION_CATEGORY', false]],
+    rows: [['01', 'ELECTRICITY'], ['02', 'GAS'], ['03', 'WATER']],
+  },
+  {
+    id: 'I_UTILSDIVISIONTEXT', label: 'Division - Text', component: 'IS-U-MD', pattern: 'LANGUAGE_DEPENDENT_TEXT', release: 'C1',
+    columns: [['DIVISION', true], ['LANGUAGE', true], ['DIVISION_NAME', false]],
+    rows: [['01', 'EN', 'Electricity'], ['01', 'DE', 'Strom'], ['02', 'EN', 'Gas'], ['02', 'DE', 'Gas'], ['03', 'EN', 'Water'], ['03', 'DE', 'Wasser']],
+  },
+  {
+    id: 'I_UTILSRATECATEGORY', label: 'Rate Category', component: 'IS-U-BI', pattern: 'ANALYTICAL_DIMENSION', release: 'C1', texts: ['I_UTILSRATECATEGORYTEXT'],
+    columns: [['RATE_CATEGORY', true], ['DIVISION', false]],
+    rows: [['RC_POWER_BASIC', '01'], ['RC_POWER_GREEN', '01'], ['RC_POWER_HEAT', '01'], ['RC_GAS_COMFORT', '02'], ['RC_GAS_FLEX', '02']],
+  },
+  {
+    id: 'I_UTILSRATECATEGORYTEXT', label: 'Rate Category - Text', component: 'IS-U-BI', pattern: 'LANGUAGE_DEPENDENT_TEXT', release: 'C1',
+    columns: [['RATE_CATEGORY', true], ['LANGUAGE', true], ['RATE_CATEGORY_NAME', false]],
+    rows: [['RC_POWER_BASIC', 'EN', 'Power Basic'], ['RC_POWER_GREEN', 'EN', 'Power Green'], ['RC_POWER_HEAT', 'EN', 'Heat Power'],
+      ['RC_GAS_COMFORT', 'EN', 'Gas Comfort'], ['RC_GAS_FLEX', 'EN', 'Gas Flex']],
+  },
+  {
+    id: 'ZI_RHN_DIVISIONMAP', label: 'Division Mapping (custom)', component: 'Custom', pattern: 'NONE', release: 'Not Released',
+    columns: [['DIVISION', true], ['COMMODITY', false]],
+    rows: [['01', 'POWER'], ['02', 'GAS']],
+  },
+];
+
+export const cdsEntity = (id: string) => CDS_ENTITIES.find((e) => e.id === id);
+
+/** Creates the hidden source data of the CDS views (on every start, like the other source tables). */
+export function cdsSourceSql(): string[] {
+  const out = [`CREATE SCHEMA IF NOT EXISTS "${CDS_SCHEMA}"`];
+  for (const e of CDS_ENTITIES) {
+    const cols = e.columns.map(([c]) => `"${c}" VARCHAR`).join(', ');
+    out.push(`CREATE OR REPLACE TABLE "${CDS_SCHEMA}"."${e.id}" (${cols})`);
+    out.push(`INSERT INTO "${CDS_SCHEMA}"."${e.id}" VALUES ${e.rows.map((r) => `(${r.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ')})`).join(', ')}`);
+  }
+  return out;
+}
 
 /** Cloud Connectors and certificates IT has at hand (System > Configuration). */
 export const CLOUD_CONNECTORS = [{ location: 'RHEINAU_DC', subaccount: 'rheinau-datasphere', status: 'Connected' }];
@@ -238,7 +313,7 @@ export function dependents(t: TenantState, c: Connection): RepoObject[] {
 export function sourceSql(o: SourceObject, extra: { name: string; value: string }[] = []) {
   const cols = extra.map((e) => `, '${e.value.replace(/'/g, "''")}' AS "${e.name}"`).join('');
   const where = o.srcSysId ? ` WHERE SRC_SYS_ID = '${o.srcSysId}'` : '';
-  return `SELECT *${cols} FROM "RHN_IN"."${o.table}"${where}`;
+  return `SELECT *${cols} FROM "${o.schema ?? 'RHN_ENTRY'}"."${o.table}"${where}`;
 }
 
 export function sourceObject(t: TenantState, space: string, connection: string, name: string): SourceObject | undefined {
@@ -302,7 +377,12 @@ export async function runFlow(t: TenantState, flowObj: RepoObject): Promise<Run>
     const locked = lockError(t, flowObj.space);
     if (locked) return fail(`Writing ${flowObj.space}.${fo.target} failed. ${locked}`);
     const target = t.objects.find((o) => o.space === flowObj.space && o.name === fo.target);
-    if (!target) {
+    if (target?.loadPending) {
+      // Created empty by Import Entities: the first run of its replication flow fills it.
+      await fillTable(flowObj.space, fo.target, src, fo.extra);
+      target.loadFrom = { connection: conn.name, source: src.name, extra: fo.extra.map((e) => ({ ...e })) };
+      delete target.loadPending;
+    } else if (!target) {
       const loadFrom = { connection: conn.name, source: src.name, extra: fo.extra.map((e) => ({ ...e })) };
       try {
         await fillTable(flowObj.space, fo.target, src, fo.extra);
@@ -331,6 +411,11 @@ async function fillTable(space: string, name: string, src: SourceObject, extra: 
   await exec(`CREATE OR REPLACE TABLE "${space}"."${name}" AS ${sourceSql(src, extra)}`);
 }
 
+/** The structure of a source object without rows: a local table created by Import Entities before its flow ran. */
+export async function emptyTable(space: string, name: string, src: SourceObject) {
+  await exec(`CREATE OR REPLACE TABLE "${space}"."${name}" AS SELECT * FROM (${sourceSql(src)}) s WHERE FALSE`);
+}
+
 async function applyColumn(t: TenantState, a: AppliedColumn) {
   const col = a.column.replace(/"/g, '');
   await exec(`ALTER TABLE "${a.space}"."${a.table}" ADD COLUMN IF NOT EXISTS "${col}" VARCHAR DEFAULT '${a.value.replace(/'/g, "''")}'`);
@@ -342,7 +427,9 @@ export async function restoreIntegration(t: TenantState) {
   for (const o of t.objects) {
     if (o.kind !== 'Local Table' || !o.loadFrom) continue;
     const src = sourceObject(t, o.space, o.loadFrom.connection, o.loadFrom.source);
-    if (src) await fillTable(o.space, o.name, src, o.loadFrom.extra).catch(() => undefined);
+    if (!src) continue;
+    if (o.loadPending) await emptyTable(o.space, o.name, src).catch(() => undefined);
+    else await fillTable(o.space, o.name, src, o.loadFrom.extra).catch(() => undefined);
   }
   for (const a of t.appliedColumns) {
     try {

@@ -75,20 +75,20 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
         <div class="am-start">
           <div class="panel am-picker" id="am-fact-picker">
             <h2>Select a fact source</h2>
-            <p class="muted">An analytic model is built on exactly one fact: a deployed entity with semantic usage <b>Fact</b> in ${esc(space)}.
-              Its measures and attributes come with it, its dimensions come from its associations.</p>
+            <p class="muted">An analytic model is built on exactly one fact: a deployed entity with semantic usage <b>Fact</b> in ${esc(space)}
+              or shared with it. Its measures and attributes come with it, its dimensions come from its associations (shared ones too).</p>
             ${facts.length ? `<div class="am-fact-list">${facts.map((f) => `<button type="button" class="am-fact-card" data-fact="${esc(objectKey(f))}">
                 ${icon(ICONS.view, 'type-ic')}<b>${esc(f.businessName)}</b><span class="mono">${esc(f.name)}</span>
                 <small>${Object.values(f.deployed?.columnRoles ?? {}).filter((r) => r === 'Measure').length} measures · ${(f.deployed?.associations ?? []).length} associations</small>
               </button>`).join('')}</div>`
-              : `<p class="form-error">There is no deployed fact in ${esc(space)}. Set a view's semantic usage to Fact, mark its measures and deploy it.</p>`}
+              : `<p class="form-error">There is no deployed fact in ${esc(space)} and none is shared with it. Set a view's semantic usage to Fact, mark its measures and deploy it, or share a fact from another space.</p>`}
           </div>
         </div>
       </div>`;
     main.querySelector('#ed-back')!.addEventListener('click', nav.back);
     main.querySelectorAll<HTMLButtonElement>('[data-fact]').forEach((b) =>
       b.addEventListener('click', () => {
-        const src = modelSources(t, b.dataset.fact!);
+        const src = modelSources(t, b.dataset.fact!, space);
         if (typeof src === 'string') return toast(src, 'error');
         def = newModel(src);
         if (!business) {
@@ -105,7 +105,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
   }
 
   const model = def;
-  const srcOrError = modelSources(t, model.fact);
+  const srcOrError = modelSources(t, model.fact, space);
   const src: ModelSources | null = typeof srcOrError === 'string' ? null : srcOrError;
 
   // ------------------------------------------------------------ 1. page
@@ -173,7 +173,15 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
                 : `<div class="am-node dim ghost"><small>Associated dimension</small><b>${esc(dimLabel(d.name))}</b><span class="mono">${esc(d.name)}</span>
                     <button type="button" class="btn small" data-add-dim="${esc(d.key)}">+ Add to model</button></div>`}
             </div>`;
-          }).join('') : '<p class="muted am-nodims">The fact has no associations, so the model has no dimensions. Add associations to the fact (chapter 6).</p>'}
+          }).join('') : src.hidden.length ? '' : '<p class="muted am-nodims">The fact has no associations, so the model has no dimensions. Add associations to the fact (chapter 6).</p>'}
+          ${src.hidden.map((k) => {
+            const name = k.split('.')[1];
+            const inModel = model.dimensions.includes(k);
+            return `<div class="am-dim-row ${inModel ? 'in' : 'out'}"><span class="am-link mono">–</span>
+              <div class="am-node dim ghost not-shared"><small>Associated, not shared with ${esc(space)}</small><b>${esc(dimLabel(name))}</b><span class="mono">${esc(name)}</span>
+                ${inModel ? `<button type="button" class="btn small" data-drop-dim="${esc(k)}">Remove from model</button>`
+                  : `<em>Share it in ${esc(k.split('.')[0])} to use it here.</em>`}</div></div>`;
+          }).join('')}
         </div>
       </div>
       <p class="am-canvas-hint muted">Click a node to see its measures and attributes. Click the background for the whole model: measures, variables.</p>`;
@@ -397,6 +405,14 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
         ctx.track(`am-dim:${key}:${d.key}`);
         return draw();
       }
+      const drop = target.closest<HTMLElement>('[data-drop-dim]');
+      if (drop) {
+        const k = drop.dataset.dropDim!;
+        model.dimensions = model.dimensions.filter((d) => d !== k);
+        model.attributes = model.attributes.filter((x) => !x.startsWith(`${k.split('.')[1]}.`));
+        ctx.track(`am-dim-remove:${key}:${k}`);
+        return draw();
+      }
       const node = target.closest<HTMLElement>('[data-node]');
       selected = node ? node.dataset.node! : 'model';
       if (node) ctx.track(`am-node:${selected}`);
@@ -466,7 +482,7 @@ export function renderModelEditor(main: HTMLElement, o: RepoObject | null, nav: 
       if (!saved) return;
       const locked = lockError(t, saved.space);
       if (locked) return toast(`Deployment failed. ${locked}`, 'error');
-      const s = modelSources(t, saved.model!.fact);
+      const s = modelSources(t, saved.model!.fact, saved.space);
       const err = modelError(saved.model!, s, saved.space);
       if (err) {
         ctx.renderView();

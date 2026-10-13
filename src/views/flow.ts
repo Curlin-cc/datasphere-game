@@ -45,8 +45,8 @@ export function openImportRemote(onDone: () => void) {
       <table class="grid"><thead><tr><th></th><th>Source Object</th><th>Container</th><th>Technical Name in ${esc(space)}</th></tr></thead>
       <tbody>${src.objects.map((o, i) => `<tr><td><input type="checkbox" name="obj" value="${i}" aria-label="Import ${esc(o.name)}"></td>
         <td class="mono">${esc(o.name)}<br><small class="muted">${esc(o.description)}</small></td><td>${esc(o.container)}</td>
-        <td><input class="mono" name="tn-${i}" value="RHN_IN_RT_${esc(suggestTechnicalName(o.name))}" maxlength="50" spellcheck="false"></td></tr>`).join('')}</tbody></table>
-      <p class="muted">Our convention for remote tables: <code>RHN_IN_RT_&lt;NAME&gt;</code>.</p>` : '';
+        <td><input class="mono" name="tn-${i}" value="RHN_EN_RT_${esc(suggestTechnicalName(o.name))}" maxlength="50" spellcheck="false"></td></tr>`).join('')}</tbody></table>
+      <p class="muted">Our convention for remote tables: <code>RHN_EN_RT_&lt;NAME&gt;</code>.</p>` : '';
   });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

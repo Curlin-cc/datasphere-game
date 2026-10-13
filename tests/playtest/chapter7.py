@@ -6,8 +6,8 @@ from common import Game, save_before
 from chapter7_data import TENANT7, D_GRID, D_TARIFF, D_CUST
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-F_INV, F_CONS = 'RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_F_CONSUMPTION'
-REGION, COMMODITY = 'RHN_REP_D_GRID_AREA.REGION', 'RHN_REP_D_TARIFF.COMMODITY'
+F_INV, F_CONS = 'RHN_DSL.RHN_DS_F_INVOICES', 'RHN_DSL.RHN_DS_F_CONSUMPTION'
+REGION, COMMODITY = 'RHN_DS_D_GRID_AREA.REGION', 'RHN_DS_D_TARIFF.COMMODITY'
 
 
 with sync_playwright() as p:
@@ -19,7 +19,7 @@ with sync_playwright() as p:
         pg.click('.am-canvas-hint'); pg.wait_for_selector('#am-measures')
 
     def new_model(fact, dims, technical, business):
-        g.space('RHN_REP')
+        g.space('RHN_PRES')
         pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker')
         pg.click(f'[data-fact="{fact}"]'); pg.wait_for_selector('#am-canvas')
         for d in dims:
@@ -29,7 +29,7 @@ with sync_playwright() as p:
         pg.fill('#prop-technical', technical)
 
     def open_model(key):
-        g.space('RHN_REP')
+        g.space('RHN_PRES')
         pg.click(f'#object-list [data-open="{key}"]'); pg.wait_for_selector('#am-canvas')
         model_bg()
 
@@ -94,22 +94,32 @@ with sync_playwright() as p:
     g.start(save_before(7, 'c07-m01', TENANT7))
     g.walk_tutorial(show=False)
 
-    # ---------------- m01: customer dimension in the model, then right
-    new_model(F_INV, [D_GRID, D_TARIFF, D_CUST], 'RHN_REP_AM_INVOICES', 'Invoices Model')
+    # ---------------- m01: no fact in RHN_PRES yet; customers shared and in the model; unshared, then right
+    g.space('RHN_PRES')
+    pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker')
+    print('   fact picker before sharing:', pg.inner_text('#am-fact-picker').replace('\n', ' ')[:200])
+    g.space('RHN_DSL')
+    for v in ['RHN_DS_F_INVOICES', 'RHN_DS_D_GRID_AREA', 'RHN_DS_D_TARIFF', 'RHN_DS_D_CUSTOMER']:
+        g.share(f'RHN_DSL.{v}', 'RHN_PRES')
+    new_model(F_INV, [D_GRID, D_TARIFF, D_CUST], 'RHN_PR_AM_INVOICES', 'Invoices Model')
     g.shot('c7-canvas')
     deploy()
-    g.answer('tariff', 1)
-    g.check('m01 with customer dimension')
-    pg.click(f'[data-node="{D_CUST}"]'); pg.wait_for_selector('#am-remove-dim')
-    pg.click('#am-remove-dim'); pg.wait_for_timeout(100)
+    g.answer('tariff', 1); g.answer('layer', 1)
+    g.check('m01 with customer dimension, customers shared')
+    g.space('RHN_DSL')
+    pg.click('[data-share="RHN_DSL.RHN_DS_D_CUSTOMER"]'); pg.uncheck('.share-targets input[value="RHN_PRES"]'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(200)
+    open_model('RHN_PRES.RHN_PR_AM_INVOICES')
     deploy()
-    preview(['RHN_REP_D_TARIFF.TARIFF_NAME'], ['NET_AMOUNT'], label='net by tariff')
+    g.shot('c7-not-shared')
+    pg.click(f'[data-drop-dim="{D_CUST}"]'); pg.wait_for_timeout(100)
+    deploy()
+    preview(['RHN_DS_D_TARIFF.TARIFF_NAME'], ['NET_AMOUNT'], label='net by tariff')
     g.shot('c7-preview')
     g.check('m01 solved')
     g.next_mission()
 
     # ---------------- m02: gross = net only, then right
-    open_model('RHN_REP.RHN_REP_AM_INVOICES')
+    open_model('RHN_PRES.RHN_PR_AM_INVOICES')
     measure('Calculated Measure', 'GROSS_AMOUNT', formula='NET_AMOUNT +')       # incomplete formula: dialog error
     pg.fill('#am-formula', 'NET_AMOUNT'); pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(150)
     deploy()
@@ -122,7 +132,7 @@ with sync_playwright() as p:
     g.next_mission()
 
     # ---------------- m03: only OPEN, then right
-    open_model('RHN_REP.RHN_REP_AM_INVOICES')
+    open_model('RHN_PRES.RHN_PR_AM_INVOICES')
     measure('Restricted Measure', 'UNPAID_GROSS', base='GROSS_AMOUNT', attribute='STATUS', values=['OPEN'])
     deploy()
     g.answer('north', 2); g.answer('filter', 0)
@@ -135,7 +145,7 @@ with sync_playwright() as p:
     g.next_mission()
 
     # ---------------- m04: single value, optional; then interval, mandatory; count distinct
-    open_model('RHN_REP.RHN_REP_AM_INVOICES')
+    open_model('RHN_PRES.RHN_PR_AM_INVOICES')
     variable('V_INVOICE_DATE', 'INVOICE_DATE', 'Single Value', False)
     measure('Count Distinct', 'CUSTOMERS', attribute='CUSTOMER_ID')
     deploy()
@@ -151,8 +161,9 @@ with sync_playwright() as p:
     g.check('m04 solved')
     g.next_mission()
 
-    # ---------------- m05: consumption model
-    new_model(F_CONS, [D_GRID, D_TARIFF], 'RHN_REP_AM_CONSUMPTION', 'Consumption Model')
+    # ---------------- m05: consumption model (share the fact first)
+    g.space('RHN_DSL'); g.share('RHN_DSL.RHN_DS_F_CONSUMPTION', 'RHN_PRES')
+    new_model(F_CONS, [D_GRID, D_TARIFF], 'RHN_PR_AM_CONSUMPTION', 'Consumption Model')
     variable('V_READING_DATE', 'READING_DATE', 'Interval', False)
     deploy()
     preview([REGION, COMMODITY], ['CONSUMPTION_KWH'], {'V_READING_DATE': ('2025-01-01', '2025-12-31')}, 'kwh 2025')
@@ -161,10 +172,10 @@ with sync_playwright() as p:
 
     # ---------------- reload: models survive, preview still works
     g.reload()
-    g.space('RHN_REP')
+    g.space('RHN_PRES')
     pg.click('[data-list="models"]')
     print('   models:', [r.split('\t')[1:5] for r in pg.locator('#object-list tbody tr').all_inner_texts()])
-    pg.click('#object-list [data-open="RHN_REP.RHN_REP_AM_INVOICES"]'); pg.wait_for_selector('#am-canvas')
+    pg.click('#object-list [data-open="RHN_PRES.RHN_PR_AM_INVOICES"]'); pg.wait_for_selector('#am-canvas')
     print('   status:', pg.inner_text('.ed-toolbar .status'))
     print('   measures:', [m.replace('\n', ' ') for m in pg.locator('#am-measures li').all_inner_texts()])
     g.done()

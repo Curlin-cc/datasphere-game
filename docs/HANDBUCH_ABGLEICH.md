@@ -11,8 +11,8 @@ Das Handbuch markiert 179 Stellen selbst als „nicht verifiziert“. Diese baut
 | 1 Space Concept | 4 Space Management | ja: ID-Regeln, Speicher, Priorität, Sharing, Sperre | Prioritätsbereich und Standardspeicher „nicht verifiziert“ (Spiel: 1–5, 2 GB/1 GB laut learning.sap.com) |
 | 2 Users & Roles | 3.7 Rollen | Konzept ja (Standard-, Custom-, Scoped Roles) | Namen DW Space Administrator/Integrator/Modeler/Consumer „nicht verifiziert“ |
 | 3 Data Integration | 5, 6.4, 6.7, 10 | ja, gebaut am 09.10.2026 | Feature-Matrix je Verbindungstyp und Button-Texte „nicht verifiziert“ |
-| 4 Inbound Layer | 6.4, 6.11 | ja (Data Preview, lokale Tabellen) | SQL-Grundlagen kommen nicht aus dem Handbuch |
-| 5 Harmonization | 6.5.2, 6.11.2, 6.11.4 | ja, gebaut am 09.10.2026: SQL Views, Sharing, Impact and Lineage (vereinfacht) | Lineage-Diagramm im Handbuch ohne Details; Spiel zeigt nur Liste im Properties-Panel |
+| 4 Entry Layer | 6.4, 6.11 | ja (Data Preview, lokale Tabellen) | SQL-Grundlagen kommen nicht aus dem Handbuch |
+| 5 Base views | 6.5.2, 6.11.2, 6.11.4 | ja, gebaut am 09.10.2026: SQL Views, Sharing, Impact and Lineage (vereinfacht) | Lineage-Diagramm im Handbuch ohne Details; Spiel zeigt nur Liste im Properties-Panel |
 | 6 Semantics | 6.4.1, 6.5.3, 6.5.4, 6.6 | ja, gebaut am 09.10.2026: Semantic Usage inkl. Hierarchy, Key/Attribute/Measure, Associations mit Key-Mapping | Hierarchy with Directory, Analytical Dataset, semantische Spaltentypen (Betrag mit Währung …), E/R-Modell und Kardinalitäten nicht simuliert |
 | 7 Analytic Model | 6.10, 6.12.5 | ja, gebaut am 09.10.2026: genau ein Fact, Dimensionen aus Associations, Fact Source / Calculated / Restricted / Count Distinct Measures, Filter Variable (Single Value, Interval, Pflicht/optional), Data Preview mit Zeilen, Measures, Variablenwerten | Fixed Value, Währungs-/Einheitenumrechnung, Ausnahmeaggregation, Skalierung, Sichtbarkeit, globaler Filter, mehrstufige Dimensionen, Standard-/Restricted-Measure-/Stichtagsvariable nur erklärt (teils „nicht verifiziert“) |
 | 8 Data Access Controls | 9.3, 9.9, 6.5.7 | ja, gebaut am 09.10.2026: Berechtigungsentität (lokale Tabelle mit Data Editor), Single Values, Identifier/Criteria, Zuweisung mit Spalten-Mapping, Prüfen als Testbenutzer („View as“) | Operator and Values (nicht verifiziert) und Hierarchy nur erklärt; BW-Import, Custom Application Attributes nicht simuliert; Wirkung auf nachgelagerte Views vereinfacht |
@@ -97,7 +97,8 @@ Nicht simuliert: Real-Time-Replikation, Data Provisioning Agent, Data Flows, Cus
 - Save → *Not Deployed* / *Changes to Deploy*, Deploy → *Deployed*; Prüfungen lesen nur die deployte Version (6.3.3)
 - Impact and Lineage: vereinfacht als Abschnitt im Properties-Panel des Editors (*Reads from*, *Used by*, *Shared with*),
   ausgewertet über `SPACE.OBJEKT`-Referenzen im gespeicherten SQL; kein Diagramm, keine Space-übergreifende Katalog-Lineage (6.11.2)
-- Sharing: Inbound → Harmonization → Reporting, immer nur eine Schicht nach oben; geteilte Objekte read-only (6.11.4)
+- Sharing: Entry → Data & Semantic → Presentation, immer nur eine Schicht nach oben; geteilte Objekte read-only (6.11.4); geteilte Facts mit ihren Dimensionen als Quelle für Analytic Models (SAP-Hilfe „Sharing Entities“, seit 13.10.2026)
+- Import Entities aus S/4HANA (Handbuch 5.7, SAP-Hilfe „Importing Entities with Semantics from SAP S/4HANA“): c03-m07, vereinfacht (CDS-Namen erfunden, Business-Builder-Objekte nur in der Vorschau)
 - Bereitstellungsreihenfolge: Deploy einer View scheitert, solange eine Quelle nicht geteilt ist (6.13)
 
 Nicht simuliert: SQLScript (Tabellenfunktionen), Validate-Button, Eingabeparameter, Persistenz (Kapitel 9), Intelligent Lookup (nur erwähnt).

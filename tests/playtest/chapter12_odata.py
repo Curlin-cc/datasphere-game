@@ -1,5 +1,5 @@
 """Chapter 12, OData and OAuth (c12-m08): an API Access client (401), an Interactive Usage client with a wrong redirect URI (400),
-the right client while the dimension is not exposed (404), then exposed and deployed (200). Reload keeps the clients.
+the right client while the consumption view does not exist (404), then built in RHN_PRES, exposed and deployed (200). Reload keeps the clients.
 Second run: the hands-on tutorial. Start state: chapter12_data.py with c12-m01..m07 solved."""
 import sys
 from playwright.sync_api import sync_playwright
@@ -7,7 +7,8 @@ from common import Game, save_before
 from chapter12_data import TENANT12
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-D = 'RHN_REP.RHN_REP_D_GRID_AREA'
+D = 'RHN_PRES.RHN_PR_V_GRID_AREAS'
+V_SQL = 'SELECT GRID_AREA, GRID_AREA_NAME, REGION FROM RHN_DSL.RHN_DS_D_GRID_AREA'
 REDIRECT = 'https://rheinau-planning.eu10.sapanalytics.cloud/oauth/client/redirect'
 
 
@@ -42,8 +43,8 @@ with sync_playwright() as p:
             print('   FORM ERROR:', err.inner_text()); pg.click('.dialog [data-act="cancel"]'); return
         print('   added:', pg.inner_text('.dialog dl').split('\n')[1][:40]); pg.click('.dialog [data-act="cancel"]')
 
-    def test(name):
-        pg.click(f'[data-oauth-test="{name}"]'); pg.select_option('.dialog [name="object"]', D)
+    def test(name, obj='RHN_DSL.RHN_DS_D_GRID_AREA'):
+        pg.click(f'[data-oauth-test="{name}"]'); pg.select_option('.dialog [name="object"]', obj)
         pg.click('.dialog [type="submit"]'); pg.wait_for_selector('.odata-status')
         print('   test', name, '→', pg.inner_text('.odata-status')[:150].replace('\n', ' '))
         pg.click('.dialog [data-act="cancel"]')
@@ -71,10 +72,10 @@ with sync_playwright() as p:
     g.check('m08 wrong redirect, not exposed')
     pg.click('[data-oauth-delete="SAC Planning"]'); pg.wait_for_timeout(200)
     add_client('SAC Planning', 'Interactive Usage', REDIRECT)
-    test('SAC Planning')                                                 # 404: not exposed
+    test('SAC Planning')                                                 # 404: the dimension of RHN_DSL is not exposed
     g.shot('c12-oauth')
-    g.space('RHN_REP')
-    pg.click(f'#object-list [data-open="{D}"]'); pg.wait_for_selector('#prop-expose')
+    g.space('RHN_PRES')
+    g.new_view(V_SQL, 'RHN_PR_V_GRID_AREAS', 'Grid Areas for Planning')
     pg.check('#prop-expose'); pg.click('#ed-deploy'); pg.wait_for_timeout(600)
     admin_apps()
     pg.click('[data-oauth-test="SAC Planning"]'); pg.select_option('.dialog [name="object"]', D)
@@ -93,7 +94,12 @@ with sync_playwright() as p:
     pg = g.pg
     g.start(start_save())
     tour(pg, 'Data out through OData'); pg.click('.tour-card [data-act="next"]')
-    tour(pg, 'The grid area dimension'); pg.click(f'#object-list [data-open="{D}"]')
+    tour(pg, 'Space RHN_PRES'); g.space('RHN_PRES')
+    tour(pg, 'New SQL View'); pg.click('[data-new="sqlview"]')
+    tour(pg, 'Three columns'); g.sql(V_SQL); pg.click('#run')
+    tour(pg, 'Names'); pg.fill('#prop-business', 'Grid Areas for Planning'); pg.fill('#prop-technical', 'RHN_PR_V_GRID_AREAS')
+    tour(pg, 'Save'); pg.click('#ed-save')
+    tour(pg, 'Deploy'); pg.click('#ed-deploy')
     tour(pg, 'Expose and deploy'); pg.check('#prop-expose'); pg.click('#ed-deploy')
     tour(pg, 'App Integration'); pg.click('#oauth-add')
     tour(pg, 'Purpose and redirect URI')

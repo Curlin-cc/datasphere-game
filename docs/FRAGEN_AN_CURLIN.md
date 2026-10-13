@@ -11,8 +11,15 @@ wird nach der SAP-Hilfe (GitHub `SAP-docs/sap-datasphere`) gebaut – Wunsch von
 
 ## Fachliche Prüfpunkte, noch offen
 
-_Keine. Alle am 12.10.2026 aus der SAP-Hilfe geklärt (Quelle: SAP veröffentlicht die Help-Texte als Markdown im öffentlichen GitHub-Repo
-`SAP-docs/sap-datasphere`, Stand 08.10.2026; Dateinamen unten in Klammern)._
+Neu am 13.10.2026 (Layer-Umbau und Import Entities). Alles ist gebaut; die Punkte prüfen, ob es zu eurem Projekt passt:
+
+- [ ] **Space-IDs und Präfixe:** `RHN_ENTRY` / `RHN_DSL` / `RHN_PRES` mit `RHN_EN_` / `RHN_DS_` / `RHN_PR_`. Nennt ihr die Layer im Projekt genauso,
+  oder gibt es eine andere Konvention (z. B. Kürzel `EL` / `DSL` / `PL`)?
+- [ ] **Wo liegen bei euch die DACs?** Im Spiel neben den Facts in der Data-&-Semantic-Schicht (geteilte Facts nehmen sie mit). Oder in der Presentation-Schicht auf eigenen Views?
+- [ ] **Analytic Models auf geteilten Facts:** Baut ihr Modelle in der Presentation-Schicht direkt auf geteilten Facts, oder legt ihr dort zuerst eigene Konsum-Views (Fact) an?
+- [ ] **Import Entities:** Wie heißen bei euch die erzeugten Objekte (Remote/Local Table, Dimension-View)? Im Spiel vereinfacht: Tabelle = CDS-ID, View = `<ID>_DIM`.
+  Falls dein Tenant den Assistenten zeigt: Screenshot der Schritte *Select Entities* und *Review Entities* (nächste Nummer 47)
+- [ ] **Importierte Objekte im Entry Layer:** Im Spiel bleiben sie dort unverändert und werden mit `RHN_DSL` geteilt. Importiert ihr in einen eigenen Space?
 
 ## Erledigt
 

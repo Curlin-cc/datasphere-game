@@ -1,4 +1,4 @@
-import type { TenantState } from './tenant';
+import { isShared, type TenantState } from './tenant';
 import { findObject, objectKey, type Association, type RepoObject } from './repo';
 
 /**
@@ -8,7 +8,8 @@ import { findObject, objectKey, type Association, type RepoObject } from './repo
  * (`modelSql`), joining a dimension only when the query needs it, like an association at runtime.
  *
  * Simplified in the game (see docs/DECISIONS.md):
- *  - fact and dimensions are read in their deployed version; the fact must be in the model's own space
+ *  - fact and dimensions are read in their deployed version; the fact and its dimensions must be in the model's own space
+ *    or shared with it (SAP help: share a fact together with its supporting entities so their services work in the target space)
  *  - measure types: Fact Source, Calculated, Restricted, Count Distinct. Fixed Value and Currency/Unit Conversion only explained
  *  - variables: Filter Variable with Single Value or Interval; other variable types only explained
  *  - restricted measures restrict with "in these values"; the base can be any other measure
@@ -42,7 +43,7 @@ export interface AnalyticModelDef {
   fact: string;
   /** SPACE.NAME of the dimensions added to the model, a subset of the fact's association targets. */
   dimensions: string[];
-  /** Visible attribute IDs: a fact column (CUSTOMER_ID) or DIMENSION.COLUMN (RHN_REP_D_GRID_AREA.REGION). */
+  /** Visible attribute IDs: a fact column (CUSTOMER_ID) or DIMENSION.COLUMN (RHN_DS_D_GRID_AREA.REGION). */
   attributes: string[];
   measures: Measure[];
   variables: Variable[];
@@ -82,16 +83,26 @@ export interface ModelSources {
   measures: string[];
   /** Columns with role Attribute. */
   attributes: string[];
-  /** One entry per association of the fact whose target is deployed. */
+  /** One entry per association of the fact whose target is deployed (and visible in the model's space). */
   dimensions: DimensionSource[];
+  /** The fact is shared with the space the sources were read for. */
+  shared: boolean;
+  /** Associated, deployed dimensions that are not visible in that space (not shared with it). */
+  hidden: string[];
 }
 
-/** Deployed facts a new analytic model in this space can be built on. */
-export const factCandidates = (t: TenantState, space: string) =>
-  t.objects.filter((o) => o.space === space && o.deployed?.semanticUsage === 'Fact');
+/** Visible in a space: an object of the space or one shared with it. */
+const visibleIn = (t: TenantState, o: RepoObject, space?: string) => !space || o.space === space || isShared(t, objectKey(o), space);
 
-/** What the deployed fact offers: its measures, its attributes and the dimensions it is associated with. */
-export function modelSources(t: TenantState, factKey: string): ModelSources | string {
+/** Deployed facts a new analytic model in this space can be built on: its own, and those shared with it. */
+export const factCandidates = (t: TenantState, space: string) =>
+  t.objects.filter((o) => o.deployed?.semanticUsage === 'Fact' && visibleIn(t, o, space));
+
+/**
+ * What the deployed fact offers: its measures, its attributes and the dimensions it is associated with.
+ * With a space, only dimensions visible in that space count (a shared fact needs its dimensions shared too).
+ */
+export function modelSources(t: TenantState, factKey: string, space?: string): ModelSources | string {
   const fact = findObject(t, factKey);
   const name = factKey.split('.')[1] ?? factKey;
   if (!fact) return `The fact source ${name} does not exist any more.`;
@@ -99,9 +110,14 @@ export function modelSources(t: TenantState, factKey: string): ModelSources | st
   if (fact.deployed.semanticUsage !== 'Fact') return `${name} is not deployed as a Fact any more. An analytic model needs a fact source.`;
   const roles = Object.entries(fact.deployed.columnRoles ?? {});
   const dimensions: DimensionSource[] = [];
+  const hidden: string[] = [];
   for (const a of fact.deployed.associations ?? []) {
     const d = findObject(t, a.target);
     if (!d?.deployed) continue;
+    if (!visibleIn(t, d, space)) {
+      hidden.push(a.target);
+      continue;
+    }
     const keys = new Set(a.mapping.map((m) => m.to.toUpperCase()));
     dimensions.push({
       key: a.target,
@@ -115,6 +131,8 @@ export function modelSources(t: TenantState, factKey: string): ModelSources | st
     measures: roles.filter(([, r]) => r === 'Measure').map(([c]) => c),
     attributes: roles.filter(([, r]) => r !== 'Measure').map(([c]) => c),
     dimensions,
+    shared: !!space && fact.space !== space && isShared(t, factKey, space),
+    hidden,
   };
 }
 
@@ -158,9 +176,9 @@ export function attributeCatalog(def: AnalyticModelDef, src: ModelSources): Attr
   return out;
 }
 
-/** RHN_REP_D_GRID_AREA → Grid Area */
+/** RHN_DS_D_GRID_AREA → Grid Area */
 export const dimLabel = (name: string) =>
-  name.replace(/^[A-Z0-9]+_REP_D_/, '').split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
+  name.replace(/^[A-Z0-9]+_(DS|PR)_D_/, '').split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
 
 // ---------------------------------------------------------------- validation
 
@@ -230,9 +248,10 @@ export function measureError(m: Measure, def: AnalyticModelDef, src: ModelSource
 /** Everything that must be right before a model can be deployed. Null if it is fine. */
 export function modelError(def: AnalyticModelDef, src: ModelSources | string, space: string): string | null {
   if (typeof src === 'string') return src;
-  if (src.fact.space !== space) return `The fact source must be in ${space}.`;
+  if (src.fact.space !== space && !src.shared) return `${src.fact.name} is not in ${space} and not shared with it. Share the fact (and its dimensions) with ${space} first.`;
   if (!def.measures.length) return 'The model needs at least one measure.';
   for (const d of def.dimensions) {
+    if (src.hidden.includes(d)) return `${d.split('.')[1]} is not shared with ${space}. Share it, or remove it from the model.`;
     if (!src.dimensions.some((x) => x.key === d)) return `${d.split('.')[1]} is no longer associated with the fact. Remove it from the model.`;
   }
   const catalog = attributeCatalog(def, src);

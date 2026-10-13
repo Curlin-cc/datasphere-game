@@ -67,6 +67,23 @@ const questions = (hint: string): TourStep[] => [
   },
 ];
 
+// ---------------------------------------------------------------- layer logic
+
+type Layer = 'en' | 'ds' | 'pr';
+const LAYERS: Record<Layer, { id: string; name: string; holds: string }> = {
+  en: { id: 'RHN_ENTRY', name: 'Entry', holds: 'Source data 1:1: remote tables, replicated tables, files, imported S/4HANA entities. Connections live here. No logic.' },
+  ds: { id: 'RHN_DSL', name: 'Data &amp; Semantic', holds: 'Base views (<code>RHN_DS_V_</code>) clean and combine. Facts, dimensions, hierarchies and associations give meaning; data access controls protect it.' },
+  pr: { id: 'RHN_PRES', name: 'Presentation', holds: 'Only what consumers see: analytic models (<code>RHN_PR_AM_</code>) and consumption views (<code>RHN_PR_V_</code>) on shared facts and dimensions.' },
+};
+
+/** The three layers as a small stack (presentation on top), the layers of this step highlighted. */
+const layerStack = (on: Layer[]) => `<div class="tour-layers">${(['pr', 'ds', 'en'] as Layer[]).map((k) => `
+  <div class="tl ${on.includes(k) ? 'on' : ''}" data-layer="${k}"><b>${LAYERS[k].name} <code>${LAYERS[k].id}</code></b><small>${LAYERS[k].holds}</small></div>`).join('')}
+  <p class="tl-rule">Data moves up one layer at a time, by sharing. Nothing skips a layer.</p></div>`;
+
+/** A read-only step that shows where the mission's work happens in the three-layer landscape. */
+const layerStep = (on: Layer[], text: string, title = 'Where we are'): TourStep => ({ title, body: `${layerStack(on)}${text}` });
+
 const closeDialog = (title: string, body: string): TourStep => ({
   title,
   target: '.dialog',
@@ -84,7 +101,7 @@ const toSpace = (space: string, body: string): TourStep => ({
 });
 
 /** Share one object of the current space with another space. */
-const shareStep = (object: string, to: string, owner = 'RHN_IN'): TourStep => ({
+const shareStep = (object: string, to: string, owner = 'RHN_ENTRY'): TourStep => ({
   title: `Share ${object}`,
   target: `[data-share="${owner}.${object}"]`,
   body: `<p>The share icon at the end of the row. Tick <b>${to}</b> and save.</p>`,
@@ -99,8 +116,8 @@ const newView = (body: string): TourStep => ({
   action: { do: 'Click <b>New SQL View</b>.', check: () => !!$('#editor') && !!$('.ed-title small')?.textContent?.includes('…') },
 });
 
-/** Name, save and deploy a new view in RHN_HARM. */
-const nameSaveDeploy = (name: string, business: string, space = 'RHN_HARM', deployToo = true): TourStep[] => [
+/** Name, save and deploy a new view in RHN_DSL. */
+const nameSaveDeploy = (name: string, business: string, space = 'RHN_DSL', deployToo = true): TourStep[] => [
   {
     title: 'Names',
     target: '#properties',
@@ -158,7 +175,7 @@ const assocStep = (fact: string, dim: string): TourStep[] => [
 
 // ---------------------------------------------------------------- chapter 7 helpers
 
-const AM_INV = 'RHN_REP.RHN_REP_AM_INVOICES';
+const AM_INV = 'RHN_PRES.RHN_PR_AM_INVOICES';
 
 /** Chapter 7: the New Analytic Model tile and the fact picker. */
 const newModel = (fact: string, body: string): TourStep[] => [
@@ -183,7 +200,7 @@ const addDims = (dims: string[], body: string): TourStep => ({
   body,
   action: {
     do: `Add ${dims.map((d) => `<b>${d}</b>`).join(' and ')} to the model.`,
-    check: () => dims.every((d) => !!$(`[data-node="RHN_REP.RHN_REP_D_${d.toUpperCase().replace(' ', '_')}"]`)),
+    check: () => dims.every((d) => !!$(`[data-node="RHN_DSL.RHN_DS_D_${d.toUpperCase().replace(' ', '_')}"]`)),
   },
 });
 
@@ -196,13 +213,13 @@ const modelBg: TourStep = {
   action: { do: 'Click the canvas background.', appear: '#am-measures' },
 };
 
-/** Chapter 7: open an existing model in RHN_REP. */
+/** Chapter 7: open an existing model in RHN_PRES. */
 const openModel = (name: string): TourStep => ({
   title: `Open ${name}`,
-  view: 'builder:landing:RHN_REP',
+  view: 'builder:landing:RHN_PRES',
   target: '#object-list',
   body: `<p>Analytic models are listed with the other objects of the space (tab <b>Models</b>).</p>`,
-  action: { do: `Open <b>${name}</b>.`, check: () => editorOf(`RHN_REP.${name}`) },
+  action: { do: `Open <b>${name}</b>.`, check: () => editorOf(`RHN_PRES.${name}`) },
 });
 
 /** Chapter 7: a measure dialog. */
@@ -231,14 +248,14 @@ const amPreview = (key: string, row: string, body: string): TourStep => ({
 
 // ---------------------------------------------------------------- chapter 8 helpers
 
-const DAC_KEY = 'RHN_REP.RHN_REP_DAC_GRID_AREA';
+const DAC_KEY = 'RHN_DSL.RHN_DS_DAC_GRID_AREA';
 const $$ = (sel: string) => [...document.querySelectorAll<HTMLInputElement>(sel)];
 
 /** Chapter 8: open a fact, run its preview, assign the grid area control and deploy. */
 const assignDac = (view: string, intro: string): TourStep[] => [
   {
     title: `Open ${view.split('.')[1]}`,
-    view: 'builder:landing:RHN_REP',
+    view: `builder:landing:${view.split('.')[0]}`,
     target: '#object-list',
     body: `<p>${intro}</p>`,
     action: { do: `Open <b>${view.split('.')[1]}</b>.`, check: () => editorOf(view) },
@@ -259,7 +276,7 @@ const assignDac = (view: string, intro: string): TourStep[] => [
     title: 'Control and mapping',
     target: '.dialog',
     body: `<p>Pick the control. For each criterion, choose the column of this view that holds the same values.</p>`,
-    action: { do: 'Choose <code>RHN_REP_DAC_GRID_AREA</code>, check the mapping and press <b>Assign</b>.', event: `dac-assign:${view}->${DAC_KEY}` },
+    action: { do: 'Choose <code>RHN_DS_DAC_GRID_AREA</code>, check the mapping and press <b>Assign</b>.', event: `dac-assign:${view}->${DAC_KEY}` },
   },
   deployStep(view, `<p>Until you deploy, everyone still sees every row: the control is only in the saved design.</p>`),
 ];
@@ -335,6 +352,18 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>A <b>space</b> is an isolated area in the tenant: its own members, storage, priority and objects.
         Objects in one space are invisible to the others until you share them.</p>`,
     },
+    layerStep(['en', 'ds', 'pr'], `<p>Calin's architecture has <b>three layers</b>, one space each. Read it from the bottom up:
+        data enters 1:1, gets cleaned and gets its meaning, and only then is shown to consumers.</p>
+      <p>Why split it? Each layer has its own people, storage and priority, and each layer only sees what the layer below shares.
+        A report user never touches the raw data; a load never breaks a model.</p>`, 'Three layers'),
+    {
+      title: 'What lives where',
+      body: `<p>A quick rule for every object you will build:</p>
+        <ul><li>Does it <b>bring data in</b> (connection, remote table, replication flow, imported entity)? <b>Entry</b>.</li>
+        <li>Does it <b>clean or combine</b> data, or say what the data <b>means</b> (fact, dimension, association, access control)? <b>Data &amp; Semantic</b>.</li>
+        <li>Is it what a <b>consumer opens</b> (analytic model, view for Excel or Power BI)? <b>Presentation</b>.</li></ul>
+        <p>The space ID carries the layer: <code>RHN_ENTRY</code>, <code>RHN_DSL</code>, <code>RHN_PRES</code>.</p>`,
+    },
     {
       title: 'Space ID and space name',
       body: `<p>A space has two names:</p>
@@ -357,8 +386,10 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Spaces are walls',
       body: `<p>Data in one space is invisible to every other space. To let a layer build on the layer below, you <b>share</b> objects.
         The data stays where it is, nothing is copied.</p>
-        <p>The rule of the landscape: <b>RHN_IN</b> → shared with → <b>RHN_HARM</b> → shared with → <b>RHN_REP</b>. Never skip a layer.</p>`,
+        <p>The rule of the landscape: <b>RHN_ENTRY</b> → shared with → <b>RHN_DSL</b> → shared with → <b>RHN_PRES</b>. Never skip a layer.</p>`,
     },
+    layerStep(['en', 'ds'], `<p>Today the first share: two entry tables go up to the data &amp; semantic layer. The presentation layer gets nothing from the
+        entry layer, ever. Its turn comes in chapter 7, with facts and dimensions.</p>`),
   ],
   'c01-m04': [
     {
@@ -394,11 +425,13 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   'c03-m01': [
     {
       title: 'Chapter 3: Data integration',
-      body: `<p>So far the data in <code>RHN_IN</code> was a one-off copy IT made for the pilot. Now you connect the real source systems and decide
+      body: `<p>So far the data in <code>RHN_ENTRY</code> was a one-off copy IT made for the pilot. Now you connect the real source systems and decide
         how their data gets in: read live, copied once, or kept up to date by delta.</p>
         <p>Three apps work together: <b>Connections</b> (where a system is and how to log on), the <b>Data Builder</b> (remote tables and flows),
         and the <b>Data Integration Monitor</b> (runs, schedules, logs).</p>`,
     },
+    layerStep(['en'], `<p>The whole chapter happens in the <b>entry layer</b>. Connections, remote tables, replication flows and imported entities
+        all live in <code>RHN_ENTRY</code>: the layers above never talk to a source system, they read what the entry layer shares.</p>`),
     {
       title: 'Connection types and features',
       body: `<p>A connection is created from a <b>connection type</b>: SAP S/4HANA Cloud, SAP HANA, Amazon S3 and many more.
@@ -443,7 +476,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Files as a source',
       body: `<p>Some systems cannot be connected directly and drop files instead, for example into an Amazon S3 bucket.
         A connection to cloud storage offers flows, not remote tables.</p>
-        <p>Every inbound row should say which system it came from. If the source does not deliver that, the load adds it:
+        <p>Every entry row should say which system it came from. If the source does not deliver that, the load adds it:
         the <b>projection</b> of a replication object can add columns with a constant value.</p>`,
     },
   ],
@@ -456,14 +489,35 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         until it has enough storage again and someone presses <b>Unlock</b>.</p>`,
     },
   ],
+  'c03-m07': [
+    {
+      title: 'Import Entities',
+      body: `<p>Remote tables and replication flows bring <b>data</b>. <b>Import Entities</b> brings data <b>with its meaning</b>: for a CDS view of
+        S/4HANA it creates the tables, a view with the right <b>semantic usage</b> (Dimension), and follows the associations to its
+        <b>supporting entities</b>, such as a text entity with one name per language.</p>
+        <p>The wizard has three steps: <b>Configuration</b> (connection, target space, data access), <b>Select Entities</b> (search by label,
+        filter by application component, modeling pattern and release contract) and <b>Review Entities</b> (what will be created).</p>`,
+    },
+    {
+      title: 'Release contract C1',
+      body: `<p>Only CDS views SAP released for extraction (release contract <b>C1</b>) come with their data access and follow associations.
+        A custom view without release is imported as an empty local table; you would load it with a data flow.</p>
+        <p>Data access: <b>Replication Flow to Local Tables</b> is proposed and recommended by SAP. The tables stay empty until the flow runs.</p>`,
+    },
+    layerStep(['en'], `<p>An import always lands in the space of its connection: for <code>RHN_S4U</code> that is the entry layer. The imported
+        objects keep SAP's names and are updated by every new import, so you leave them as delivered and use them from <code>RHN_DSL</code>,
+        through sharing, like every other entry table.</p>`),
+  ],
   'c05-m01': [
     {
-      title: 'Chapter 5: Harmonization',
-      body: `<p>In chapter 4 you found what is wrong with the raw data. Now you fix it, in the right place: <b>views in RHN_HARM</b>
-        that read the shared inbound tables and deliver clean, uniform data. The inbound tables stay exactly as the sources sent them.</p>
+      title: 'Chapter 5: Base views',
+      body: `<p>In chapter 4 you found what is wrong with the raw data. Now you fix it, in the right place: <b>base views in RHN_DSL</b>
+        (<code>RHN_DS_V_</code>) that read the shared entry tables and deliver clean, uniform data. The entry tables stay exactly as the sources sent them.</p>
         <p>From now on your work is <b>deployed views</b>: the check reads what runs in the database, not the editor.
         Hints cost XP from the first one; the tutorials stay free.</p>`,
     },
+    layerStep(['ds'], `<p>The data &amp; semantic layer has two halves. This chapter builds the lower one: <b>base views</b> that clean and combine.
+        Chapter 6 builds the upper one on top of them, in the same space: facts and dimensions that say what the data <b>means</b>.</p>`),
     {
       title: 'Translate values with CASE',
       body: `<p><code>CASE</code> turns one value into another, row by row:</p>
@@ -475,7 +529,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     },
     {
       title: 'Or: a mapping table',
-      body: `<p>The same translation can live in a small <b>table</b> in RHN_HARM: one row per legacy code and its S/4 code, typed in the
+      body: `<p>The same translation can live in a small <b>table</b> in RHN_DSL: one row per legacy code and its S/4 code, typed in the
         <b>Data Editor</b>. The view joins it with <code>LEFT JOIN</code> and keeps the original value with <code>COALESCE</code>.</p>
         <p>The tutorial shows CASE. The mapping table is the way for longer lists; Hint 4 describes it.</p>`,
     },
@@ -520,15 +574,17 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   ],
   'c05-m05': [
     {
-      title: 'One layer up',
-      body: `<p>Reporting builds only on harmonization. You share the harmonized views with <code>RHN_REP</code>, and the reporting query
-        uses them as they are: no mapping, no unit conversion, no deduplication. That work is done once.</p>`,
+      title: 'Built once, used everywhere',
+      body: `<p>The CFO's question is answered from the base views as they are: no mapping, no unit conversion, no deduplication.
+        That work is done once, in the base views.</p>`,
     },
+    layerStep(['ds'], `<p>Your query stays in <code>RHN_DSL</code>. Base views are building blocks; the presentation layer will never see them.
+        It gets facts and dimensions with meaning, shared in chapter 7. So nothing is shared with <code>RHN_PRES</code> today.</p>`, 'Not yet presentation'),
   ],
   'c06-m01': [
     {
       title: 'Chapter 6: Semantics',
-      body: `<p>Up to now every view was a <b>Relational Dataset</b>: rows and columns, nothing more. The reporting layer tells consumers
+      body: `<p>Up to now every view was a <b>Relational Dataset</b>: rows and columns, nothing more. Now the data &amp; semantic layer says
         what the data <b>means</b>:</p>
         <ul><li><b>Fact</b>: holds measures, numbers you add up (kWh, amounts).</li>
         <li><b>Dimension</b>: describes them (grid area, tariff, customer) and has a <b>key</b>.</li>
@@ -539,12 +595,15 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       body: `<p>In the properties of a saved view: <b>Semantic Usage</b>, then a role per column: <b>Key</b> or <b>Attribute</b> in a dimension,
         <b>Measure</b> or <b>Attribute</b> in a fact. Like everything else: Save, then Deploy. The checks read what is deployed.</p>`,
     },
+    layerStep(['ds'], `<p>Semantic objects live in the same space as the base views, on top of them: <code>RHN_DS_D_</code> for dimensions,
+        <code>RHN_DS_F_</code> for facts. Their rule: they build only on base views, never directly on entry tables. If a source changes,
+        one base view changes, and every fact and dimension above it keeps working.</p>`),
   ],
   'c06-m02': [
     {
       title: 'Only what reports need',
-      body: `<p>A reporting view does not have to pass on every column of its source. Picking columns is the simplest data protection:
-        what never reaches the reporting layer cannot leak to the people who read it.</p>`,
+      body: `<p>A dimension does not have to pass on every column of its base view. Picking columns is the simplest data protection:
+        what never reaches a dimension cannot reach a model in the presentation layer, nor the people who read it.</p>`,
     },
   ],
   'c06-m03': [
@@ -579,6 +638,9 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <li>Its dimensions come from the fact's <b>associations</b>: no joins to write.</li>
         <li>Its <b>Data Preview</b> shows it the way a story in SAP Analytics Cloud would.</li></ul>`,
     },
+    layerStep(['ds', 'pr'], `<p>Now the top layer gets its first objects. The facts and dimensions stay in <code>RHN_DSL</code>; you <b>share</b> a fact
+        together with the dimensions the model needs (SAP calls them its <b>supporting entities</b>) with <code>RHN_PRES</code>, and build the model there.</p>
+      <p>What you do not share, the presentation layer cannot reach: the customer dimension, the base views, the entry tables.</p>`),
     {
       title: 'The editor',
       body: `<p>The canvas shows the fact in the middle and its associated dimensions next to it. Dashed ones are associated but not in the model yet.
@@ -625,6 +687,9 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <li>A <b>data access control</b> reads it: identifier column = user ID, criteria = the values.</li>
         <li>Assigned to a view, it filters the rows for each user. No entry, no rows.</li></ul>`,
     },
+    layerStep(['ds', 'pr'], `<p>Access controls protect the data where it lives: the permissions table, the control and its assignment are all in
+        <code>RHN_DSL</code>, next to the facts. A shared fact keeps its control, so every model in <code>RHN_PRES</code> filters the rows without
+        anyone having to remember it.</p>`),
     {
       title: 'A local table',
       body: `<p>The permissions entity here is a small <b>local table</b>. You define its columns and type the rows in its <b>Data Editor</b>,
@@ -641,8 +706,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   'c08-m03': [
     {
       title: 'Where the control sits',
-      body: `<p>Assign the control to the view that holds the numbers: the fact. Everything built on it, such as the analytic model,
-        takes the control over. To check it, preview the data <b>as a user</b>.</p>`,
+      body: `<p>Assign the control to the view that holds the numbers: the fact in <code>RHN_DSL</code>. Everything built on it takes the control
+        over, also across the share: the analytic model in <code>RHN_PRES</code> filters by it. To check it, preview the model <b>as a user</b>.</p>`,
     },
   ],
   'c09-m01': [
@@ -653,6 +718,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>The way out is <b>persistence</b>: a view stores its result as a snapshot. Fast to read, but it costs memory and is only as fresh as its
         last run. This chapter: measure, find the expensive layer, persist it, schedule it, and know the limits.</p>`,
     },
+    layerStep(['ds', 'pr'], `<p>The slow story opens a model in <code>RHN_PRES</code>, but the model holds no data: it reads the shared fact, and the fact reads
+        the base views. The expensive work is in <code>RHN_DSL</code>, so that is where you measure and persist. Presentation objects stay light.</p>`),
     {
       title: 'Measure first',
       body: `<p><b>Expensive statement tracing</b> records SQL statements that exceed a threshold, with duration, peak memory and CPU time.
@@ -663,15 +730,17 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   // ================================================================ chapter 4 (SQL profiling)
   'c04-m01': [
     {
-      title: 'Chapter 4: Profile the inbound data',
-      body: `<p>Before anyone models, a data architect looks at the raw data. In this chapter you <b>profile</b> the inbound tables with SQL:
+      title: 'Chapter 4: Profile the entry data',
+      body: `<p>Before anyone models, a data architect looks at the raw data. In this chapter you <b>profile</b> the entry tables with SQL:
         count, group, sum and join, and find what is wrong.</p>
         <p>As in chapter 3, only the first hint is free. The tutorials stay free and walk you through every click; the SQL you write yourself.</p>`,
     },
+    layerStep(['en'], `<p>You look, you do not change: profiling queries run in scratch views of <code>RHN_ENTRY</code> that are never saved.
+        Whatever you find gets fixed one layer up, in the base views of <code>RHN_DSL</code> (chapter 5).</p>`),
     {
       title: 'A scratch SQL view',
-      body: `<p>For profiling you open a <b>New SQL View</b> in the Data Builder of <b>RHN_IN</b> and only use <b>Data Preview</b>.
-        You do not save or deploy it: the inbound layer holds source data 1:1, without logic.</p>
+      body: `<p>For profiling you open a <b>New SQL View</b> in the Data Builder of <b>RHN_ENTRY</b> and only use <b>Data Preview</b>.
+        You do not save or deploy it: the entry layer holds source data 1:1, without logic.</p>
         <p><b>Check my solution</b> runs the SQL in your editor. Column names and order are up to you; only the result counts.</p>`,
     },
   ],
@@ -694,7 +763,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   'c04-m04': [
     {
       title: 'Data from two tables',
-      body: `<p>The contracts know their grid area, but not the region. The region is in a second table, <b>RHN_IN.GRID_AREAS</b>.
+      body: `<p>The contracts know their grid area, but not the region. The region is in a second table, <b>RHN_ENTRY.GRID_AREAS</b>.
         To bring both together you need a <b>join</b>.</p>
         <p>A good habit after every join: add up your counts and compare with the source table. If the numbers differ, rows were lost or duplicated.</p>`,
     },
@@ -713,6 +782,9 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         (licence-dependent).</p>
         <p>Whatever goes out over SQL must be <b>exposed for consumption</b> first: a switch on the view, active after Deploy.</p>`,
     },
+    layerStep(['pr'], `<p>Every way out starts in the <b>presentation layer</b>. A tool that reads over SQL gets a <b>consumption view</b> in
+        <code>RHN_PRES</code> (<code>RHN_PR_V_</code>) on a shared fact or dimension, and a database user of that space. Nothing in <code>RHN_DSL</code>
+        is exposed: that space holds base views with personal data.</p>`),
   ],
   'c12-m02': [
     {
@@ -743,6 +815,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       body: `<p>A <b>hierarchy</b> view has one row per node: the node itself (Child) and the node above it (Parent). The root has no parent.
         Associated with a dimension, it gives reports a tree to drill through, and every node stands for everything below it.</p>`,
     },
+    layerStep(['ds'], `<p>A hierarchy is semantics, so it lives next to its dimension in <code>RHN_DSL</code>: <code>RHN_DS_H_</code>, built on the grid
+        areas base view. A model in the presentation layer gets it through the dimension; shared dimensions take their hierarchy along when it is shared too.</p>`),
   ],
   'c12-m12': [
     {
@@ -768,6 +842,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         into one <b>target table</b>. Unlike a view, the result is stored: it is as fresh as the last run.</p>
         <p>The target <b>mode</b> decides what a run does with the rows already there: <b>Append</b> adds, <b>Truncate</b> replaces, <b>Delete</b> removes by key.</p>`,
     },
+    layerStep(['ds'], `<p>The flow joins and aggregates base views, so it is data work: flow and target table go to <code>RHN_DSL</code>
+        (<code>RHN_DS_DF_</code>, <code>RHN_DS_T_</code>), where the nightly chain can run it.</p>`),
   ],
   'c12-m09': [
     {
@@ -809,6 +885,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         <p>This chapter has <b>no hints and no Show me</b>. Everything you need, you have done before. The checks still tell you what is
         missing.</p>`,
     },
+    layerStep(['en', 'ds', 'pr'], `<p>Before you change anything, decide in which layer each part of the change belongs. A new column of a fact is
+        semantic work in <code>RHN_DSL</code>; offering it to the board is presentation work in <code>RHN_PRES</code>.</p>`, 'Think in layers'),
   ],
   'c10-m01': [
     {
@@ -817,6 +895,8 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         as one unit: in a fixed order, with one schedule and an email when it fails.</p>
         <p>A chain runs objects of its own space. To combine spaces, share a chain with another space and nest it there.</p>`,
     },
+    layerStep(['en', 'ds'], `<p>The night follows the layers from the bottom up: the entry chain loads, then the chain of the data &amp; semantic layer
+        persists what the morning needs. The presentation layer needs no chain: its models are virtual and read whatever lies below.</p>`),
     {
       title: 'What a chain can run',
       body: `<p>Replication flows (load type Initial Only), view persistence, remote table snapshots and other task chains. A step starts
@@ -899,10 +979,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       nav('builder', 'Data Builder', `<p>The Data Builder first asks for a space.</p>`),
       {
-        title: 'Select RHN_IN',
+        title: 'Select RHN_ENTRY',
         target: '#space-picker, #space-switch',
-        body: `<p>You only see the spaces you are a member of. Right now there is one: <b>RHN_IN</b>, where IT loaded the source data.</p>`,
-        action: { do: 'Click the space <b>RHN_IN</b>.', event: 'space:builder:RHN_IN', check: () => builderSpace('RHN_IN') },
+        body: `<p>You only see the spaces you are a member of. Right now there is one: <b>RHN_ENTRY</b>, where IT loaded the source data.</p>`,
+        action: { do: 'Click the space <b>RHN_ENTRY</b>.', event: 'space:builder:RHN_ENTRY', check: () => builderSpace('RHN_ENTRY') },
       },
     ],
     [
@@ -915,7 +995,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Open the contracts',
         target: '#object-list',
         body: `<p>Each row shows business name, technical name, type and status. The contracts table is <code>BILLING_CONTRACTS</code>.</p>`,
-        action: { do: 'Click the business name <b>BILLING_CONTRACTS</b> in the list.', event: 'open:RHN_IN.BILLING_CONTRACTS', check: () => editorOf('RHN_IN.BILLING_CONTRACTS') },
+        action: { do: 'Click the business name <b>BILLING_CONTRACTS</b> in the list.', event: 'open:RHN_ENTRY.BILLING_CONTRACTS', check: () => editorOf('RHN_ENTRY.BILLING_CONTRACTS') },
       },
     ],
     [
@@ -929,7 +1009,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Data Preview',
         target: '#run',
         body: `<p><b>Data Preview</b> shows the first rows of the table at the bottom.</p>`,
-        action: { do: 'Press <b>Data Preview</b>.', event: 'preview:RHN_IN.BILLING_CONTRACTS' },
+        action: { do: 'Press <b>Data Preview</b>.', event: 'preview:RHN_ENTRY.BILLING_CONTRACTS' },
       },
       {
         title: 'Read the rows',
@@ -954,7 +1034,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Open from the result',
         target: '#repo-list',
         body: `<p>Clicking a result opens the object in its editor, in the Data Builder of the right space. Note its space and type first.</p>`,
-        action: { do: 'Click <b>Meter Readings</b> in the result list.', event: 'repository-open:RHN_IN.METER_READINGS' },
+        action: { do: 'Click <b>Meter Readings</b> in the result list.', event: 'repository-open:RHN_ENTRY.METER_READINGS' },
       },
     ],
     [
@@ -969,7 +1049,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Filter',
         target: '#repo-space',
         body: `<p>The filters narrow the list by type and space. The counter on the right says how many objects match.</p>`,
-        action: { do: 'Set <b>Space</b> to <code>RHN_IN</code>.', check: () => val('#repo-space') === 'RHN_IN' },
+        action: { do: 'Set <b>Space</b> to <code>RHN_ENTRY</code>.', check: () => val('#repo-space') === 'RHN_ENTRY' },
       },
       ...questions('Space, type and the counter answer the three questions.'),
     ],
@@ -978,10 +1058,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'Open the contracts',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#object-list',
-        body: `<p>Same table as before: <code>BILLING_CONTRACTS</code> in <code>RHN_IN</code>.</p>`,
-        action: { do: 'Open <b>BILLING_CONTRACTS</b> from the list.', check: () => editorOf('RHN_IN.BILLING_CONTRACTS') },
+        body: `<p>Same table as before: <code>BILLING_CONTRACTS</code> in <code>RHN_ENTRY</code>.</p>`,
+        action: { do: 'Open <b>BILLING_CONTRACTS</b> from the list.', check: () => editorOf('RHN_ENTRY.BILLING_CONTRACTS') },
       },
     ],
     [
@@ -995,7 +1075,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Save',
         target: '#ed-save',
         body: `<p>Save stores the design.</p>`,
-        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_IN.BILLING_CONTRACTS' },
+        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_ENTRY.BILLING_CONTRACTS' },
       },
       {
         title: 'Look at the status',
@@ -1008,7 +1088,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Deploy',
         target: '#ed-deploy',
         body: `<p>Deploy makes the saved design active.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_IN.BILLING_CONTRACTS' },
+        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_ENTRY.BILLING_CONTRACTS' },
       },
       {
         title: 'Deployed',
@@ -1026,8 +1106,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'What is there',
         target: '#space-list',
-        body: `<p>Only <b>RHN_IN</b>, the inbound space. The layer on the tile comes from the space ID: inbound IDs end in <code>_IN</code>,
-          harmonization in <code>_HARM</code>, reporting in <code>_REP</code>.</p>`,
+        body: `<p>Only <b>RHN_ENTRY</b>, the entry space. The layer on the tile comes from the space ID: entry IDs end in <code>_ENTRY</code>,
+          data &amp; semantic in <code>_DSL</code>, presentation in <code>_PRES</code>.</p>`,
       },
       {
         title: 'Tenant capacity',
@@ -1039,34 +1119,34 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Create a space',
         target: '#create-space',
-        body: `<p>First the harmonization space.</p>`,
+        body: `<p>First the middle layer: the data &amp; semantic space.</p>`,
         action: { do: 'Press <b>Create space</b>.', appear: '.dialog [name="id"]' },
       },
       {
         title: 'The space name',
         target: '.dialog [name="name"]',
         body: `<p>A name a business user understands. Typing it suggests an ID.</p>`,
-        action: { do: 'Type <code>Rheinau Harmonization</code> as the space name.', check: () => val('.dialog [name="name"]').toLowerCase() === 'rheinau harmonization' },
+        action: { do: 'Type <code>Rheinau Data &amp; Semantic</code> as the space name.', check: () => val('.dialog [name="name"]').toLowerCase() === 'rheinau data & semantic' },
       },
       {
         title: 'The space ID',
         target: '.dialog [name="id"]',
         body: `<p>Look at the suggested ID: it is cut at 20 characters and does not follow our convention. Fix it before you create the space.</p>`,
-        action: { do: 'Change the space ID to <code>RHN_HARM</code>.', check: () => val('.dialog [name="id"]') === 'RHN_HARM' },
+        action: { do: 'Change the space ID to <code>RHN_DSL</code>.', check: () => val('.dialog [name="id"]') === 'RHN_DSL' },
       },
       {
         title: 'Create',
         target: '.dialog [type="submit"]',
         body: `<p>Leave storage and priority as they are; the next ticket sizes them.</p>`,
-        action: { do: 'Press <b>Create</b>.', appear: '[data-space-tile="RHN_HARM"]' },
+        action: { do: 'Press <b>Create</b>.', appear: '[data-space-tile="RHN_DSL"]' },
       },
     ],
     [
       {
-        title: 'Now the reporting space',
+        title: 'Now the presentation space',
         target: '#create-space',
-        body: `<p>Same steps: name <code>Rheinau Reporting</code>, ID <code>RHN_REP</code>.</p>`,
-        action: { do: 'Create the space <code>RHN_REP</code> with a readable name.', appear: '[data-space-tile="RHN_REP"]' },
+        body: `<p>Same steps for the top layer: name <code>Rheinau Presentation</code>, ID <code>RHN_PRES</code>.</p>`,
+        action: { do: 'Create the space <code>RHN_PRES</code> with a readable name.', appear: '[data-space-tile="RHN_PRES"]' },
       },
     ],
     questions('Think about what you can set per space in Space Management.'),
@@ -1077,34 +1157,34 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Work out the budget',
         target: '.ticket',
         body: `<p>Write it down before you click:</p>
-          <ul><li>Disk: 128 capacity − 16 reserve − 40 for RHN_IN = <b>72 GB</b> for RHN_HARM and RHN_REP together.</li>
+          <ul><li>Disk: 128 capacity − 16 reserve − 40 for RHN_ENTRY = <b>72 GB</b> for RHN_DSL and RHN_PRES together.</li>
           <li>In-memory: 32 − 4 − 8 = <b>20 GB</b> for both together.</li></ul>
-          <p>Check the minimums of the ticket: they must fit into these totals. For example HARM 36/8 and REP 20/10.</p>`,
+          <p>Check the minimums of the ticket: they must fit into these totals. For example DSL 36/8 and PRES 20/10.</p>`,
       },
     ],
     [
       nav('spaces', 'Space Management', `<p>Each tile has an <b>Edit</b> button.</p>`),
       {
-        title: 'Edit RHN_HARM',
-        target: '[data-edit="RHN_HARM"]',
+        title: 'Edit RHN_DSL',
+        target: '[data-edit="RHN_DSL"]',
         body: `<p>The ID stays fixed; storage and priority can change.</p>`,
-        action: { do: 'Press <b>Edit</b> on RHN_HARM.', appear: '.dialog [name="disk"]' },
+        action: { do: 'Press <b>Edit</b> on RHN_DSL.', appear: '.dialog [name="disk"]' },
       },
       {
         title: 'Storage and priority',
         target: '.dialog',
-        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. Reporting must get a higher priority later.</p>
+        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. The presentation space must get a higher priority later.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
         // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 5.
-        action: { do: 'Enter disk, in-memory and priority for RHN_HARM, then press <b>Save</b>.', event: '^edit-space-values:RHN_HARM:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-4]$' },
+        action: { do: 'Enter disk, in-memory and priority for RHN_DSL, then press <b>Save</b>.', event: '^edit-space-values:RHN_DSL:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-4]$' },
       },
     ],
     [
       {
-        title: 'Edit RHN_REP',
-        target: '[data-edit="RHN_REP"]',
+        title: 'Edit RHN_PRES',
+        target: '[data-edit="RHN_PRES"]',
         body: `<p>The board dashboards read from memory, and they must stay fast while the nightly load runs.</p>`,
-        action: { do: 'Press <b>Edit</b> on RHN_REP.', appear: '.dialog [name="disk"]' },
+        action: { do: 'Press <b>Edit</b> on RHN_PRES.', appear: '.dialog [name="disk"]' },
       },
       {
         title: 'Highest priority',
@@ -1112,7 +1192,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>5</b>, higher than every other space.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
         // At least 10 GB disk and 8 GB in-memory, priority 5.
-        action: { do: 'Enter the values for RHN_REP, then press <b>Save</b>.', event: '^edit-space-values:RHN_REP:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:5$' },
+        action: { do: 'Enter the values for RHN_PRES, then press <b>Save</b>.', event: '^edit-space-values:RHN_PRES:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:5$' },
       },
       {
         title: 'Check the bars',
@@ -1126,64 +1206,64 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       nav('builder', 'Data Builder', `<p>The Data Builder always works in one space.</p>`),
       {
-        title: 'Select RHN_HARM',
+        title: 'Select RHN_DSL',
         target: '#space-picker, #space-switch',
         body: `<p>If a space is already selected, the switch next to "Data Builder" changes it.</p>`,
-        action: { do: 'Select the space <b>RHN_HARM</b>.', check: () => builderSpace('RHN_HARM') },
+        action: { do: 'Select the space <b>RHN_DSL</b>.', check: () => builderSpace('RHN_DSL') },
       },
       {
         title: 'An empty space',
         target: '#object-list',
-        body: `<p>No objects, and nothing from RHN_IN. The walls work.</p>`,
+        body: `<p>No objects, and nothing from RHN_ENTRY. The walls work.</p>`,
       },
     ],
     [
       {
-        title: 'Back to RHN_IN',
+        title: 'Back to RHN_ENTRY',
         target: '#space-switch, #space-picker',
         body: `<p>Sharing is set in the space the object belongs to.</p>`,
-        action: { do: 'Switch the Data Builder to <b>RHN_IN</b>.', check: () => builderSpace('RHN_IN') },
+        action: { do: 'Switch the Data Builder to <b>RHN_ENTRY</b>.', check: () => builderSpace('RHN_ENTRY') },
       },
       {
         title: 'Share the contracts',
-        target: '[data-share="RHN_IN.BILLING_CONTRACTS"]',
+        target: '[data-share="RHN_ENTRY.BILLING_CONTRACTS"]',
         body: `<p>The share icon at the end of the row opens the sharing dialog.</p>`,
         action: { do: 'Click the share icon of <b>BILLING_CONTRACTS</b>.', appear: '.share-targets' },
       },
       {
         title: 'Pick the target',
         target: '.dialog',
-        body: `<p>Only the layer directly above: harmonization. Never reporting.</p>`,
-        action: { do: 'Tick <b>RHN_HARM</b> and press <b>Save sharing</b>.', event: 'share:RHN_IN.BILLING_CONTRACTS->RHN_HARM' },
+        body: `<p>Only the layer directly above: <b>RHN_DSL</b>. Never <b>RHN_PRES</b>: the presentation layer does not skip a layer.</p>`,
+        action: { do: 'Tick <b>RHN_DSL</b> and press <b>Save sharing</b>.', event: 'share:RHN_ENTRY.BILLING_CONTRACTS->RHN_DSL' },
       },
       {
         title: 'Share the grid areas',
-        target: '[data-share="RHN_IN.GRID_AREAS"]',
+        target: '[data-share="RHN_ENTRY.GRID_AREAS"]',
         body: `<p>Same for the second table.</p>`,
-        action: { do: 'Share <b>GRID_AREAS</b> with <b>RHN_HARM</b>.', event: 'share:RHN_IN.GRID_AREAS->RHN_HARM' },
+        action: { do: 'Share <b>GRID_AREAS</b> with <b>RHN_DSL</b>.', event: 'share:RHN_ENTRY.GRID_AREAS->RHN_DSL' },
       },
     ],
     [
       {
-        title: 'Back to harmonization',
+        title: 'Back to RHN_DSL',
         target: '#space-switch, #space-picker',
-        body: `<p>Now look at RHN_HARM again.</p>`,
-        action: { do: 'Switch the Data Builder to <b>RHN_HARM</b>.', check: () => builderSpace('RHN_HARM') },
+        body: `<p>Now look at the data &amp; semantic space again.</p>`,
+        action: { do: 'Switch the Data Builder to <b>RHN_DSL</b>.', check: () => builderSpace('RHN_DSL') },
       },
       {
-        title: 'Shared with RHN_HARM',
+        title: 'Shared with RHN_DSL',
         target: '#shared-list',
         body: `<p>A new list: the objects of other spaces this space may read. They stay read-only.</p>`,
-        action: { do: 'Open <b>BILLING_CONTRACTS</b> from this list.', check: () => editorOf('RHN_IN.BILLING_CONTRACTS') },
+        action: { do: 'Open <b>BILLING_CONTRACTS</b> from this list.', check: () => editorOf('RHN_ENTRY.BILLING_CONTRACTS') },
       },
       {
         title: 'Read it from here',
         target: '#run',
-        body: `<p>The toolbar says "read-only": you cannot change it from RHN_HARM, only read it.</p>`,
-        action: { do: 'Press <b>Data Preview</b>.', event: 'preview-in:RHN_HARM:RHN_IN.BILLING_CONTRACTS' },
+        body: `<p>The toolbar says "read-only": you cannot change it from RHN_DSL, only read it.</p>`,
+        action: { do: 'Press <b>Data Preview</b>.', event: 'preview-in:RHN_DSL:RHN_ENTRY.BILLING_CONTRACTS' },
       },
     ],
-    questions('What would happen to a copy when the inbound table gets new data tomorrow?'),
+    questions('What would happen to a copy when the entry table gets new data tomorrow?'),
   ],
   'c01-m04': [
     [
@@ -1191,8 +1271,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'The convention',
         target: '.ticket',
         body: `<p>Split each name at the underscores and check part by part:</p>
-          <p><code>RHN</code> · <code>HA</code> · <code>V</code> · <code>CONSUMPTION</code><br>company · layer · type · what it holds</p>
-          <p>A <b>fact</b> holds numbers you add up, a <b>dimension</b> describes them.</p>`,
+          <p><code>RHN</code> · <code>DS</code> · <code>V</code> · <code>CONSUMPTION</code><br>company · layer · type · what it holds</p>
+          <p>A <b>fact</b> holds numbers you add up, a <b>dimension</b> describes them. Both give data its meaning, so both carry <code>DS</code>;
+          only what consumers open carries <code>PR</code>.</p>`,
       },
     ],
     questions('Check every part of every name: prefix, layer, type, name in English capitals.'),
@@ -1318,8 +1399,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Select the space',
         target: '#conn-space',
-        body: `<p>Like the Data Builder, Connections always works in one space. All loads land in the inbound layer, so its connections live there too.</p>`,
-        action: { do: 'Select the space <code>RHN_IN</code>.', check: () => val('#conn-space') === 'RHN_IN' },
+        body: `<p>Like the Data Builder, Connections always works in one space. All loads land in the entry layer, so its connections live there too.</p>`,
+        action: { do: 'Select the space <code>RHN_ENTRY</code>.', check: () => val('#conn-space') === 'RHN_ENTRY' },
       },
     ],
     [
@@ -1339,7 +1420,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'The properties',
         target: '.dialog',
         body: `<p>Host, authentication, business name and technical name are all in Lena's ticket. Credentials are not simulated.</p>`,
-        action: { do: 'Fill in the form from the ticket and press <b>Create</b>.', event: 'create-connection:RHN_IN.' },
+        action: { do: 'Fill in the form from the ticket and press <b>Create</b>.', event: 'create-connection:RHN_ENTRY.' },
       },
     ],
     [
@@ -1353,7 +1434,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Validate',
         target: '#conn-validate',
         body: `<p>Validate tries to reach the source and lists the features that really work. It is the first step of every troubleshooting.</p>`,
-        action: { do: 'Press <b>Validate</b>.', event: 'validate:RHN_IN.' },
+        action: { do: 'Press <b>Validate</b>.', event: 'validate:RHN_ENTRY.' },
       },
       closeDialog('Read the result', `<p>Valid, and four features. Note them; one question asks about Model Import.</p>
         <p>Changed something after validating? Then validate again: a change resets it.</p>`),
@@ -1362,7 +1443,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c03-m02': [
     [
-      nav('connections', 'Connections', `<p>Still in <code>RHN_IN</code>.</p>`),
+      nav('connections', 'Connections', `<p>Still in <code>RHN_ENTRY</code>.</p>`),
       {
         title: 'Create',
         target: '#conn-create',
@@ -1373,7 +1454,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Cloud or on-premise',
         target: '.dialog',
         body: `<p>This type asks where the source runs. On-premise shows the field for the Cloud Connector location ID. The ticket also says TLS.</p>`,
-        action: { do: 'Fill in the form from Jonas\'s ticket and press <b>Create</b>.', event: 'create-connection:RHN_IN.' },
+        action: { do: 'Fill in the form from Jonas\'s ticket and press <b>Create</b>.', event: 'create-connection:RHN_ENTRY.' },
       },
     ],
     [
@@ -1381,7 +1462,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Validate',
         target: '#conn-list',
         body: `<p>Select the new connection, then press <b>Validate</b> in the toolbar.</p>`,
-        action: { do: 'Select <code>RHN_MDM</code> and press <b>Validate</b>.', event: 'validate:RHN_IN.RHN_MDM' },
+        action: { do: 'Select <code>RHN_MDM</code> and press <b>Validate</b>.', event: 'validate:RHN_ENTRY.RHN_MDM' },
       },
       closeDialog('Read the message', `<p>If it failed: the message names one missing piece. A missing certificate is fixed in the System app, the rest with <b>Edit</b>.</p>`),
     ],
@@ -1417,7 +1498,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Until it passes',
         target: '#conn-toolbar',
         body: `<p>Select <code>RHN_MDM</code>. Validate; if a message names something in the connection itself, fix it with <b>Edit</b> and validate again.</p>`,
-        action: { do: 'Get <code>RHN_MDM</code> to a valid validation.', event: 'validate:RHN_IN.RHN_MDM:ok' },
+        action: { do: 'Get <code>RHN_MDM</code> to a valid validation.', event: 'validate:RHN_ENTRY.RHN_MDM:ok' },
       },
       closeDialog('Valid', `<p>Through the Cloud Connector, encrypted, with a trusted certificate.</p>`),
     ],
@@ -1427,7 +1508,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'The Import menu',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#import-menu-btn',
         body: `<p>Remote tables are created from the Data Builder of the space that owns the connection. Everything that brings
           objects in from outside sits in the <b>Import</b> menu of the object list, next to <b>+</b>.</p>`,
@@ -1448,7 +1529,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Pick the objects',
         target: '.dialog',
-        body: `<p>Tick only the objects the ticket asks for. The suggested names follow our convention <code>RHN_IN_RT_&lt;NAME&gt;</code>.</p>`,
+        body: `<p>Tick only the objects the ticket asks for. The suggested names follow our convention <code>RHN_EN_RT_&lt;NAME&gt;</code>.</p>`,
         action: { do: 'Tick the two objects and press <b>Import and Deploy</b>.', event: 'import-remote:' },
       },
     ],
@@ -1457,13 +1538,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Open the tariffs',
         target: '#object-list',
         body: `<p>The remote tables are in the object list now, with their own type icon.</p>`,
-        action: { do: 'Open the tariffs remote table.', event: '^open:RHN_IN\\..*TARIFF' },
+        action: { do: 'Open the tariffs remote table.', event: '^open:RHN_ENTRY\\..*TARIFF' },
       },
       {
         title: 'Preview it live',
         target: '#run',
         body: `<p>The properties say <b>Data Access: Remote</b>. This preview goes to S/4HANA.</p>`,
-        action: { do: 'Press <b>Data Preview</b>.', event: '^preview:RHN_IN\\..*TARIFF' },
+        action: { do: 'Press <b>Data Preview</b>.', event: '^preview:RHN_ENTRY\\..*TARIFF' },
       },
       nav('monitor', 'Data Integration Monitor', `<p>The monitor shows what this space sent to the sources.</p>`),
       {
@@ -1506,7 +1587,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'New Replication Flow',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '[data-new="replication"]',
         body: `<p>Flows are built in the Data Builder of the target space.</p>`,
         action: { do: 'Click <b>New Replication Flow</b>.', appear: '#flow-conn' },
@@ -1548,20 +1629,20 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Names',
         target: '.flow-props',
-        body: `<p>Business name for people, technical name <code>RHN_IN_RF_S4U</code> from the ticket.</p>`,
+        body: `<p>Business name for people, technical name <code>RHN_EN_RF_S4U</code> from the ticket.</p>`,
         action: { do: 'Enter both names.', check: () => val('#prop-business') !== '' && val('#prop-technical') !== '' },
       },
       {
         title: 'Deploy',
         target: '#ed-deploy',
         body: `<p>Deploy saves and checks the flow: connection valid, targets are local tables, load types possible.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_IN.' },
+        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_ENTRY.' },
       },
       {
         title: 'Run',
         target: '#flow-run-ed',
         body: `<p>Run starts the deployed flow. If someone stops it, read why.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^(run|truncate-blocked):RHN_IN\\.' },
+        action: { do: 'Press <b>Run</b>.', event: '^(run|truncate-blocked):RHN_ENTRY\\.' },
       },
       nav('monitor', 'Data Integration Monitor', `<p>Every run is listed here with its messages.</p>`),
       {
@@ -1572,9 +1653,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
       {
         title: 'Open your flow',
-        target: '[data-flow="RHN_IN_RF_S4U"] || #flow-list',
+        target: '[data-flow="RHN_EN_RF_S4U"] || #flow-list',
         body: `<p>A click on the name opens its runs and messages.</p>`,
-        action: { do: 'Click <code>RHN_IN_RF_S4U</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_S4U' },
+        action: { do: 'Click <code>RHN_EN_RF_S4U</code>.', event: 'monitor-open:RHN_ENTRY.RHN_EN_RF_S4U' },
       },
       {
         title: 'Read the run',
@@ -1586,7 +1667,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c03-m05': [
     [
-      nav('connections', 'Connections', `<p>A third connection in <code>RHN_IN</code>.</p>`),
+      nav('connections', 'Connections', `<p>A third connection in <code>RHN_ENTRY</code>.</p>`),
       {
         title: 'Create',
         target: '#conn-create',
@@ -1597,20 +1678,20 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Bucket and names',
         target: '.dialog',
         body: `<p>The bucket name and both names are in Calin's ticket.</p>`,
-        action: { do: 'Fill in the form and press <b>Create</b>.', event: 'create-connection:RHN_IN.' },
+        action: { do: 'Fill in the form and press <b>Create</b>.', event: 'create-connection:RHN_ENTRY.' },
       },
       {
         title: 'Validate',
         target: '#conn-list',
         body: `<p>Look at the features this time: what is missing?</p>`,
-        action: { do: 'Select <code>RHN_CRM</code> and press <b>Validate</b>.', event: 'validate:RHN_IN.RHN_CRM' },
+        action: { do: 'Select <code>RHN_CRM</code> and press <b>Validate</b>.', event: 'validate:RHN_ENTRY.RHN_CRM' },
       },
       closeDialog('No remote tables', `<p>Cloud storage offers flows only. Remember this for the question.</p>`),
     ],
     [
       {
         title: 'New Replication Flow',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '[data-new="replication"]',
         body: `<p>Same editor as before.</p>`,
         action: { do: 'Click <b>New Replication Flow</b>.', appear: '#flow-conn' },
@@ -1637,7 +1718,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Add the column',
         target: '.dialog',
-        body: `<p>Column name and value: the same column every inbound table has, with the code for this source. Calin's ticket names both.</p>`,
+        body: `<p>Column name and value: the same column every entry table has, with the code for this source. Calin's ticket names both.</p>`,
         action: { do: 'Add the column and its value with <b>Add column</b>.', check: () => !!$('#proj-list [data-x]') },
       },
       {
@@ -1656,8 +1737,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Names, deploy, run',
         target: '.flow-props',
-        body: `<p>Technical name <code>RHN_IN_RF_CRM</code>. Then <b>Deploy</b> and <b>Run</b> in the toolbar.</p>`,
-        action: { do: 'Enter the names, deploy and run the flow.', event: '^run:RHN_IN\\.' },
+        body: `<p>Technical name <code>RHN_EN_RF_CRM</code>. Then <b>Deploy</b> and <b>Run</b> in the toolbar.</p>`,
+        action: { do: 'Enter the names, deploy and run the flow.', event: '^run:RHN_ENTRY\\.' },
       },
       nav('monitor', 'Data Integration Monitor', `<p>Schedules for flows are set in the monitor.</p>`),
       {
@@ -1667,25 +1748,25 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         action: { do: 'Open <b>Flows</b>.', check: () => tabOn('[data-mon-tab="flows"]') || !!$('#flow-list') },
       },
       {
-        title: 'Open RHN_IN_RF_CRM',
-        target: '[data-flow="RHN_IN_RF_CRM"] || #flow-list',
+        title: 'Open RHN_EN_RF_CRM',
+        target: '[data-flow="RHN_EN_RF_CRM"] || #flow-list',
         body: `<p>A click on the name opens its runs and messages.</p>`,
-        action: { do: 'Click <code>RHN_IN_RF_CRM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_CRM' },
+        action: { do: 'Click <code>RHN_EN_RF_CRM</code>.', event: 'monitor-open:RHN_ENTRY.RHN_EN_RF_CRM' },
       },
       {
         title: 'Schedule',
         target: '#flow-schedule',
         body: `<p>The file arrives every night, so the flow should run as often.</p>`,
-        action: { do: 'Press <b>Schedule</b> and save the frequency.', event: 'schedule:RHN_IN.RHN_IN_RF_CRM' },
+        action: { do: 'Press <b>Schedule</b> and save the frequency.', event: 'schedule:RHN_ENTRY.RHN_EN_RF_CRM' },
       },
     ],
     [
       {
         title: 'Look at the table',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#object-list',
         body: `<p>The run added the column to the table.</p>`,
-        action: { do: 'Open <b>CRM_CUSTOMERS</b> and look at its last column.', check: () => editorOf('RHN_IN.CRM_CUSTOMERS') },
+        action: { do: 'Open <b>CRM_CUSTOMERS</b> and look at its last column.', check: () => editorOf('RHN_ENTRY.CRM_CUSTOMERS') },
       },
       ...questions('What did Validate say about RHN_CRM?'),
     ],
@@ -1700,10 +1781,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         action: { do: 'Open <b>Flows</b>.', check: () => tabOn('[data-mon-tab="flows"]') || !!$('#flow-list') },
       },
       {
-        title: 'Open RHN_IN_RF_MDM',
-        target: '[data-flow="RHN_IN_RF_MDM"] || #flow-list',
+        title: 'Open RHN_EN_RF_MDM',
+        target: '[data-flow="RHN_EN_RF_MDM"] || #flow-list',
         body: `<p>A click on the name opens its runs and messages.</p>`,
-        action: { do: 'Click <code>RHN_IN_RF_MDM</code>.', event: 'monitor-open:RHN_IN.RHN_IN_RF_MDM' },
+        action: { do: 'Click <code>RHN_EN_RF_MDM</code>.', event: 'monitor-open:RHN_ENTRY.RHN_EN_RF_MDM' },
       },
       {
         title: 'Read the messages',
@@ -1712,18 +1793,18 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     [
-      nav('spaces', 'Space Management', `<p>The tile of RHN_IN is red and says Locked.</p>`),
+      nav('spaces', 'Space Management', `<p>The tile of RHN_ENTRY is red and says Locked.</p>`),
       {
         title: 'More storage',
-        target: '[data-edit="RHN_IN"]',
+        target: '[data-edit="RHN_ENTRY"]',
         body: `<p>Jonas wants 6 GB headroom above what the space uses now. Used plus 6 is the new disk size.</p>`,
-        action: { do: 'Press <b>Edit</b> on RHN_IN, set the disk and save.', event: 'edit-space:RHN_IN' },
+        action: { do: 'Press <b>Edit</b> on RHN_ENTRY, set the disk and save.', event: 'edit-space:RHN_ENTRY' },
       },
       {
         title: 'Unlock',
-        target: '[data-space-tile="RHN_IN"]',
+        target: '[data-space-tile="RHN_ENTRY"]',
         body: `<p>More storage alone does not unlock the space.</p>`,
-        action: { do: 'Press <b>Unlock</b>.', event: 'unlock:RHN_IN' },
+        action: { do: 'Press <b>Unlock</b>.', event: 'unlock:RHN_ENTRY' },
       },
     ],
     [
@@ -1732,7 +1813,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Run again',
         target: '[data-mon-tab="flows"]',
         body: `<p>Open the flow again and press <b>Run</b> in its detail panel.</p>`,
-        action: { do: 'Run <code>RHN_IN_RF_MDM</code> again.', event: 'run:RHN_IN.RHN_IN_RF_MDM' },
+        action: { do: 'Run <code>RHN_EN_RF_MDM</code> again.', event: 'run:RHN_ENTRY.RHN_EN_RF_MDM' },
       },
       {
         title: 'The new run',
@@ -1744,25 +1825,114 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
 
   // ================================================================ chapter 5
-  'c05-m01': [
+  'c03-m07': [
     [
-      nav('builder', 'Data Builder', `<p>Harmonization views live in RHN_HARM.</p>`),
-      toSpace('RHN_HARM', `<p>Calin's modeling space.</p>`),
+      nav('semantic', 'Semantic Onboarding', `<p>The app for objects with semantics: SAP systems on top, the Content Network below.</p>`),
       {
-        title: 'Shared with RHN_HARM',
-        target: '#shared-list',
-        body: `<p>These inbound tables may be read here. <code>BILLING_CONTRACTS</code> was shared in chapter 1, so you can build on it.</p>`,
+        title: 'The S/4HANA Cloud card',
+        target: '[data-system="0"]',
+        body: `<p>Each card counts the connections of its system type. Yours is <code>RHN_S4U</code> from mission 1.</p>`,
+        action: { do: 'Click the <b>SAP S/4HANA Cloud</b> card.', appear: '#ie-connections' },
+      },
+      {
+        title: 'Connection and target space',
+        target: '#ie-connections',
+        body: `<p>The connection decides where the entities land: its own space. A connection must support <b>Model Import</b>.</p>`,
+        action: { do: 'Select <b>RHN_S4U</b>.', event: 'ie-connection:RHN_ENTRY.RHN_S4U' },
+      },
+      {
+        title: 'Data Access',
+        target: '.ie-access',
+        body: `<p>The proposal is <b>Replication Flow to Local Tables</b>. Keep it, as the ticket says.</p>`,
+      },
+      {
+        title: 'Next Step',
+        target: '#ie-next',
+        body: `<p>On to the entities of the system.</p>`,
+        action: { do: 'Press <b>Next Step</b>.', appear: '#ie-results' },
       },
     ],
     [
-      newView(`<p>A new SQL view in RHN_HARM. On the left, the sources: own objects and <b>Shared Objects</b>.</p>`),
+      {
+        title: 'Search by label',
+        target: '#ie-search',
+        body: `<p>CDS views have technical IDs like <code>I_UTILSDIVISION</code>. People search by their <b>label</b>. The filters on the left narrow the list
+          by application component, modeling pattern and release contract.</p>`,
+        action: { do: 'Search for <b>Division</b> and press Enter.', event: '^ie-search:' },
+      },
+      {
+        title: 'Select the entity',
+        target: '#ie-results',
+        body: `<p>Pick the released dimension, not the custom mapping view and not the text entity: texts come along by themselves.</p>`,
+        action: { do: 'Tick <b>I_UTILSDIVISION</b>.', event: 'ie-select:I_UTILSDIVISION:on' },
+      },
+      {
+        title: 'Next Step',
+        target: '#ie-next',
+        body: `<p>The review shows what will be created.</p>`,
+        action: { do: 'Press <b>Next Step</b>.', appear: '#ie-review' },
+      },
+      {
+        title: 'Review Entities',
+        target: '#ie-review',
+        body: `<p>Two tabs: <b>Data Builder</b> lists the tables, the dimension view and the replication flow; <b>Business Builder</b> the business entity
+          a real tenant would add. <b>Supporting</b> marks the text entity the association brought in.</p>`,
+      },
+      {
+        title: 'Import and Deploy',
+        target: '#ie-import',
+        body: `<p>Creates and deploys everything in RHN_ENTRY. Afterwards the import log opens.</p>`,
+        action: { do: 'Press <b>Import and Deploy</b>.', event: '^ie-import:RHN_ENTRY:' },
+      },
+    ],
+    [
+      {
+        title: 'The replication flow',
+        view: 'builder:landing:RHN_ENTRY',
+        target: '#object-list',
+        body: `<p>The import created <code>RF_I_UTILSDIVISION</code>, deployed but not run: the local tables are still empty.</p>`,
+        action: { do: 'Open <b>RF_I_UTILSDIVISION</b>.', check: () => editorOf('RHN_ENTRY.RF_I_UTILSDIVISION') },
+      },
+      {
+        title: 'Run',
+        target: '#flow-run-ed',
+        body: `<p>One run loads both tables. In real life you would also schedule it.</p>`,
+        action: { do: 'Press <b>Run</b>.', event: '^run:RHN_ENTRY\\.RF_I_UTILSDIVISION:Completed' },
+      },
+      {
+        title: 'Open Import Logs',
+        view: 'semantic:logs:RHN_ENTRY',
+        target: '#entity-log-list',
+        body: `<p>Every Import Entities run of the space, with its result. The messages say what was created and what is still to do.</p>`,
+        action: { do: 'Open the import to read its messages.', event: '^entity-log-open:RHN_ENTRY' },
+      },
+    ],
+    [
+      toSpace('RHN_ENTRY', `<p>The imported objects live here, so they are shared from here.</p>`),
+      shareStep('I_UTILSDIVISION_DIM', 'RHN_DSL', 'RHN_ENTRY'),
+      shareStep('I_UTILSDIVISIONTEXT', 'RHN_DSL', 'RHN_ENTRY'),
+    ],
+    questions('Preview the text entity for the German names. And think about what a second import does to an Already Imported object.'),
+  ],
+  'c05-m01': [
+    [
+      nav('builder', 'Data Builder', `<p>Base views live in RHN_DSL.</p>`),
+      toSpace('RHN_DSL', `<p>Calin's modeling space.</p>`),
+      {
+        title: 'Shared with RHN_DSL',
+        target: '#shared-list',
+        body: `<p>These entry tables may be read here. <code>BILLING_CONTRACTS</code> was shared in chapter 1, so you can build on it.</p>`,
+      },
+    ],
+    [
+      newView(`<p>A new SQL view in RHN_DSL. On the left, the sources: own objects and <b>Shared Objects</b>.</p>`),
       {
         title: 'An example to start from',
         target: '#editor',
-        example: `SELECT GRID_AREA,\n  CASE REGION WHEN 'NORTH' THEN 'Nord' WHEN 'SOUTH' THEN 'Süd' ELSE REGION END AS REGION_DE\nFROM RHN_IN.GRID_AREAS`,
+        example: `SELECT GRID_AREA,\n  CASE REGION WHEN 'NORTH' THEN 'Nord' WHEN 'SOUTH' THEN 'Süd' ELSE REGION END AS REGION_DE\nFROM RHN_ENTRY.GRID_AREAS`,
         body: `<p>Put the example into the editor and preview it: CASE with ELSE, on the grid areas. Then replace it with your contracts view:
           every column of the ticket, with a CASE for the grid area and one for the tariff.</p>`,
-        action: { do: 'Write your SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        action: { do: 'Write your SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
       {
         title: 'Check before you save',
@@ -1770,21 +1940,21 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         body: `<p>1,178 rows? Only S/4 codes in GRID_AREA and TARIFF? Scroll through or add a quick <code>GROUP BY</code> in a second scratch view.</p>`,
       },
     ],
-    nameSaveDeploy('RHN_HA_V_CONTRACTS', 'Contracts (harmonized)'),
+    nameSaveDeploy('RHN_DS_V_CONTRACTS', 'Contracts (clean)'),
     questions('Think about the next load from the legacy system, and about how many reports need the codes.'),
   ],
   'c05-m02': [
     [
-      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
-      shareStep('LEGACY_CUSTOMER_MAP', 'RHN_HARM'),
+      toSpace('RHN_ENTRY', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('LEGACY_CUSTOMER_MAP', 'RHN_DSL'),
     ],
     [
-      toSpace('RHN_HARM', `<p>Back to harmonization.</p>`),
+      toSpace('RHN_DSL', `<p>Back to the data &amp; semantic space.</p>`),
       {
         title: 'Open the view',
         target: '#object-list',
         body: `<p>Your view from the last mission, status <b>Deployed</b>.</p>`,
-        action: { do: 'Open <b>RHN_HA_V_CONTRACTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_V_CONTRACTS') },
+        action: { do: 'Open <b>RHN_DS_V_CONTRACTS</b>.', check: () => editorOf('RHN_DSL.RHN_DS_V_CONTRACTS') },
       },
       {
         title: 'Impact and Lineage',
@@ -1803,7 +1973,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         target: '#editor',
         body: `<p>Add a <code>LEFT JOIN</code> to the key mapping on the old customer number. <code>CUSTOMER_ID</code> becomes the CRM ID with a fallback,
           <code>LEGACY_CUSTOMER_ID</code> the old number. Keep the grid area and tariff mapping.</p>`,
-        action: { do: 'Change the SQL and press <b>Data Preview</b>.', event: 'preview:RHN_HARM.RHN_HA_V_CONTRACTS' },
+        action: { do: 'Change the SQL and press <b>Data Preview</b>.', event: 'preview:RHN_DSL.RHN_DS_V_CONTRACTS' },
       },
     ],
     [
@@ -1811,7 +1981,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Save',
         target: '#ed-save',
         body: `<p>Save stores your change as design.</p>`,
-        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_HARM.RHN_HA_V_CONTRACTS' },
+        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_DSL.RHN_DS_V_CONTRACTS' },
       },
       {
         title: 'Changes to Deploy',
@@ -1822,68 +1992,63 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Deploy',
         target: '#ed-deploy',
         body: `<p>Now make it active.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_HARM.RHN_HA_V_CONTRACTS' },
+        action: { do: 'Press <b>Deploy</b>.', event: 'deploy:RHN_DSL.RHN_DS_V_CONTRACTS' },
       },
       ...questions('Count contracts, not customers.'),
     ],
   ],
   'c05-m03': [
     [
-      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
-      shareStep('CRM_CUSTOMERS', 'RHN_HARM'),
+      toSpace('RHN_ENTRY', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('CRM_CUSTOMERS', 'RHN_DSL'),
     ],
     [
-      toSpace('RHN_HARM', `<p>Now explore the CRM data from harmonization.</p>`),
+      toSpace('RHN_DSL', `<p>Now explore the CRM data from the data & semantic layer.</p>`),
       newView(`<p>A scratch view to explore first. You turn it into the real view in the next step.</p>`),
       {
         title: 'Find the duplicates',
         target: '#editor',
         body: `<p>Group by the e-mail in lower case and keep the groups with <code>HAVING COUNT(*) > 1</code>. Then look inside some groups:
           same street? same person?</p>`,
-        action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
     ],
     [
       {
         title: 'Number per person',
         target: '#editor',
-        example: `SELECT GRID_AREA, REGION,\n  ROW_NUMBER() OVER (PARTITION BY REGION ORDER BY GRID_AREA) AS RN\nFROM RHN_IN.GRID_AREAS`,
+        example: `SELECT GRID_AREA, REGION,\n  ROW_NUMBER() OVER (PARTITION BY REGION ORDER BY GRID_AREA) AS RN\nFROM RHN_ENTRY.GRID_AREAS`,
         body: `<p>The example numbers the grid areas per region. For the customers: partition by what makes a person, order by
           <code>CREATED_AT</code>, keep number 1 in an outer query.</p>`,
-        action: { do: 'Write the deduplicating SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        action: { do: 'Write the deduplicating SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_HA_V_CUSTOMERS', 'Customers (harmonized)'),
+      ...nameSaveDeploy('RHN_DS_V_CUSTOMERS', 'Customers (clean)'),
     ],
     questions('Compare row counts, and think about the next CRM export.'),
   ],
   'c05-m04': [
     [
-      toSpace('RHN_IN', `<p>Sharing is set where the object lives.</p>`),
-      shareStep('METER_READINGS', 'RHN_HARM'),
+      toSpace('RHN_ENTRY', `<p>Sharing is set where the object lives.</p>`),
+      shareStep('METER_READINGS', 'RHN_DSL'),
     ],
     [
-      toSpace('RHN_HARM', `<p>Back to harmonization.</p>`),
+      toSpace('RHN_DSL', `<p>Back to the data &amp; semantic space.</p>`),
       newView(`<p>A new view for the readings.</p>`),
       {
         title: 'Convert and deduplicate',
         target: '#editor',
         body: `<p>One <code>CASE</code> for the unit, named <code>CONSUMPTION_KWH</code>, and <code>DISTINCT</code> for the exact copies.
           The status bar of the preview shows the row count.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
     ],
-    nameSaveDeploy('RHN_HA_V_METER_READINGS', 'Meter Readings (harmonized)'),
+    nameSaveDeploy('RHN_DS_V_METER_READINGS', 'Meter Readings (clean)'),
     questions('A second scratch view can sum your deployed view for 2025.'),
   ],
   'c05-m05': [
     [
-      toSpace('RHN_HARM', `<p>The views belong to RHN_HARM, so you share them from here.</p>`),
-      shareStep('RHN_HA_V_CONTRACTS', 'RHN_REP', 'RHN_HARM'),
-      shareStep('RHN_HA_V_METER_READINGS', 'RHN_REP', 'RHN_HARM'),
-    ],
-    [
-      toSpace('RHN_REP', `<p>The reporting space.</p>`),
-      newView(`<p>A scratch view in RHN_REP. The sources list shows only the shared harmonized views.</p>`),
+      toSpace('RHN_DSL', `<p>The question is answered where the base views are. Nothing goes to RHN_PRES today.</p>`),
+      newView(`<p>A scratch view in RHN_DSL. Your base views are in the Sources list under <b>Repository</b>.</p>`),
       {
         title: 'Consumption per grid area',
         target: '#editor',
@@ -1897,114 +2062,109 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 6
   'c06-m01': [
     [
-      toSpace('RHN_HARM', `<p>First the 1:1 view in harmonization.</p>`),
-      newView(`<p>A view on the inbound table, without any logic.</p>`),
+      toSpace('RHN_DSL', `<p>Everything of this chapter happens in the data &amp; semantic space. First the 1:1 base view.</p>`),
+      newView(`<p>A base view on the entry table, without any logic.</p>`),
       {
         title: 'All columns, no logic',
         target: '#editor',
-        body: `<p>List the columns of <code>RHN_IN.GRID_AREAS</code>; the Sources list inserts names for you.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        body: `<p>List the columns of <code>RHN_ENTRY.GRID_AREAS</code>; the Sources list inserts names for you.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_HA_V_GRID_AREAS', 'Grid Areas (harmonized)'),
+      ...nameSaveDeploy('RHN_DS_V_GRID_AREAS', 'Grid Areas (clean)'),
+    ],
+    [
       {
         title: 'Back to the start page',
         target: '#ed-back',
-        body: `<p>Sharing is done in the object list.</p>`,
-        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+        body: `<p>The dimension goes into the same space, on top of the base view.</p>`,
+        action: { do: 'Go back to the start page of RHN_DSL.', check: () => builderSpace('RHN_DSL') },
       },
-      shareStep('RHN_HA_V_GRID_AREAS', 'RHN_REP', 'RHN_HARM'),
-    ],
-    [
-      toSpace('RHN_REP', `<p>The reporting space.</p>`),
       newView(`<p>The dimension view.</p>`),
       {
         title: 'Three columns',
         target: '#editor',
-        body: `<p>Read the shared harmonized view, with exactly the columns of the ticket.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+        body: `<p>Read the base view <code>RHN_DS_V_GRID_AREAS</code>, with exactly the columns of the ticket.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_REP_D_GRID_AREA', 'Grid Area', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_D_GRID_AREA', 'Grid Area', 'RHN_DSL', false),
     ],
     [
       usageStep('Dimension', `<p>Now that the view is saved, its semantic usage can be set.</p>`),
       keyStep('GRID_AREA'),
-      deployStep('RHN_REP.RHN_REP_D_GRID_AREA', `<p>Deploy saves the roles and makes them active.</p>`),
+      deployStep('RHN_DSL.RHN_DS_D_GRID_AREA', `<p>Deploy saves the roles and makes them active.</p>`),
     ],
-    questions('Does the data describe something or hold numbers to add up? And remember the layer rule from chapter 1.'),
+    questions('Does the data describe something or hold numbers to add up? And what do semantic objects build on?'),
   ],
   'c06-m02': [
     [
-      toSpace('RHN_IN', `<p>TARIFFS is not shared with harmonization yet.</p>`),
-      shareStep('TARIFFS', 'RHN_HARM'),
-      toSpace('RHN_HARM', `<p>The 1:1 view for the tariffs, like the grid areas.</p>`),
+      toSpace('RHN_ENTRY', `<p>TARIFFS is not shared with the data &amp; semantic layer yet.</p>`),
+      shareStep('TARIFFS', 'RHN_DSL'),
+      toSpace('RHN_DSL', `<p>The 1:1 base view for the tariffs, like the grid areas.</p>`),
       newView(`<p>All columns of TARIFFS, no logic.</p>`),
       {
         title: 'Write and preview',
         target: '#editor',
-        body: `<p>Same pattern as <code>RHN_HA_V_GRID_AREAS</code>.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        body: `<p>Same pattern as <code>RHN_DS_V_GRID_AREAS</code>.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_HA_V_TARIFFS', 'Tariffs (harmonized)'),
+      ...nameSaveDeploy('RHN_DS_V_TARIFFS', 'Tariffs (clean)'),
+    ],
+    [
       {
         title: 'Back to the start page',
         target: '#ed-back',
-        body: `<p>Now share both views with reporting.</p>`,
-        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+        body: `<p>Now the tariff dimension, in the same space.</p>`,
+        action: { do: 'Go back to the start page of RHN_DSL.', check: () => builderSpace('RHN_DSL') },
       },
-      shareStep('RHN_HA_V_TARIFFS', 'RHN_REP', 'RHN_HARM'),
-      shareStep('RHN_HA_V_CUSTOMERS', 'RHN_REP', 'RHN_HARM'),
-    ],
-    [
-      toSpace('RHN_REP', `<p>The tariff dimension.</p>`),
       newView(`<p>Columns as in the ticket.</p>`),
       {
         title: 'Write and preview',
         target: '#editor',
-        body: `<p>Read <code>RHN_HA_V_TARIFFS</code>.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+        body: `<p>Read <code>RHN_DS_V_TARIFFS</code>.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_REP_D_TARIFF', 'Tariff', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_D_TARIFF', 'Tariff', 'RHN_DSL', false),
       usageStep('Dimension', `<p>A dimension again.</p>`),
       keyStep('TARIFF'),
-      deployStep('RHN_REP.RHN_REP_D_TARIFF', `<p>Deploy it.</p>`),
+      deployStep('RHN_DSL.RHN_DS_D_TARIFF', `<p>Deploy it.</p>`),
     ],
     [
       {
         title: 'Back to the start page',
         target: '#ed-back',
         body: `<p>One more dimension.</p>`,
-        action: { do: 'Go back to the start page of RHN_REP.', check: () => builderSpace('RHN_REP') },
+        action: { do: 'Go back to the start page of RHN_DSL.', check: () => builderSpace('RHN_DSL') },
       },
       newView(`<p>The customer dimension.</p>`),
       {
         title: 'Which columns?',
         target: '#editor',
-        body: `<p>Read <code>RHN_HA_V_CUSTOMERS</code>. Decide with the ticket which columns the board needs, and which stay in harmonization.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+        body: `<p>Read <code>RHN_DS_V_CUSTOMERS</code>. Decide with the ticket which columns the board needs, and which stay in the base view.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_REP_D_CUSTOMER', 'Customer', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_D_CUSTOMER', 'Customer', 'RHN_DSL', false),
       usageStep('Dimension', `<p>And the third dimension.</p>`),
       keyStep('CUSTOMER_ID'),
-      deployStep('RHN_REP.RHN_REP_D_CUSTOMER', `<p>Deploy it.</p>`),
+      deployStep('RHN_DSL.RHN_DS_D_CUSTOMER', `<p>Deploy it.</p>`),
     ],
-    questions('Who reads the reporting layer, and what did audit ask for?'),
+    questions('Who will read what a dimension offers, and what did audit ask for?'),
   ],
   'c06-m03': [
     [
-      toSpace('RHN_REP', `<p>Facts live in reporting too.</p>`),
+      toSpace('RHN_DSL', `<p>Facts live in the data &amp; semantic layer too, next to the dimensions.</p>`),
       newView(`<p>The consumption fact.</p>`),
       {
         title: 'Readings plus keys',
         target: '#sources',
-        body: `<p>Both harmonized views are under <b>Shared Objects</b>. Join them on <code>CONTRACT_ID</code> and take the keys from the contracts.</p>`,
+        body: `<p>Both base views are in the Sources list under <b>Repository</b>. Join them on <code>CONTRACT_ID</code> and take the keys from the contracts.</p>`,
       },
       {
         title: 'Write and preview',
         target: '#editor',
         body: `<p>Exactly the six columns of the ticket: no names, no regions.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_REP_F_CONSUMPTION', 'Consumption', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_F_CONSUMPTION', 'Consumption', 'RHN_DSL', false),
     ],
     [
       usageStep('Fact', `<p>A fact: it holds the measure.</p>`),
@@ -2014,7 +2174,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         body: `<p>For each column ask: does adding it up mean something? Only those are measures; everything else stays an attribute.</p>`,
         action: { do: 'Give each column its role.', check: () => [...document.querySelectorAll<HTMLSelectElement>('#column-roles select')].some((x) => x.value === 'Measure') },
       },
-      deployStep('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Deploy saves the roles and makes them active.</p>`),
+      deployStep('RHN_DSL.RHN_DS_F_CONSUMPTION', `<p>Deploy saves the roles and makes them active.</p>`),
     ],
     questions('Think about two facts that both need the region, and a grid area that is renamed.'),
   ],
@@ -2022,7 +2182,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'A gap check',
-        view: 'builder:new-view:RHN_REP',
+        view: 'builder:new-view:RHN_DSL',
         target: '#editor',
         body: `<p>A scratch view: <code>LEFT JOIN</code> the fact to a dimension on its key and count the rows <code>WHERE d.key IS NULL</code>.
           Zero means every key has its dimension row. Try it for all three.</p>`,
@@ -2032,57 +2192,55 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'Open the fact',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
         body: `<p>The associations belong to the fact.</p>`,
-        action: { do: 'Open <b>RHN_REP_F_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_F_CONSUMPTION') },
+        action: { do: 'Open <b>RHN_DS_F_CONSUMPTION</b>.', check: () => editorOf('RHN_DSL.RHN_DS_F_CONSUMPTION') },
       },
-      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_GRID_AREA'),
-      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_TARIFF'),
-      ...assocStep('RHN_REP.RHN_REP_F_CONSUMPTION', 'RHN_REP.RHN_REP_D_CUSTOMER'),
+      ...assocStep('RHN_DSL.RHN_DS_F_CONSUMPTION', 'RHN_DSL.RHN_DS_D_GRID_AREA'),
+      ...assocStep('RHN_DSL.RHN_DS_F_CONSUMPTION', 'RHN_DSL.RHN_DS_D_TARIFF'),
+      ...assocStep('RHN_DSL.RHN_DS_F_CONSUMPTION', 'RHN_DSL.RHN_DS_D_CUSTOMER'),
     ],
     [
       {
         title: 'Save',
         target: '#ed-save',
         body: `<p>The associations are part of the design: status <b>Changes to Deploy</b> after saving.</p>`,
-        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_REP.RHN_REP_F_CONSUMPTION' },
+        action: { do: 'Press <b>Save</b>.', event: 'save:RHN_DSL.RHN_DS_F_CONSUMPTION' },
       },
-      deployStep('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Now they are active.</p>`),
+      deployStep('RHN_DSL.RHN_DS_F_CONSUMPTION', `<p>Now they are active.</p>`),
       ...questions('When does an association turn into a join?'),
     ],
   ],
   'c06-m05': [
     [
-      toSpace('RHN_IN', `<p>The invoices are not shared with harmonization yet.</p>`),
-      shareStep('BILLING_INVOICES', 'RHN_HARM'),
-      toSpace('RHN_HARM', `<p>The 1:1 view.</p>`),
+      toSpace('RHN_ENTRY', `<p>The invoices are not shared with the data &amp; semantic layer yet.</p>`),
+      shareStep('BILLING_INVOICES', 'RHN_DSL'),
+      toSpace('RHN_DSL', `<p>The 1:1 base view.</p>`),
       newView(`<p>All columns of BILLING_INVOICES, no logic.</p>`),
       {
         title: 'Write and preview',
         target: '#editor',
-        body: `<p>Same pattern as the other 1:1 views.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_HARM\\.)' },
+        body: `<p>Same pattern as the other 1:1 base views.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_HA_V_INVOICES', 'Invoices (harmonized)'),
+      ...nameSaveDeploy('RHN_DS_V_INVOICES', 'Invoices (clean)'),
+    ],
+    [
       {
         title: 'Back to the start page',
         target: '#ed-back',
-        body: `<p>Share it with reporting.</p>`,
-        action: { do: 'Go back to the start page of RHN_HARM.', check: () => builderSpace('RHN_HARM') },
+        body: `<p>Now the invoice fact, in the same space.</p>`,
+        action: { do: 'Go back to the start page of RHN_DSL.', check: () => builderSpace('RHN_DSL') },
       },
-      shareStep('RHN_HA_V_INVOICES', 'RHN_REP', 'RHN_HARM'),
-    ],
-    [
-      toSpace('RHN_REP', `<p>The invoice fact.</p>`),
-      newView(`<p>Invoices joined with the harmonized contracts for the keys.</p>`),
+      newView(`<p>Invoices joined with the contracts base view for the keys.</p>`),
       {
         title: 'Write and preview',
         target: '#editor',
         body: `<p>The ten columns of the ticket. Gross is not one of them.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_REP\\.)' },
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_DSL\\.)' },
       },
-      ...nameSaveDeploy('RHN_REP_F_INVOICES', 'Invoices', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_F_INVOICES', 'Invoices', 'RHN_DSL', false),
       usageStep('Fact', `<p>A fact again.</p>`),
       {
         title: 'Measures',
@@ -2092,17 +2250,17 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       },
     ],
     [
-      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_GRID_AREA'),
-      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_TARIFF'),
-      ...assocStep('RHN_REP.RHN_REP_F_INVOICES', 'RHN_REP.RHN_REP_D_CUSTOMER'),
-      deployStep('RHN_REP.RHN_REP_F_INVOICES', `<p>Deploy saves the roles and associations and makes them active.</p>`),
+      ...assocStep('RHN_DSL.RHN_DS_F_INVOICES', 'RHN_DSL.RHN_DS_D_GRID_AREA'),
+      ...assocStep('RHN_DSL.RHN_DS_F_INVOICES', 'RHN_DSL.RHN_DS_D_TARIFF'),
+      ...assocStep('RHN_DSL.RHN_DS_F_INVOICES', 'RHN_DSL.RHN_DS_D_CUSTOMER'),
+      deployStep('RHN_DSL.RHN_DS_F_INVOICES', `<p>Deploy saves the roles and associations and makes them active.</p>`),
     ],
     [
       {
         title: 'Region from the dimension',
-        view: 'builder:new-view:RHN_REP',
+        view: 'builder:new-view:RHN_DSL',
         target: '#editor',
-        body: `<p>Join the fact with <code>RHN_REP_D_GRID_AREA</code>, filter the invoice year and group by <code>REGION</code>.</p>`,
+        body: `<p>Join the fact with <code>RHN_DS_D_GRID_AREA</code>, filter the invoice year and group by <code>REGION</code>.</p>`,
         action: { do: 'Write the query and press <b>Data Preview</b>.', event: '^preview:draft' },
       },
       ...questions('Region NORTH has two grid areas. Sum NET_AMOUNT.'),
@@ -2111,8 +2269,20 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 7
   'c07-m01': [
     [
-      toSpace('RHN_REP', `<p>Analytic models live in the reporting space, next to the facts they are built on.</p>`),
-      ...newModel('RHN_REP.RHN_REP_F_INVOICES', `<p>The tile in the <b>Model</b> group.</p>`),
+      toSpace('RHN_DSL', `<p>The fact and its dimensions belong to RHN_DSL, so they are shared from here.</p>`),
+      shareStep('RHN_DS_F_INVOICES', 'RHN_PRES', 'RHN_DSL'),
+      shareStep('RHN_DS_D_GRID_AREA', 'RHN_PRES', 'RHN_DSL'),
+      shareStep('RHN_DS_D_TARIFF', 'RHN_PRES', 'RHN_DSL'),
+      {
+        title: 'Not the customers',
+        target: '[data-share="RHN_DSL.RHN_DS_D_CUSTOMER"]',
+        body: `<p>The customer dimension stays unshared: no model in the presentation layer may offer customer names. What is not shared
+          cannot be reached from RHN_PRES at all.</p>`,
+      },
+    ],
+    [
+      toSpace('RHN_PRES', `<p>Analytic models live in the presentation space. Its start page now lists the shared fact and dimensions.</p>`),
+      ...newModel('RHN_DSL.RHN_DS_F_INVOICES', `<p>The tile in the <b>Model</b> group. The fact list shows shared facts too.</p>`),
     ],
     [
       {
@@ -2130,7 +2300,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         Whatever you add, every report user can see.</p>`),
       {
         title: 'Attributes of a dimension',
-        target: '[data-node="RHN_REP.RHN_REP_D_GRID_AREA"]',
+        target: '[data-node="RHN_DSL.RHN_DS_D_GRID_AREA"]',
         body: `<p>Click a dimension to choose which of its attributes are visible. Its key is not listed: it comes from the fact.</p>`,
       },
     ],
@@ -2141,8 +2311,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         target: '#properties',
         body: `<p>A business name for people, and the technical name from the ticket. <code>AM</code> marks analytic models.</p>`,
         action: {
-          do: 'Enter a business name and the technical name <code>RHN_REP_AM_INVOICES</code>.',
-          check: () => val('#prop-technical') === 'RHN_REP_AM_INVOICES' && val('#prop-business').length > 2,
+          do: 'Enter a business name and the technical name <code>RHN_PR_AM_INVOICES</code>.',
+          check: () => val('#prop-technical') === 'RHN_PR_AM_INVOICES' && val('#prop-business').length > 2,
         },
       },
       { title: 'Save', target: '#ed-save', body: `<p>Creates the model in the repository: <b>Not Deployed</b>.</p>`, action: { do: 'Press <b>Save</b>.', event: `save:${AM_INV}` } },
@@ -2155,7 +2325,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c07-m02': [
     [
-      openModel('RHN_REP_AM_INVOICES'),
+      openModel('RHN_PR_AM_INVOICES'),
       modelBg,
       ...addMeasure('Calculated Measure', 'Calculated', 'GROSS_AMOUNT', `<p>The formula uses <b>measure names</b> of the model. The buttons below the formula insert them.</p>`),
     ],
@@ -2167,7 +2337,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c07-m03': [
     [
-      openModel('RHN_REP_AM_INVOICES'),
+      openModel('RHN_PR_AM_INVOICES'),
       modelBg,
       ...addMeasure('Restricted Measure', 'Restricted', 'UNPAID_GROSS', `<p>Choose the measure to restrict, then the attribute and its values.
         The values are read from the data.</p>`),
@@ -2180,7 +2350,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c07-m04': [
     [
-      openModel('RHN_REP_AM_INVOICES'),
+      openModel('RHN_PR_AM_INVOICES'),
       modelBg,
       {
         title: 'Add Variable',
@@ -2212,8 +2382,12 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   ],
   'c07-m05': [
     [
-      toSpace('RHN_REP', `<p>A second model, on the other fact.</p>`),
-      ...newModel('RHN_REP.RHN_REP_F_CONSUMPTION', `<p>Same tile, different fact.</p>`),
+      toSpace('RHN_DSL', `<p>The consumption fact is not shared yet. Its dimensions are, since the invoice model.</p>`),
+      shareStep('RHN_DS_F_CONSUMPTION', 'RHN_PRES', 'RHN_DSL'),
+    ],
+    [
+      toSpace('RHN_PRES', `<p>A second model, on the other fact.</p>`),
+      ...newModel('RHN_DSL.RHN_DS_F_CONSUMPTION', `<p>Same tile, different fact.</p>`),
       addDims(['Grid Area', 'Tariff'], `<p>Which dimensions does Markus need, and which not?</p>`),
     ],
     [
@@ -2235,21 +2409,21 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         target: '#properties',
         body: `<p>Business name and the technical name from the ticket.</p>`,
         action: {
-          do: 'Enter a business name and the technical name <code>RHN_REP_AM_CONSUMPTION</code>.',
-          check: () => val('#prop-technical') === 'RHN_REP_AM_CONSUMPTION' && val('#prop-business').length > 2,
+          do: 'Enter a business name and the technical name <code>RHN_PR_AM_CONSUMPTION</code>.',
+          check: () => val('#prop-technical') === 'RHN_PR_AM_CONSUMPTION' && val('#prop-business').length > 2,
         },
       },
-      deployStep('RHN_REP.RHN_REP_AM_CONSUMPTION', `<p>Deploy saves and activates the model in one step.</p>`),
+      deployStep('RHN_PRES.RHN_PR_AM_CONSUMPTION', `<p>Deploy saves and activates the model in one step.</p>`),
     ],
     [
-      amPreview('RHN_REP.RHN_REP_AM_CONSUMPTION', 'Tariff › COMMODITY', `<p>Set the variable to 2025, REGION and COMMODITY in the rows.</p>`),
+      amPreview('RHN_PRES.RHN_PR_AM_CONSUMPTION', 'Tariff › COMMODITY', `<p>Set the variable to 2025, REGION and COMMODITY in the rows.</p>`),
       ...questions('How many fact sources does an analytic model have?'),
     ],
   ],
   // ================================================================ chapter 8
   'c08-m01': [
     [
-      toSpace('RHN_REP', `<p>The permissions table lives in the reporting space, next to the facts it protects.</p>`),
+      toSpace('RHN_DSL', `<p>The permissions table lives in the data &amp; semantic space, next to the facts it protects.</p>`),
       {
         title: 'New Table',
         target: '[data-new="table"]',
@@ -2277,15 +2451,15 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Names',
         target: '#properties',
         body: `<p>A business name for people and the technical name from the ticket.</p>`,
-        action: { do: 'Enter a business name and the technical name <code>RHN_REP_T_PERMISSIONS</code>.', check: () => val('#prop-technical') === 'RHN_REP_T_PERMISSIONS' && val('#prop-business').length > 2 },
+        action: { do: 'Enter a business name and the technical name <code>RHN_DS_T_PERMISSIONS</code>.', check: () => val('#prop-technical') === 'RHN_DS_T_PERMISSIONS' && val('#prop-business').length > 2 },
       },
-      deployStep('RHN_REP.RHN_REP_T_PERMISSIONS', `<p>Deploy creates the table and writes the rows.</p>`),
+      deployStep('RHN_DSL.RHN_DS_T_PERMISSIONS', `<p>Deploy creates the table and writes the rows.</p>`),
     ],
     questions('Which column of the fact could the control compare the values with?'),
   ],
   'c08-m02': [
     [
-      toSpace('RHN_REP', `<p>Controls live where the views they protect live.</p>`),
+      toSpace('RHN_DSL', `<p>Controls live where the views they protect live: next to the facts in RHN_DSL.</p>`),
       {
         title: 'New Data Access Control',
         target: '[data-new="dac"]',
@@ -2296,7 +2470,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Permissions entity',
         target: '#dac-entity',
         body: `<p>The table that says who may see what.</p>`,
-        action: { do: 'Choose <code>RHN_REP_T_PERMISSIONS</code>.', event: 'dac-entity:RHN_REP.RHN_REP_T_PERMISSIONS' },
+        action: { do: 'Choose <code>RHN_DS_T_PERMISSIONS</code>.', event: 'dac-entity:RHN_DSL.RHN_DS_T_PERMISSIONS' },
       },
       {
         title: 'Who and what',
@@ -2316,52 +2490,52 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Names',
         target: '#properties',
         body: `<p>Technical name from the ticket.</p>`,
-        action: { do: 'Enter a business name and the technical name <code>RHN_REP_DAC_GRID_AREA</code>.', check: () => val('#prop-technical') === 'RHN_REP_DAC_GRID_AREA' && val('#prop-business').length > 2 },
+        action: { do: 'Enter a business name and the technical name <code>RHN_DS_DAC_GRID_AREA</code>.', check: () => val('#prop-technical') === 'RHN_DS_DAC_GRID_AREA' && val('#prop-business').length > 2 },
       },
       deployStep(DAC_KEY, `<p>Only a deployed control can be assigned.</p>`),
     ],
     questions('How many entries does Nina have?'),
   ],
   'c08-m03': [
-    assignDac('RHN_REP.RHN_REP_F_INVOICES', 'The invoice fact holds the amounts. That is where the control belongs.'),
+    assignDac('RHN_DSL.RHN_DS_F_INVOICES', 'The invoice fact holds the amounts. That is where the control belongs.'),
     [
       {
         title: 'View as a user',
         target: '#preview-as-bar',
         body: `<p>Since the deployed fact has a control, the Data Preview can show it as one of the users.</p>`,
-        action: { do: 'Choose <b>MBRANDT</b> in <b>View as</b>.', event: '^preview-as:RHN_REP\\.RHN_REP_F_INVOICES:MBRANDT' },
+        action: { do: 'Choose <b>MBRANDT</b> in <b>View as</b>.', event: '^preview-as:RHN_DSL\\.RHN_DS_F_INVOICES:MBRANDT' },
       },
       {
         title: 'The model as Markus',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_PRES',
         target: '#object-list',
-        body: `<p>The analytic model reads the fact, so it is filtered too. Open it.</p>`,
-        action: { do: 'Open <b>RHN_REP_AM_INVOICES</b> (tab Analytic Models).', check: () => editorOf('RHN_REP.RHN_REP_AM_INVOICES') },
+        body: `<p>The analytic model in RHN_PRES reads the shared fact, and the control travels with the share. Open it.</p>`,
+        action: { do: 'Open <b>RHN_PR_AM_INVOICES</b> (tab Analytic Models).', check: () => editorOf('RHN_PRES.RHN_PR_AM_INVOICES') },
       },
       {
         title: 'View as in the model',
         target: '#am-pivot',
         body: `<p>REGION in the rows, set the date variable, choose a user under <b>View as</b>, then Data Preview.</p>`,
-        action: { do: 'Preview the model as <b>MBRANDT</b>.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_INVOICES:MBRANDT' },
+        action: { do: 'Preview the model as <b>MBRANDT</b>.', event: '^am-preview-as:RHN_PRES\\.RHN_PR_AM_INVOICES:MBRANDT' },
       },
     ],
     questions('Markus has two grid areas. Set the variable to 2025.'),
   ],
   'c08-m04': [
-    assignDac('RHN_REP.RHN_REP_F_CONSUMPTION', 'The consumption fact holds the kWh.'),
+    assignDac('RHN_DSL.RHN_DS_F_CONSUMPTION', 'The consumption fact holds the kWh.'),
     [
       {
         title: 'The model as Aylin',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_PRES',
         target: '#object-list',
         body: `<p>Check what Aylin sees now.</p>`,
-        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_AM_CONSUMPTION') },
+        action: { do: 'Open <b>RHN_PR_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_PRES.RHN_PR_AM_CONSUMPTION') },
       },
       {
         title: 'View as in the model',
         target: '#am-pivot',
         body: `<p>REGION in the rows, View as ADEMIR.</p>`,
-        action: { do: 'Preview the model as <b>ADEMIR</b>.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_CONSUMPTION:ADEMIR' },
+        action: { do: 'Preview the model as <b>ADEMIR</b>.', event: '^am-preview-as:RHN_PRES\\.RHN_PR_AM_CONSUMPTION:ADEMIR' },
       },
     ],
     questions('Which object holds the numbers?'),
@@ -2397,17 +2571,18 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   'c09-m02': [
     [
       {
-        title: 'Views in RHN_REP',
-        view: 'monitor:views:RHN_REP',
+        title: 'Views in RHN_DSL',
+        view: 'monitor:views:RHN_DSL',
         target: '#view-list',
-        body: `<p>The tab <b>Views</b> lists the deployed views of the space. Data Access shows whether a view is virtual or persisted.</p>`,
-        action: { do: 'Click <b>RHN_REP_F_CONSUMPTION</b>.', event: '^monitor-open:RHN_REP\\.RHN_REP_F_CONSUMPTION$' },
+        body: `<p>The model lives in RHN_PRES, but its fact and everything below it live here, in the data &amp; semantic space. The tab <b>Views</b>
+          lists the deployed views of the space. Data Access shows whether a view is virtual or persisted.</p>`,
+        action: { do: 'Click <b>RHN_DS_F_CONSUMPTION</b>.', event: '^monitor-open:RHN_DSL\\.RHN_DS_F_CONSUMPTION$' },
       },
       {
         title: 'View Analyzer',
         target: '#vw-analyzer',
         body: `<p>The analyzer walks down the stack below the fact.</p>`,
-        action: { do: 'Press <b>View Analyzer</b>.', event: '^analyzer:RHN_REP\\.RHN_REP_F_CONSUMPTION$' },
+        action: { do: 'Press <b>View Analyzer</b>.', event: '^analyzer:RHN_DSL\\.RHN_DS_F_CONSUMPTION$' },
       },
       {
         title: 'Read the stack',
@@ -2417,10 +2592,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     ],
     [
       {
-        title: 'Change the space',
-        target: '#mon-space',
-        body: `<p>The monitor shows one space. The expensive view lives in a different space than the fact.</p>`,
-        action: { do: 'Switch to the space of the expensive view.', event: '^space:monitor:' },
+        title: 'Same space',
+        target: '#view-list',
+        body: `<p>The expensive view is a base view of the same layer as the fact, so it is in this list too. Persisting in the data &amp; semantic
+          layer keeps the presentation layer free of stored data.</p>`,
       },
       {
         title: 'Start Data Persistence',
@@ -2432,16 +2607,16 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'Open the model',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_PRES',
         target: '#object-list',
         body: `<p>Check what the controllers feel now.</p>`,
-        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_REP.RHN_REP_AM_CONSUMPTION') },
+        action: { do: 'Open <b>RHN_PR_AM_CONSUMPTION</b>.', check: () => editorOf('RHN_PRES.RHN_PR_AM_CONSUMPTION') },
       },
       {
         title: 'Runtime at production volume',
         target: '#am-pivot',
         body: `<p>Run the Data Preview. Its status line shows the simulated runtime at production volume.</p>`,
-        action: { do: 'Run the <b>Data Preview</b>.', event: '^am-runtime:RHN_REP\\.RHN_REP_AM_CONSUMPTION:' },
+        action: { do: 'Run the <b>Data Preview</b>.', event: '^am-runtime:RHN_PRES\\.RHN_PR_AM_CONSUMPTION:' },
       },
     ],
     questions('Compare the own runtimes in the analyzer, and read the runtime in the preview.'),
@@ -2449,11 +2624,11 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   'c09-m03': [
     [
       {
-        title: 'Views in RHN_HARM',
-        view: 'monitor:views:RHN_HARM',
+        title: 'Views in RHN_DSL',
+        view: 'monitor:views:RHN_DSL',
         target: '#view-list',
         body: `<p>Select the persisted readings, then <b>Schedule</b>.</p>`,
-        action: { do: 'Schedule <b>RHN_HA_V_METER_READINGS</b> daily.', event: '^schedule:RHN_HARM\\.RHN_HA_V_METER_READINGS:Daily' },
+        action: { do: 'Schedule <b>RHN_DS_V_METER_READINGS</b> daily.', event: '^schedule:RHN_DSL\\.RHN_DS_V_METER_READINGS:Daily' },
       },
     ],
     questions('When is the stored result computed, and where is it stored?'),
@@ -2462,10 +2637,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'Markus\'s view',
-        view: 'monitor:views:RHN_REP',
+        view: 'monitor:views:RHN_PRES',
         target: '#view-list',
-        body: `<p>Select <code>RHN_REP_V_REGION_REVENUE</code> and start the persistence. Then read the messages of the run.</p>`,
-        action: { do: 'Start Data Persistence on <b>RHN_REP_V_REGION_REVENUE</b>.', event: '^persist-fail:RHN_REP\\.RHN_REP_V_REGION_REVENUE' },
+        body: `<p>Select <code>RHN_PR_V_REGION_REVENUE</code> and start the persistence. Then read the messages of the run.</p>`,
+        action: { do: 'Start Data Persistence on <b>RHN_PR_V_REGION_REVENUE</b>.', event: '^persist-fail:RHN_PRES\\.RHN_PR_V_REGION_REVENUE' },
       },
       {
         title: 'The run log',
@@ -2476,10 +2651,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     [
       {
         title: 'The tariffs',
-        view: 'monitor:views:RHN_HARM',
+        view: 'monitor:views:RHN_DSL',
         target: '#view-list',
         body: `<p>Five rows, refreshed daily. The analyzer shows what computing them costs.</p>`,
-        action: { do: 'Remove the persisted data of <b>RHN_HA_V_TARIFFS</b> and set its schedule to <b>No schedule</b>.', event: '^schedule:RHN_HARM\\.RHN_HA_V_TARIFFS:none' },
+        action: { do: 'Remove the persisted data of <b>RHN_DS_V_TARIFFS</b> and set its schedule to <b>No schedule</b>.', event: '^schedule:RHN_DSL\\.RHN_DS_V_TARIFFS:none' },
       },
     ],
     questions('What does the view read, and what does that object have?'),
@@ -2487,17 +2662,17 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
   // ================================================================ chapter 4 (SQL profiling)
   'c04-m01': [
     [
-      toSpace('RHN_IN', `<p>Profiling happens where the raw data is: the inbound space.</p>`),
+      toSpace('RHN_ENTRY', `<p>Profiling happens where the raw data is: the entry space.</p>`),
       {
         title: 'Look at the contracts first',
         target: '#object-list',
         body: `<p>Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>: one row per supply contract, with <code>GRID_AREA</code>,
           <code>TARIFF</code> and in <code>SRC_SYS_ID</code> the system it came from.</p>`,
-        action: { do: 'Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.BILLING_CONTRACTS$' },
+        action: { do: 'Open <b>BILLING_CONTRACTS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_ENTRY\\.BILLING_CONTRACTS$' },
       },
       {
         title: 'Back to the start page',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '[data-new="sqlview"]',
         body: `<p>Now the scratch view. It is never saved: it only exists while you profile.</p>`,
         action: { do: 'Click <b>New SQL View</b>.', check: () => !!$('#editor') && !!$('.ed-title small')?.textContent?.includes('…') },
@@ -2506,18 +2681,18 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Sources',
         target: '#sources',
         body: `<p>The list on the left shows what this view may read: the deployed objects of the space and what is shared with it.
-          A click inserts the full name, for example <code>RHN_IN.BILLING_CONTRACTS</code>.</p>`,
+          A click inserts the full name, for example <code>RHN_ENTRY.BILLING_CONTRACTS</code>.</p>`,
       },
     ],
     [
       {
         title: 'Count per value',
-        view: 'builder:new-view:RHN_IN',
+        view: 'builder:new-view:RHN_ENTRY',
         target: '#editor',
         body: `<p><code>COUNT(*)</code> counts rows. <code>GROUP BY column</code> makes one group per distinct value, so the count runs per group.
           The example shows the pattern on another table; put it in and run it if you like.</p>`,
         example: `SELECT CITY, COUNT(*) AS CUSTOMERS
-FROM RHN_IN.CRM_CUSTOMERS
+FROM RHN_ENTRY.CRM_CUSTOMERS
 GROUP BY CITY
 ORDER BY CUSTOMERS DESC`,
         action: {
@@ -2544,16 +2719,16 @@ ORDER BY CUSTOMERS DESC`,
   ],
   'c04-m02': [
     [
-      toSpace('RHN_IN', `<p>The invoices are in the inbound space too.</p>`),
+      toSpace('RHN_ENTRY', `<p>The invoices are in the entry space too.</p>`),
       {
         title: 'The invoices',
         target: '#object-list',
         body: `<p>Find <code>STATUS</code> and the two amounts <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>.</p>`,
-        action: { do: 'Open <b>BILLING_INVOICES</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.BILLING_INVOICES$' },
+        action: { do: 'Open <b>BILLING_INVOICES</b> and press <b>Data Preview</b>.', event: '^preview:RHN_ENTRY\\.BILLING_INVOICES$' },
       },
     ],
     [
-      { ...newView(`<p>A new scratch view for the query.</p>`), view: 'builder:landing:RHN_IN' },
+      { ...newView(`<p>A new scratch view for the query.</p>`), view: 'builder:landing:RHN_ENTRY' },
       {
         title: 'Several numbers per group',
         target: '#editor',
@@ -2562,7 +2737,7 @@ ORDER BY CUSTOMERS DESC`,
         example: `SELECT UNIT,
        COUNT(*)   AS READINGS,
        SUM(VALUE) AS TOTAL_VALUE
-FROM RHN_IN.METER_READINGS
+FROM RHN_ENTRY.METER_READINGS
 GROUP BY UNIT;`,
         action: {
           do: 'Write the query for the invoices: one row per status, the number of invoices and the gross amount. Run it.',
@@ -2581,15 +2756,15 @@ GROUP BY UNIT;`,
   ],
   'c04-m03': [
     [
-      toSpace('RHN_IN', `<p>Still the invoices of the inbound space.</p>`),
-      { ...newView(`<p>A new scratch view.</p>`), view: 'builder:landing:RHN_IN' },
+      toSpace('RHN_ENTRY', `<p>Still the invoices of the entry space.</p>`),
+      { ...newView(`<p>A new scratch view.</p>`), view: 'builder:landing:RHN_ENTRY' },
       {
         title: 'Filter with WHERE',
         target: '#editor',
         body: `<p><code>WHERE</code> keeps only the rows that match a condition. Text goes in single quotes, spelled exactly as in the data.
           The example takes the 5 biggest readings in MWh: filter, sort, limit.</p>`,
         example: `SELECT METER_ID, READING_DATE, VALUE
-FROM RHN_IN.METER_READINGS
+FROM RHN_ENTRY.METER_READINGS
 WHERE UNIT = 'MWh'
 ORDER BY VALUE DESC
 LIMIT 5;`,
@@ -2599,7 +2774,7 @@ LIMIT 5;`,
     [
       {
         title: 'Four columns',
-        view: 'builder:new-view:RHN_IN',
+        view: 'builder:new-view:RHN_ENTRY',
         target: '#editor',
         body: `<p>Invoice ID, contract ID, due date and gross amount. A column can be a calculation, for example <code>PRICE * QUANTITY AS TOTAL</code>.</p>`,
         action: { do: 'List the four columns of the ticket, the fourth calculated, and run it.', check: ranWith('BILLING_INVOICES', 'INVOICE_ID', 'CONTRACT_ID', 'DUE_DATE', '+') },
@@ -2608,7 +2783,7 @@ LIMIT 5;`,
     [
       {
         title: 'Sort and cut',
-        view: 'builder:new-view:RHN_IN',
+        view: 'builder:new-view:RHN_ENTRY',
         target: '#editor',
         body: `<p><code>ORDER BY … DESC</code> sorts biggest first; without <code>DESC</code> smallest first. <code>LIMIT n</code> at the very end keeps n rows.</p>`,
         action: { do: 'Sort by the gross amount, biggest first, keep 10 rows, and run it.', check: ranWith('ORDER BY', 'LIMIT') },
@@ -2622,25 +2797,25 @@ LIMIT 5;`,
   ],
   'c04-m04': [
     [
-      toSpace('RHN_IN', `<p>The mapping table lives next to the contracts.</p>`),
+      toSpace('RHN_ENTRY', `<p>The mapping table lives next to the contracts.</p>`),
       {
         title: 'The mapping table',
         target: '#object-list',
         body: `<p>Four rows: each grid area with its name and <code>REGION</code>. Which column also exists in the contracts?</p>`,
-        action: { do: 'Open <b>GRID_AREAS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_IN\\.GRID_AREAS$' },
+        action: { do: 'Open <b>GRID_AREAS</b> and press <b>Data Preview</b>.', event: '^preview:RHN_ENTRY\\.GRID_AREAS$' },
       },
     ],
     [
-      { ...newView(`<p>A new scratch view for the join.</p>`), view: 'builder:landing:RHN_IN' },
+      { ...newView(`<p>A new scratch view for the join.</p>`), view: 'builder:landing:RHN_ENTRY' },
       {
         title: 'How a join works',
         target: '#editor',
         body: `<p><code>JOIN … ON …</code> puts a row of one table next to the matching row of another; <code>ON</code> says what matching means.
-          Give each table a short alias (<code>FROM RHN_IN.BILLING_INVOICES i</code>) and address columns as <code>i.CONTRACT_ID</code>.
+          Give each table a short alias (<code>FROM RHN_ENTRY.BILLING_INVOICES i</code>) and address columns as <code>i.CONTRACT_ID</code>.
           The example counts invoices per tariff of their contract.</p>`,
         example: `SELECT c.TARIFF, COUNT(*) AS INVOICES
-FROM RHN_IN.BILLING_INVOICES i
-JOIN RHN_IN.BILLING_CONTRACTS c
+FROM RHN_ENTRY.BILLING_INVOICES i
+JOIN RHN_ENTRY.BILLING_CONTRACTS c
   ON i.CONTRACT_ID = c.CONTRACT_ID
 GROUP BY c.TARIFF;`,
         action: {
@@ -2653,7 +2828,7 @@ GROUP BY c.TARIFF;`,
       {
         title: 'Compare totals',
         target: '#results-body',
-        body: `<p>Add up the two regions and compare with all contracts (<code>SELECT COUNT(*) FROM RHN_IN.BILLING_CONTRACTS</code>).
+        body: `<p>Add up the two regions and compare with all contracts (<code>SELECT COUNT(*) FROM RHN_ENTRY.BILLING_CONTRACTS</code>).
           A <code>LEFT JOIN</code> keeps contracts without a partner as <code>null</code>; both answers are accepted. Put your region query back before you check.</p>`,
       },
       ...questions('Remember mission 1: which contracts had grid area values that do not look like the codes in GRID_AREAS?'),
@@ -2662,33 +2837,37 @@ GROUP BY c.TARIFF;`,
   // ================================================================ chapter 12 (excursions)
   'c12-m01': [
     [
+      toSpace('RHN_PRES', `<p>Consumers are served from the presentation layer. The tariff dimension is shared with it since chapter 7.</p>`),
+      newView(`<p>A <b>consumption view</b>: a thin view in RHN_PRES on the shared dimension. Power BI will read this view, never the dimension itself.</p>`),
       {
-        title: 'The tariff dimension',
-        view: 'builder:landing:RHN_REP',
-        target: '#object-list',
-        body: `<p>Open the tariff dimension of the reporting space.</p>`,
-        action: { do: 'Open <b>RHN_REP_D_TARIFF</b>.', event: '^open:RHN_REP\\.RHN_REP_D_TARIFF$' },
+        title: 'Three columns',
+        target: '#editor',
+        body: `<p>Read <code>RHN_DSL.RHN_DS_D_TARIFF</code> (under <b>Shared Objects</b>) with the columns of the ticket.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_PRES\\.)' },
       },
+      ...nameSaveDeploy('RHN_PR_V_TARIFFS', 'Tariffs for Power BI', 'RHN_PRES'),
+    ],
+    [
       {
         title: 'Expose for Consumption',
         target: '#prop-expose',
         body: `<p>Off by default: nothing leaves the space by accident. Switch it on, then Deploy; tools read the deployed version.</p>`,
-        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_D_TARIFF$' },
+        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_PRES\\.RHN_PR_V_TARIFFS$' },
       },
     ],
     [
       nav('spaces', 'Space Management', `<p>Database users belong to a space and are managed with it.</p>`),
       {
         title: 'Database Access',
-        target: '[data-dbaccess="RHN_REP"]',
+        target: '[data-dbaccess="RHN_PRES"]',
         body: `<p>Each space card has <b>Database Access</b> from this chapter on.</p>`,
-        action: { do: 'Click <b>Database Access</b> on the RHN_REP card.', event: 'dbaccess:RHN_REP' },
+        action: { do: 'Click <b>Database Access</b> on the RHN_PRES card.', event: 'dbaccess:RHN_PRES' },
       },
       {
         title: 'Create the user',
         target: '.dialog',
-        body: `<p>The suffix names the user: <code>RHN_REP#</code> plus your suffix. Decide which access the pricing team needs.</p>`,
-        action: { do: 'Create the database user for Power BI.', event: '^dbuser:RHN_REP#' },
+        body: `<p>The suffix names the user: <code>RHN_PRES#</code> plus your suffix. Decide which access the pricing team needs.</p>`,
+        action: { do: 'Create the database user for Power BI.', event: '^dbuser:RHN_PRES#' },
       },
     ],
     questions('Which objects can a database user read at all?'),
@@ -2705,20 +2884,20 @@ GROUP BY c.TARIFF;`,
       {
         title: 'Name and space',
         target: '.tr-props',
-        body: `<p>A business name, a technical name such as <code>RHN_REP_PKG_BOARD</code>, and the space <b>RHN_REP</b>. The space cannot change once objects are in.</p>`,
+        body: `<p>A business name, a technical name such as <code>RHN_PR_PKG_BOARD</code>, and the space <b>RHN_PRES</b>. The space cannot change once objects are in.</p>`,
       },
       {
         title: 'Add the model',
         target: '#pkg-add',
         body: `<p>The list shows the deployed objects of the space. Start with the model; the table then shows what it needs.</p>`,
-        action: { do: 'Add <b>RHN_REP_AM_CONSUMPTION</b>.', event: '^package-add:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+        action: { do: 'Add <b>RHN_PR_AM_CONSUMPTION</b>.', event: '^package-add:RHN_PRES\\.RHN_PR_AM_CONSUMPTION$' },
       },
     ],
     [
       {
         title: 'Validation',
         target: '#pkg-validation',
-        body: `<p>Each line names a missing object and who needs it. Objects of RHN_REP go into the package; objects of other spaces come from a required package.</p>`,
+        body: `<p>Each line names a missing object and who needs it. Objects of RHN_PRES go into the package; objects of other spaces come from a required package.</p>`,
       },
       {
         title: 'Required package',
@@ -2729,7 +2908,8 @@ GROUP BY c.TARIFF;`,
       {
         title: 'Until it is clean',
         target: '#pkg-validate',
-        body: `<p>Add objects, validate again, until the Validation panel is green. Then Save.</p>`,
+        body: `<p>Validate again until the Validation panel is green. Objects of RHN_PRES go into your package; what lives in RHN_DSL or RHN_ENTRY
+          comes from a required package. Then Save.</p>`,
         action: { do: 'Make the package valid and press <b>Save</b>.', event: '^package-save:' },
       },
     ],
@@ -2764,13 +2944,13 @@ GROUP BY c.TARIFF;`,
         title: 'Open the asset',
         target: '#cat-results',
         body: `<p>The analytic model is one of the assets extracted from this tenant.</p>`,
-        action: { do: 'Open <b>RHN_REP_AM_CONSUMPTION</b>.', event: '^catalog-open:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+        action: { do: 'Open <b>RHN_PR_AM_CONSUMPTION</b>.', event: '^catalog-open:RHN_PRES\\.RHN_PR_AM_CONSUMPTION$' },
       },
       {
         title: 'Describe and tag',
         target: '#asset-desc',
         body: `<p>What is it, who owns it, when to use it. Then tick the tag <b>Consumption</b> under Subject Area and Save.</p>`,
-        action: { do: 'Write the description, tick the tag, <b>Save</b>.', event: '^asset-tag:RHN_REP\\.RHN_REP_AM_CONSUMPTION:Subject Area/Consumption' },
+        action: { do: 'Write the description, tick the tag, <b>Save</b>.', event: '^asset-tag:RHN_PRES\\.RHN_PR_AM_CONSUMPTION:Subject Area/Consumption' },
       },
     ],
     [
@@ -2784,7 +2964,7 @@ GROUP BY c.TARIFF;`,
         title: 'Link it',
         target: '#asset-terms',
         body: `<p>Tick your new term and Save.</p>`,
-        action: { do: 'Link the term to the asset and <b>Save</b>.', event: '^asset-term:RHN_REP\\.RHN_REP_AM_CONSUMPTION:' },
+        action: { do: 'Link the term to the asset and <b>Save</b>.', event: '^asset-term:RHN_PRES\\.RHN_PR_AM_CONSUMPTION:' },
       },
     ],
     [
@@ -2792,7 +2972,7 @@ GROUP BY c.TARIFF;`,
         title: 'Publish the asset',
         target: '#asset-publish',
         body: `<p>Until now only you, the catalog administrator, see it.</p>`,
-        action: { do: 'Press <b>Publish</b>.', event: '^asset-publish:RHN_REP\\.RHN_REP_AM_CONSUMPTION$' },
+        action: { do: 'Press <b>Publish</b>.', event: '^asset-publish:RHN_PRES\\.RHN_PR_AM_CONSUMPTION$' },
       },
       {
         title: 'Publish the term',
@@ -2808,16 +2988,16 @@ GROUP BY c.TARIFF;`,
     [
       nav('business', 'Business Builder', `<p>Look at the title of the welcome page.</p>`),
       {
-        title: 'Space RHN_REP',
+        title: 'Space RHN_PRES',
         target: '#bb-spaces',
         body: `<p>The Business Builder works per space, like the Data Builder.</p>`,
-        action: { do: 'Select <b>RHN_REP</b>.', event: 'bb-space:RHN_REP' },
+        action: { do: 'Select <b>RHN_PRES</b>.', event: 'bb-space:RHN_PRES' },
       },
       {
         title: 'The consumption model',
         target: '#bb-list',
         body: `<p>The column Type tells you which object SAP Analytics Cloud stories were built on.</p>`,
-        action: { do: 'Open the <b>consumption model</b>.', event: '^bb-open:RHN_REP\\.RHN_CM_REVENUE$' },
+        action: { do: 'Open the <b>consumption model</b>.', event: '^bb-open:RHN_PRES\\.RHN_CM_REVENUE$' },
       },
     ],
     [
@@ -2837,34 +3017,34 @@ GROUP BY c.TARIFF;`,
   ],
   'c12-m05': [
     [
-      { ...newView(`<p>A new SQL view in RHN_REP. The harmonized grid areas are under Shared Objects.</p>`), view: 'builder:landing:RHN_REP' },
+      { ...newView(`<p>A new SQL view in RHN_DSL, next to the dimension. The grid areas base view is in the Sources list.</p>`), view: 'builder:landing:RHN_DSL' },
       {
         title: 'Stack the levels',
         target: '#editor',
         body: `<p>Three groups of rows, stacked with <code>UNION ALL</code>: the root, the regions, the grid areas. Each group returns the same columns.
           The example stacks two levels of the tariffs: a commodity node above each tariff.</p>`,
-        example: `SELECT DISTINCT 'C_' || COMMODITY AS NODE_ID, NULL AS PARENT_ID FROM RHN_HARM.RHN_HA_V_TARIFFS
+        example: `SELECT DISTINCT 'C_' || COMMODITY AS NODE_ID, NULL AS PARENT_ID FROM RHN_DSL.RHN_DS_V_TARIFFS
 UNION ALL
-SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
+SELECT TARIFF, 'C_' || COMMODITY FROM RHN_DSL.RHN_DS_V_TARIFFS`,
         action: { do: 'Write the grid area tree and run <b>Data Preview</b>: seven rows, every node ID once.', check: ranWith('UNION ALL', 'NODE_ID', 'PARENT_ID', 'GRID_AREAS') },
       },
-      ...nameSaveDeploy('RHN_REP_H_GRID_AREA', 'Grid Area Hierarchy', 'RHN_REP', false),
+      ...nameSaveDeploy('RHN_DS_H_GRID_AREA', 'Grid Area Hierarchy', 'RHN_DSL', false),
     ],
     [
       {
         title: 'Semantic usage Hierarchy',
         target: '#prop-semantic',
         body: `<p>Choose <b>Hierarchy</b>. The columns then get the roles Parent and Child.</p>`,
-        action: { do: 'Set Hierarchy, PARENT_ID → Parent, NODE_ID → Child, then <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_H_GRID_AREA$' },
+        action: { do: 'Set Hierarchy, PARENT_ID → Parent, NODE_ID → Child, then <b>Deploy</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_H_GRID_AREA$' },
       },
     ],
     [
       {
         title: 'The dimension',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
-        body: `<p>Open <b>RHN_REP_D_GRID_AREA</b>. In its properties, Associations › Add: target RHN_REP_H_GRID_AREA, GRID_AREA → NODE_ID.</p>`,
-        action: { do: 'Add the association and <b>Deploy</b> the dimension.', event: '^deploy:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+        body: `<p>Open <b>RHN_DS_D_GRID_AREA</b>. In its properties, Associations › Add: target RHN_DS_H_GRID_AREA, GRID_AREA → NODE_ID.</p>`,
+        action: { do: 'Add the association and <b>Deploy</b> the dimension.', event: '^deploy:RHN_DSL\\.RHN_DS_D_GRID_AREA$' },
       },
     ],
     questions('What does a node stand for?'),
@@ -2873,35 +3053,35 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'New Table',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '[data-new="table"]',
         body: `<p>Like the permissions table of chapter 8, but with nodes: USER_ID and NODE_ID, three rows.</p>`,
-        action: { do: 'Create, fill and deploy <b>RHN_REP_T_PERMISSION_NODES</b>.', event: '^deploy:RHN_REP\\.RHN_REP_T_PERMISSION_NODES$' },
+        action: { do: 'Create, fill and deploy <b>RHN_DS_T_PERMISSION_NODES</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_T_PERMISSION_NODES$' },
       },
     ],
     [
       {
         title: 'New Data Access Control',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '[data-new="dac"]',
         body: `<p>Criteria type <b>Hierarchy</b>, then the hierarchy, the node table, USER_ID as identifier and NODE_ID as criterion.</p>`,
-        action: { do: 'Create and deploy <b>RHN_REP_DAC_REGION</b>.', event: '^deploy:RHN_REP\\.RHN_REP_DAC_REGION$' },
+        action: { do: 'Create and deploy <b>RHN_DS_DAC_REGION</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_DAC_REGION$' },
       },
     ],
     [
       {
         title: 'Swap the control',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
-        body: `<p>Open <b>RHN_REP_F_INVOICES</b>. In Data Access Controls remove the old one and assign the new one, NODE_ID → GRID_AREA.</p>`,
-        action: { do: 'Swap the control and <b>Deploy</b> the fact.', event: '^deploy:RHN_REP\\.RHN_REP_F_INVOICES$' },
+        body: `<p>Open <b>RHN_DS_F_INVOICES</b>. In Data Access Controls remove the old one and assign the new one, NODE_ID → GRID_AREA.</p>`,
+        action: { do: 'Swap the control and <b>Deploy</b> the fact.', event: '^deploy:RHN_DSL\\.RHN_DS_F_INVOICES$' },
       },
       {
         title: 'Check as Markus',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_PRES',
         target: '#object-list',
-        body: `<p>Open the invoice model, REGION in the rows, View as MBRANDT, Data Preview: only the North.</p>`,
-        action: { do: 'Preview <b>RHN_REP_AM_INVOICES</b> as MBRANDT.', event: '^am-preview-as:RHN_REP\\.RHN_REP_AM_INVOICES:MBRANDT' },
+        body: `<p>Open the invoice model in RHN_PRES, REGION in the rows, View as MBRANDT, Data Preview: only the North. The new control came along with the shared fact.</p>`,
+        action: { do: 'Preview <b>RHN_PR_AM_INVOICES</b> as MBRANDT.', event: '^am-preview-as:RHN_PRES\\.RHN_PR_AM_INVOICES:MBRANDT' },
       },
     ],
     questions('What does the control resolve R_NORTH to?'),
@@ -2909,44 +3089,44 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
   'c12-m12': [
     [
       {
-        title: 'The flows of RHN_HARM',
-        view: 'monitor:flows:RHN_HARM',
+        title: 'The flows of RHN_DSL',
+        view: 'monitor:flows:RHN_DSL',
         target: '#flow-list',
         body: `<p>Deployed flows of the space with their last run. The transformation flow's last run was a delta.</p>`,
-        action: { do: 'Select <b>RHN_HA_TF_PAYMENTS</b>.', appear: '#flow-reset' },
+        action: { do: 'Select <b>RHN_DS_TF_PAYMENTS</b>.', appear: '#flow-reset' },
       },
       {
         title: 'Reset Watermark',
         target: '#flow-reset',
         body: `<p>Only for flows with Initial and Delta. Nothing runs yet; the flow forgets its watermark, the point up to which it has read the delta table.</p>`,
-        action: { do: 'Press <b>Reset Watermark</b>.', event: '^tf-reset:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+        action: { do: 'Press <b>Reset Watermark</b>.', event: '^tf-reset:RHN_DSL\\.RHN_DS_TF_PAYMENTS$' },
       },
       {
         title: 'Run',
         target: '#flow-run',
         body: `<p>This run is an initial load: every payment, including today's PAY-0097. Read its messages on the right.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_DSL\\.RHN_DS_TF_PAYMENTS:Completed$' },
       },
     ],
     [
       {
         title: 'Open the nightly chain',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
-        body: `<p>The chain from chapter 10: the CRM chain of RHN_IN, then two view persistences.</p>`,
-        action: { do: 'Open <b>RHN_HARM_TC_NIGHTLY</b>.', check: () => editorOf('RHN_HARM.RHN_HARM_TC_NIGHTLY') },
+        body: `<p>The chain from chapter 10: the CRM chain of RHN_ENTRY, then two view persistences.</p>`,
+        action: { do: 'Open <b>RHN_DS_TC_NIGHTLY</b>.', check: () => editorOf('RHN_DSL.RHN_DS_TC_NIGHTLY') },
       },
       {
         title: 'Add Step',
         target: '#chain-add',
         body: `<p>Transformation flows have their own group in the dialog. New steps go to the end.</p>`,
-        action: { do: 'Add <b>RHN_HA_TF_PAYMENTS</b>.', event: '^chain-add:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+        action: { do: 'Add <b>RHN_DS_TF_PAYMENTS</b>.', event: '^chain-add:RHN_DSL\\.RHN_DS_TF_PAYMENTS$' },
       },
       {
         title: 'Deploy',
         target: '#ed-deploy',
         body: `<p>The schedule of the chain runs the deployed version.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_TC_NIGHTLY$' },
       },
     ],
     [
@@ -2954,7 +3134,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Run the chain',
         target: '#chain-run',
         body: `<p>As tonight would. The flow is the last step; after the reset and the initial load it reads only the changes.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_DSL\\.RHN_DS_TC_NIGHTLY:' },
       },
     ],
     questions('Where does a delta run look for changes, and where did Tim delete the rows?'),
@@ -2963,45 +3143,45 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'Open the payments',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#object-list',
-        body: `<p>Accounts Receivable's table in the inbound layer: 95 payments, key PAYMENT_ID. Status <b>Not Deployed</b>: Jonas only saved it.</p>`,
-        action: { do: 'Open <b>RHN_IN_T_PAYMENTS</b>.', check: () => editorOf('RHN_IN.RHN_IN_T_PAYMENTS') },
+        body: `<p>Accounts Receivable's table in the entry layer: 95 payments, key PAYMENT_ID. Status <b>Not Deployed</b>: Jonas only saved it.</p>`,
+        action: { do: 'Open <b>RHN_EN_T_PAYMENTS</b>.', check: () => editorOf('RHN_ENTRY.RHN_EN_T_PAYMENTS') },
       },
       {
         title: 'Delta Capture',
         target: '#prop-delta',
         body: `<p>In the properties on the right. Only possible now, before the first deploy: afterwards the switch is fixed. From then on the table records every change it gets deployed with.</p>`,
-        action: { do: 'Switch <b>Delta Capture</b> on.', event: '^table-delta:RHN_IN\\.RHN_IN_T_PAYMENTS:on$' },
+        action: { do: 'Switch <b>Delta Capture</b> on.', event: '^table-delta:RHN_ENTRY\\.RHN_EN_T_PAYMENTS:on$' },
       },
       {
         title: 'Deploy',
         target: '#ed-deploy',
-        body: `<p>The first deploy creates the table with its 95 rows and the delta table <code>RHN_IN_T_PAYMENTS_Delta</code>.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_T_PAYMENTS$' },
+        body: `<p>The first deploy creates the table with its 95 rows and the delta table <code>RHN_EN_T_PAYMENTS_Delta</code>.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_ENTRY\\.RHN_EN_T_PAYMENTS$' },
       },
     ],
     [
       {
         title: 'New Transformation Flow',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '[data-new="transformation"]',
-        body: `<p>The flow belongs to the harmonization layer; the payments table is shared with RHN_HARM.</p>`,
+        body: `<p>The flow belongs to the data & semantic layer; the payments table is shared with RHN_DSL.</p>`,
         action: { do: 'Click <b>Transformation Flow</b>.', appear: '#tf-canvas' },
       },
       {
         title: 'The view transform',
         target: '#tf-editor',
         body: `<p>Two nodes: the view transform and the target table. Write the transform as one SELECT: the payment columns from
-          <code>RHN_IN.RHN_IN_T_PAYMENTS</code>, joined with <code>RHN_HARM.RHN_HA_V_INVOICES</code> on <code>INVOICE_ID</code> for the <code>CONTRACT_ID</code>.
+          <code>RHN_ENTRY.RHN_EN_T_PAYMENTS</code>, joined with <code>RHN_DSL.RHN_DS_V_INVOICES</code> on <code>INVOICE_ID</code> for the <code>CONTRACT_ID</code>.
           Read the table itself, not a delta table. <b>Data Preview</b> shows what it returns.</p>`,
-        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', check: () => !!$('#tf-preview-out .result-status.ok') && ['RHN_IN_T_PAYMENTS', 'RHN_HA_V_INVOICES', 'CONTRACT_ID'].every((w) => sqlText().includes(w)) },
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', check: () => !!$('#tf-preview-out .result-status.ok') && ['RHN_EN_T_PAYMENTS', 'RHN_DS_V_INVOICES', 'CONTRACT_ID'].every((w) => sqlText().includes(w)) },
       },
       {
         title: 'Target table',
         target: '[data-node="target"]',
         body: `<p>A new name creates the table on the first run, with the columns of the transform and the key of the delta source.</p>`,
-        action: { do: 'Open the <b>Target</b> node and name it <b>RHN_HA_T_PAYMENTS</b>.', event: '^tf-target:RHN_HA_T_PAYMENTS$' },
+        action: { do: 'Open the <b>Target</b> node and name it <b>RHN_DS_T_PAYMENTS</b>.', event: '^tf-target:RHN_DS_T_PAYMENTS$' },
       },
       {
         title: 'Load type',
@@ -3014,23 +3194,23 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       {
         title: 'Name and deploy',
         target: '#ed-deploy',
-        body: `<p>Business name as you like, technical name <code>RHN_HA_TF_PAYMENTS</code>, in the same panel.</p>`,
-        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_TF_PAYMENTS$' },
+        body: `<p>Business name as you like, technical name <code>RHN_DS_TF_PAYMENTS</code>, in the same panel.</p>`,
+        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_TF_PAYMENTS$' },
       },
       {
         title: 'The initial load',
         target: '#tf-run',
         body: `<p>The first run of a delta flow reads all payments and remembers how far the delta table has been read.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_DSL\\.RHN_DS_TF_PAYMENTS:Completed$' },
       },
     ],
     [
       {
         title: 'Back to the payments',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#object-list',
         body: `<p>Today's bank message goes into the Data Editor, as Accounts Receivable does every morning.</p>`,
-        action: { do: 'Open <b>RHN_IN_T_PAYMENTS</b>.', check: () => editorOf('RHN_IN.RHN_IN_T_PAYMENTS') },
+        action: { do: 'Open <b>RHN_EN_T_PAYMENTS</b>.', check: () => editorOf('RHN_ENTRY.RHN_EN_T_PAYMENTS') },
       },
       {
         title: 'The bank message',
@@ -3042,25 +3222,25 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Deploy the changes',
         target: '#ed-deploy',
         body: `<p>Deploying writes the rows, and Delta Capture records one change record per changed key.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_T_PAYMENTS$' },
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_ENTRY\\.RHN_EN_T_PAYMENTS$' },
       },
       {
         title: 'The delta table',
         target: '#tbl-delta',
-        body: `<p>RHN_IN_T_PAYMENTS_Delta: an I, a U and a D, each with its change date. This is what the next delta run reads.</p>`,
+        body: `<p>RHN_EN_T_PAYMENTS_Delta: an I, a U and a D, each with its change date. This is what the next delta run reads.</p>`,
       },
       {
         title: 'Open the flow',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
         body: `<p>The second night: run the flow again.</p>`,
-        action: { do: 'Open <b>RHN_HA_TF_PAYMENTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_TF_PAYMENTS') },
+        action: { do: 'Open <b>RHN_DS_TF_PAYMENTS</b>.', check: () => editorOf('RHN_DSL.RHN_DS_TF_PAYMENTS') },
       },
       {
         title: 'The delta run',
         target: '#tf-run',
         body: `<p>Compare the message of this run with the first one: how many records, and of which kinds?</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_HARM\\.RHN_HA_TF_PAYMENTS:Completed$' },
+        action: { do: 'Press <b>Run</b>.', event: '^tf-run:RHN_DSL\\.RHN_DS_TF_PAYMENTS:Completed$' },
       },
     ],
     questions('Look at the messages of your second run: how many records did it read, and of which kinds?'),
@@ -3069,9 +3249,9 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'New Data Flow',
-        view: 'builder:landing:RHN_REP',
+        view: 'builder:landing:RHN_DSL',
         target: '[data-new="dataflow"]',
-        body: `<p>Data flows belong to a space; Sabine's table lives in reporting.</p>`,
+        body: `<p>Data flows belong to a space. This one transforms base views, so it and Sabine's table live in the data &amp; semantic layer.</p>`,
         action: { do: 'Click <b>Data Flow</b>.', appear: '#df-canvas' },
       },
       {
@@ -3082,14 +3262,14 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
       {
         title: 'Source',
         target: '#properties',
-        body: `<p>The harmonized readings are shared with RHN_REP since chapter 6.</p>`,
-        action: { do: 'Choose <b>RHN_HARM.RHN_HA_V_METER_READINGS</b> as source.', event: '^df-source:RHN_HARM\\.RHN_HA_V_METER_READINGS$' },
+        body: `<p>The readings base view of this space.</p>`,
+        action: { do: 'Choose <b>RHN_DSL.RHN_DS_V_METER_READINGS</b> as source.', event: '^df-source:RHN_DSL\\.RHN_DS_V_METER_READINGS$' },
       },
       {
         title: 'Join',
         target: '[data-node="join"]',
         body: `<p>The grid area is on the contract. Add a join with the contracts view, CONTRACT_ID on both sides.</p>`,
-        action: { do: 'Open <b>Join</b>, add it and choose <b>RHN_HARM.RHN_HA_V_CONTRACTS</b>.', event: '^df-join:RHN_HARM\\.RHN_HA_V_CONTRACTS$' },
+        action: { do: 'Open <b>Join</b>, add it and choose <b>RHN_DSL.RHN_DS_V_CONTRACTS</b>.', event: '^df-join:RHN_DSL\\.RHN_DS_V_CONTRACTS$' },
       },
     ],
     [
@@ -3110,15 +3290,15 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Target and mode',
         target: '[data-node="target"]',
         body: `<p>A new name creates the table on the first run. Read what each mode does with the rows of last night.</p>`,
-        action: { do: 'Name the target <b>RHN_REP_T_MONTHLY_CONSUMPTION</b> and choose a mode.', event: '^df-mode:' },
+        action: { do: 'Name the target <b>RHN_DS_T_MONTHLY_CONSUMPTION</b> and choose a mode.', event: '^df-mode:' },
       },
     ],
     [
       {
         title: 'Name, save, deploy',
         target: '#ed-deploy',
-        body: `<p>The flow's own names are under <b>‹ Data flow properties</b> on the right: technical name <code>RHN_REP_DF_MONTHLY</code>.</p>`,
-        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_DF_MONTHLY$' },
+        body: `<p>The flow's own names are under <b>‹ Data flow properties</b> on the right: technical name <code>RHN_DS_DF_MONTHLY</code>.</p>`,
+        action: { do: 'Name the flow and press <b>Deploy</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_DF_MONTHLY$' },
       },
       {
         title: 'Two nights',
@@ -3184,18 +3364,20 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
   ],
   'c12-m08': [
     [
+      toSpace('RHN_PRES', `<p>Outside tools read the presentation layer. The grid area dimension is shared with it since chapter 7.</p>`),
+      newView(`<p>A consumption view on the shared dimension, as for the tariffs in the first excursion.</p>`),
       {
-        title: 'The grid area dimension',
-        view: 'builder:landing:RHN_REP',
-        target: '#object-list',
-        body: `<p>Tools only see what is exposed, and only in its deployed version.</p>`,
-        action: { do: 'Open <b>RHN_REP_D_GRID_AREA</b>.', event: '^open:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+        title: 'Three columns',
+        target: '#editor',
+        body: `<p>Read <code>RHN_DSL.RHN_DS_D_GRID_AREA</code> (under <b>Shared Objects</b>) with the columns of the ticket.</p>`,
+        action: { do: 'Write the SELECT and press <b>Data Preview</b>.', event: '^preview:(draft|RHN_PRES\\.)' },
       },
+      ...nameSaveDeploy('RHN_PR_V_GRID_AREAS', 'Grid Areas for Planning', 'RHN_PRES'),
       {
         title: 'Expose and deploy',
         target: '#prop-expose',
-        body: `<p>The same switch as for Power BI in the first excursion.</p>`,
-        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_REP\\.RHN_REP_D_GRID_AREA$' },
+        body: `<p>The same switch as for Power BI in the first excursion. Tools only see what is exposed, and only in its deployed version.</p>`,
+        action: { do: 'Switch <b>Expose for Consumption</b> on and press <b>Deploy</b>.', event: '^deploy:RHN_PRES\\.RHN_PR_V_GRID_AREAS$' },
       },
     ],
     [
@@ -3219,7 +3401,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         view: 'system:admin-apps',
         target: '#oauth-list',
         body: `<p><b>Test</b> calls the API like the planners' import connection: sign in with the client, then read one object. The answer says what is missing.</p>`,
-        action: { do: 'Read <b>RHN_REP.RHN_REP_D_GRID_AREA</b> with HTTP 200.', event: '^odata-test:.*:RHN_REP\\.RHN_REP_D_GRID_AREA:200$' },
+        action: { do: 'Read <b>RHN_PRES.RHN_PR_V_GRID_AREAS</b> with HTTP 200.', event: '^odata-test:.*:RHN_PRES\\.RHN_PR_V_GRID_AREAS:200$' },
       },
     ],
     questions('Who is signed in when the import connection reads the data?'),
@@ -3228,10 +3410,10 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'Open the view',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
-        body: `<p>The contracts view of the harmonization layer. Its status is Deployed: Tim's version is what runs.</p>`,
-        action: { do: 'Open <b>RHN_HA_V_CONTRACTS</b>.', check: () => editorOf('RHN_HARM.RHN_HA_V_CONTRACTS') },
+        body: `<p>The contracts view of the data & semantic layer. Its status is Deployed: Tim's version is what runs.</p>`,
+        action: { do: 'Open <b>RHN_DS_V_CONTRACTS</b>.', check: () => editorOf('RHN_DSL.RHN_DS_V_CONTRACTS') },
       },
       {
         title: 'Versions',
@@ -3246,7 +3428,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         target: '#version-list',
         body: `<p>The newest version is on top and marked Deployed. Select the one below it: the right side compares it with what runs now:
           red lines (−) are in the deployed version only, green lines (+) only in the selected one.</p>`,
-        action: { do: 'Select the version before Tim\'s.', event: '^version-view:RHN_HARM\\.RHN_HA_V_CONTRACTS:' },
+        action: { do: 'Select the version before Tim\'s.', event: '^version-view:RHN_DSL\\.RHN_DS_V_CONTRACTS:' },
       },
     ],
     [
@@ -3254,13 +3436,13 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Restore',
         target: '#version-restore',
         body: `<p>Restore puts this version into the editor. Nothing runs yet: the status becomes Changes to Deploy.</p>`,
-        action: { do: 'Press <b>Restore</b>.', event: '^version-restore:RHN_HARM\\.RHN_HA_V_CONTRACTS:' },
+        action: { do: 'Press <b>Restore</b>.', event: '^version-restore:RHN_DSL\\.RHN_DS_V_CONTRACTS:' },
       },
       {
         title: 'Deploy',
         target: '#ed-deploy',
         body: `<p>Deploying the restored definition makes it active and adds it as a new version.</p>`,
-        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_V_CONTRACTS$' },
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_V_CONTRACTS$' },
       },
     ],
     questions('Where does the version history live, and how do changes travel between tenants?'),
@@ -3270,7 +3452,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'New Task Chain',
-        view: 'builder:landing:RHN_IN',
+        view: 'builder:landing:RHN_ENTRY',
         target: '[data-new="taskchain"]',
         body: `<p>A task chain belongs to one space, like everything in the Data Builder.</p>`,
         action: { do: 'Click <b>Task Chain</b>.', appear: '#chain-steps' },
@@ -3279,43 +3461,43 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Add the CRM flow',
         target: '#chain-add',
         body: `<p><b>Add Step</b> lists the deployed objects of the space, grouped by what the step does.</p>`,
-        action: { do: 'Add <b>RHN_IN_RF_CRM</b>.', event: '^chain-add:RHN_IN\\.RHN_IN_RF_CRM$' },
+        action: { do: 'Add <b>RHN_EN_RF_CRM</b>.', event: '^chain-add:RHN_ENTRY\\.RHN_EN_RF_CRM$' },
       },
       {
         title: 'And the meter readings?',
         target: '#chain-add',
         body: `<p>Try Lena's delta flow as well. The dialog tells you whether it can be a step.</p>`,
-        action: { do: 'Try to add <b>RHN_IN_RF_MDM</b>, read the message, cancel.', event: '^chain-refused:RHN_IN\\.RHN_IN_RF_MDM$' },
+        action: { do: 'Try to add <b>RHN_EN_RF_MDM</b>, read the message, cancel.', event: '^chain-refused:RHN_ENTRY\\.RHN_EN_RF_MDM$' },
       },
     ],
     [
       {
         title: 'Names and Deploy',
         target: '#properties',
-        body: `<p>Business name for people, technical name <code>RHN_IN_TC_CRM</code>. Then Deploy: only a deployed chain can run.</p>`,
-        action: { do: 'Enter the names and press <b>Deploy</b>.', event: '^deploy:RHN_IN\\.RHN_IN_TC_CRM$' },
+        body: `<p>Business name for people, technical name <code>RHN_EN_TC_CRM</code>. Then Deploy: only a deployed chain can run.</p>`,
+        action: { do: 'Enter the names and press <b>Deploy</b>.', event: '^deploy:RHN_ENTRY\\.RHN_EN_TC_CRM$' },
       },
       {
         title: 'Run',
         target: '#chain-run',
         body: `<p>Run starts the deployed version now. The result of each step appears below.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_IN\\.RHN_IN_TC_CRM:' },
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_ENTRY\\.RHN_EN_TC_CRM:' },
       },
     ],
     [
       {
-        title: 'Share with RHN_HARM',
-        view: 'builder:landing:RHN_IN',
+        title: 'Share with RHN_DSL',
+        view: 'builder:landing:RHN_ENTRY',
         target: '#object-list',
-        body: `<p>The share icon in the object list shares the chain. RHN_HARM can then nest it in its own chain.</p>`,
-        action: { do: 'Share <b>RHN_IN_TC_CRM</b> with <b>RHN_HARM</b>.', event: '^share:RHN_IN\\.RHN_IN_TC_CRM$' },
+        body: `<p>The share icon in the object list shares the chain. RHN_DSL can then nest it in its own chain.</p>`,
+        action: { do: 'Share <b>RHN_EN_TC_CRM</b> with <b>RHN_DSL</b>.', event: '^share:RHN_ENTRY\\.RHN_EN_TC_CRM$' },
       },
       {
         title: 'Remove the old schedule',
-        view: 'monitor:flows:RHN_IN',
+        view: 'monitor:flows:RHN_ENTRY',
         target: '#flow-list',
         body: `<p>The flow still has its own daily schedule from chapter 3. Open it and set <b>Schedule</b> to No schedule.</p>`,
-        action: { do: 'Remove the schedule of <b>RHN_IN_RF_CRM</b>.', event: '^schedule:RHN_IN\\.RHN_IN_RF_CRM:none' },
+        action: { do: 'Remove the schedule of <b>RHN_EN_RF_CRM</b>.', event: '^schedule:RHN_ENTRY\\.RHN_EN_RF_CRM:none' },
       },
     ],
     questions('When does a delta replication end?'),
@@ -3324,9 +3506,9 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'The nightly chain',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '[data-new="taskchain"]',
-        body: `<p>This chain lives in RHN_HARM: it persists views of RHN_HARM and calls the shared chain of RHN_IN.</p>`,
+        body: `<p>This chain lives in RHN_DSL: it persists views of RHN_DSL and calls the shared chain of RHN_ENTRY.</p>`,
         action: { do: 'Click <b>Task Chain</b>.', appear: '#chain-steps' },
       },
       {
@@ -3341,7 +3523,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Email notification',
         target: '#chain-notify',
         body: `<p>Tick <b>When the task chain fails</b> and enter <code>LHOFFMANN</code> as recipient.</p>`,
-        action: { do: 'Set the failure email, then name and <b>Deploy</b> the chain.', event: '^deploy:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+        action: { do: 'Set the failure email, then name and <b>Deploy</b> the chain.', event: '^deploy:RHN_DSL\\.RHN_DS_TC_NIGHTLY$' },
       },
     ],
     [
@@ -3349,20 +3531,20 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Schedule',
         target: '#chain-schedule',
         body: `<p>One schedule for the whole night.</p>`,
-        action: { do: 'Press <b>Schedule</b>, choose <b>Daily</b> and save.', event: 'schedule:RHN_HARM.RHN_HARM_TC_NIGHTLY:Daily' },
+        action: { do: 'Press <b>Schedule</b>, choose <b>Daily</b> and save.', event: 'schedule:RHN_DSL.RHN_DS_TC_NIGHTLY:Daily' },
       },
       {
         title: 'Run',
         target: '#chain-run',
         body: `<p>Run it once to see that every step completes.</p>`,
-        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:' },
+        action: { do: 'Press <b>Run</b>.', event: '^chain-run:RHN_DSL\\.RHN_DS_TC_NIGHTLY:' },
       },
       {
         title: 'The second schedule',
-        view: 'monitor:views:RHN_HARM',
+        view: 'monitor:views:RHN_DSL',
         target: '#view-list',
         body: `<p>The readings still have their own schedule from chapter 9. The chain runs them now.</p>`,
-        action: { do: 'Remove the schedule of <b>RHN_HA_V_METER_READINGS</b>.', event: '^schedule:RHN_HARM\\.RHN_HA_V_METER_READINGS:none' },
+        action: { do: 'Remove the schedule of <b>RHN_DS_V_METER_READINGS</b>.', event: '^schedule:RHN_DSL\\.RHN_DS_V_METER_READINGS:none' },
       },
     ],
     questions('What does the customer view read?'),
@@ -3371,10 +3553,10 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'The failed run',
-        view: 'monitor:chains:RHN_HARM',
+        view: 'monitor:chains:RHN_DSL',
         target: '#chain-list',
         body: `<p>Open the nightly chain. Its last run failed; the steps show where.</p>`,
-        action: { do: 'Click <b>RHN_HARM_TC_NIGHTLY</b>.', event: '^monitor-open:RHN_HARM\\.RHN_HARM_TC_NIGHTLY$' },
+        action: { do: 'Click <b>RHN_DS_TC_NIGHTLY</b>.', event: '^monitor-open:RHN_DSL\\.RHN_DS_TC_NIGHTLY$' },
       },
       {
         title: 'The failed step',
@@ -3391,19 +3573,19 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
     [
       {
         title: 'Fix the view',
-        view: 'builder:landing:RHN_HARM',
+        view: 'builder:landing:RHN_DSL',
         target: '#object-list',
         body: `<p>Open the view, correct Tim's line, run the Data Preview to see it works on all rows, then Deploy.</p>`,
-        action: { do: 'Fix and deploy <b>RHN_HA_V_CUSTOMERS</b>.', event: '^deploy:RHN_HARM\\.RHN_HA_V_CUSTOMERS$' },
+        action: { do: 'Fix and deploy <b>RHN_DS_V_CUSTOMERS</b>.', event: '^deploy:RHN_DSL\\.RHN_DS_V_CUSTOMERS$' },
       },
     ],
     [
       {
         title: 'Run again',
-        view: 'monitor:chains:RHN_HARM',
+        view: 'monitor:chains:RHN_DSL',
         target: '#chain-list',
         body: `<p>Open the chain and run it. Deploying removed the snapshot of the view; the run builds it again.</p>`,
-        action: { do: 'Run <b>RHN_HARM_TC_NIGHTLY</b>.', event: '^chain-run:RHN_HARM\\.RHN_HARM_TC_NIGHTLY:Completed' },
+        action: { do: 'Run <b>RHN_DS_TC_NIGHTLY</b>.', event: '^chain-run:RHN_DSL\\.RHN_DS_TC_NIGHTLY:Completed' },
       },
     ],
     questions('When is a value converted: at deploy or at run time?'),
@@ -3423,7 +3605,7 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS`,
         title: 'Read a run',
         target: '#tasklog-list',
         body: `<p>Click the start time of a run to see its messages below the list.</p>`,
-        action: { do: 'Open a run of the object that fails most often.', event: '^tasklog-open:RHN_IN\\.RHN_IN_RF_S4U$' },
+        action: { do: 'Open a run of the object that fails most often.', event: '^tasklog-open:RHN_ENTRY\\.RHN_EN_RF_S4U$' },
       },
     ],
     questions('Count per object, and read the second message.'),

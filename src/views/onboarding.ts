@@ -6,16 +6,18 @@ import {
 } from '../onboarding';
 import { registerLocation } from '../nav';
 import { spaceSelect } from './connections';
+import { EXCURSIONS } from '../content/chapters';
+import { entityLogs, entityLogStatus, newWizard, renderImportWizard, type WizardState } from './importentities';
 
 /**
- * Semantic Onboarding (Bild 10, excursion c12-m09): hero banner, "SAP Systems" with one card per system type and its connections,
- * "Content Network" with Samples, Business Content and 3rd Party Business Content. A content area lists packages; a package shows
- * its description, prerequisites and objects and can be imported; its tab Import Overview lists every import with its messages.
- * "Open Import Logs" belongs to Import Entities (SAP systems) and stays empty in the game.
- * Import Entities from SAP systems is not part of the game (cards explain it).
+ * Semantic Onboarding (Bild 10): hero banner, "SAP Systems" with one card per system type and its connections,
+ * "Content Network" with Samples, Business Content and 3rd Party Business Content (excursion c12-m09). A content area lists packages;
+ * a package shows its description, prerequisites and objects and can be imported; its tab Import Overview lists every import with its messages.
+ * The S/4HANA cards open the Import Entities wizard (c03-m07, importentities.ts); "Open Import Logs" lists those imports per space.
  */
 
-type Page = { kind: 'home' } | { kind: 'area'; area: ContentArea } | { kind: 'pkg'; id: string; tab?: 'overview' | 'imports'; open?: number } | { kind: 'logs' };
+type Page = { kind: 'home' } | { kind: 'area'; area: ContentArea } | { kind: 'pkg'; id: string; tab?: 'overview' | 'imports'; open?: number }
+  | { kind: 'logs'; open?: number } | { kind: 'import'; w: WizardState };
 let page: Page = { kind: 'home' };
 registerLocation('semantic', { get: () => page, set: (p: Page) => (page = p) });
 const openGroups = { systems: true, content: true };
@@ -27,6 +29,22 @@ export function onboardingReset() {
 export function onboardingToPackage(id: string) {
   page = { kind: 'pkg', id };
 }
+/** For tutorials and the Data Builder (Import › Import Entities): the wizard for S/4HANA Cloud, or the import logs. */
+export function onboardingToImport(onlySpace?: string) {
+  page = { kind: 'import', w: newWizard('S4HANA_CLOUD', onlySpace) };
+}
+export function onboardingToLogs() {
+  page = { kind: 'logs' };
+}
+/** Data Builder › Import › Import Entities: the same wizard, only with the connections of the space. */
+export function openImportEntities(space: string) {
+  onboardingToImport(space);
+  ctx.track('ie-open');
+  ctx.setView('semantic');
+}
+
+/** System cards that open the Import Entities wizard. */
+const IMPORTABLE = ['S4HANA_CLOUD', 'S4HANA_OP'];
 
 const SYSTEMS: { label: string; type?: string; enabled?: boolean }[] = [
   { label: 'SAP S/4HANA Cloud', type: 'S4HANA_CLOUD' },
@@ -72,8 +90,17 @@ export function renderOnboarding(main: HTMLElement) {
       openGroups[g] = !openGroups[g];
       renderOnboarding(main);
     }));
-    main.querySelectorAll<HTMLButtonElement>('[data-system]').forEach((b) => b.addEventListener('click', () => systemInfo(SYSTEMS[Number(b.dataset.system)])));
+    main.querySelectorAll<HTMLButtonElement>('[data-system]').forEach((b) => b.addEventListener('click', () => {
+      const s = SYSTEMS[Number(b.dataset.system)];
+      if (s.type && IMPORTABLE.includes(s.type) && t.connections.some((c) => c.type === s.type)) {
+        page = { kind: 'import', w: newWizard(s.type) };
+        ctx.track('ie-open');
+        return renderOnboarding(main);
+      }
+      systemInfo(s);
+    }));
     main.querySelectorAll<HTMLButtonElement>('[data-area]').forEach((b) => b.addEventListener('click', () => {
+      if (ctx.currentChapter() < EXCURSIONS) return toast('You work with the Content Network in the excursions (chapter 12). The SAP Systems cards work now.', 'info');
       page = { kind: 'area', area: b.dataset.area as ContentArea };
       ctx.track(`onboarding:${b.dataset.area}`);
       renderOnboarding(main);
@@ -83,6 +110,17 @@ export function renderOnboarding(main: HTMLElement) {
       ctx.track('import-logs');
       renderOnboarding(main);
     });
+    return;
+  }
+
+  if (page.kind === 'import') {
+    renderImportWizard(main, page.w, (log) => {
+      // After the import: its log in Open Import Logs, for the target space.
+      if (log.entities) t.activeSpace = log.entities.space;
+      page = { kind: 'logs', open: 0 };
+      ctx.track('import-logs');
+      renderOnboarding(main);
+    }, () => go(main, { kind: 'home' }));
     return;
   }
 
@@ -153,23 +191,35 @@ export function renderOnboarding(main: HTMLElement) {
     return;
   }
 
-  // Import Logs of Import Entities (SAP systems): one space, imports on the left, messages on the right. Not part of the game, so empty.
+  // Import Logs of Import Entities (SAP systems): one space, imports on the left, messages on the right.
+  const logs = entityLogs(t.activeSpace);
+  const openIdx = page.open !== undefined ? logs[page.open]?.i : undefined;
+  const sel = openIdx !== undefined ? t.importLogs[openIdx] : undefined;
   main.innerHTML = `<div class="onb-page"><div class="onb-sub">${back('Semantic Onboarding')}<h1 class="view-title">Import Logs</h1>
       <span class="spacer"></span>${spaceSelect('onb-log-space', t.activeSpace)}</div>
     <section class="onb-body onb-logs-split">
-      <div class="panel mon-table"><div class="mon-table-head"><h3>Imports (0)</h3></div>
-        <table class="grid" id="entity-log-list"><thead><tr><th>Started</th><th>Duration</th><th>Result</th></tr></thead>
-          <tbody><tr><td colspan="3" class="muted">No imports from SAP systems in ${esc(t.activeSpace)}.</td></tr></tbody></table></div>
-      <div class="panel onb-detail"><h3>Messages</h3>
-        <p class="muted">These logs belong to <b>Import Entities</b>: importing entities with their semantics from an SAP system connection
-          (S/4HANA, BW/4HANA). That is not part of the game. The messages of a <b>Content Network</b> package are on the package itself,
-          tab <b>Import Overview</b>.</p></div>
+      <div class="panel mon-table"><div class="mon-table-head"><h3>Imports (${logs.length})</h3></div>
+        <table class="grid" id="entity-log-list"><thead><tr><th>Started</th><th>Entities</th><th>Data Access</th><th>Result</th></tr></thead>
+          <tbody>${logs.map(({ l }, k) => `<tr class="${sel === l ? 'selected' : ''}">
+              <td><button type="button" class="link-btn" data-elog="${k}">${esc(when(l.at))}</button></td>
+              <td class="mono">${esc(l.entities!.selected.join(', '))}</td><td class="muted">${esc(l.entities!.access)}</td>
+              <td><span class="st-text ${entityLogStatus(l)[0]}">${entityLogStatus(l)[1]}</span></td></tr>`).join('')
+            || `<tr><td colspan="4" class="muted">No imports from SAP systems in ${esc(t.activeSpace)}.</td></tr>`}</tbody></table></div>
+      <div class="panel onb-detail" id="entity-log-detail"><h3>Messages${sel ? ` <small class="muted">${esc(when(sel.at))}</small>` : ''}</h3>
+        ${sel ? `<ol class="run-log onb-log">${sel.lines.map((x) => `<li class="${x.level === 'error' ? 'err' : x.level}">${esc(x.text)}</li>`).join('')}</ol>`
+          : `<p class="muted">Select an import to read its messages. These logs belong to <b>Import Entities</b> (SAP systems). The messages of a
+            <b>Content Network</b> package are on the package itself, tab <b>Import Overview</b>.</p>`}</div>
     </section></div>`;
   main.querySelector('#onb-back')!.addEventListener('click', () => go(main, { kind: 'home' }));
   main.querySelector<HTMLSelectElement>('#onb-log-space')!.addEventListener('change', (e) => {
     t.activeSpace = (e.target as HTMLSelectElement).value;
+    page = { kind: 'logs' };
     renderOnboarding(main);
   });
+  main.querySelectorAll<HTMLButtonElement>('[data-elog]').forEach((b) => b.addEventListener('click', () => {
+    ctx.track(`entity-log-open:${t.activeSpace}`);
+    go(main, { kind: 'logs', open: Number(b.dataset.elog) });
+  }));
 }
 
 function go(main: HTMLElement, p: Page) {
@@ -180,10 +230,11 @@ function go(main: HTMLElement, p: Page) {
 function systemInfo(s: (typeof SYSTEMS)[number]) {
   const type = s.type ? CONN_TYPES.find((c) => c.id === s.type) : undefined;
   const { form, close } = openDialog(s.label, `
-    <p class="guide-lead">From here, <b>Import Entities</b> brings objects of this system into a space with their semantics: remote tables on CDS views,
+    <p class="guide-lead">From here, <b>Import Entities</b> brings objects of this system into a space with their semantics: tables on CDS views,
       plus views with labels, associations and hierarchies (Handbuch 5.7). It needs a connection that supports <b>Model Import</b>.</p>
     <p class="muted">${s.enabled === false ? 'Not enabled in this tenant.' : type ? `${ctx.tenant().connections.filter((c) => c.type === s.type).length} connection(s) of type ${esc(type.label)}.` : 'No connection type of this kind in the game.'}
-      In the game you build these objects by hand (chapters 3 and 6), so Import Entities is not part of it.</p>
+      ${s.type && IMPORTABLE.includes(s.type) ? 'Create a connection of this type in the Connections app first; then this card opens the Import Entities wizard.'
+        : 'In the game, Import Entities works for SAP S/4HANA Cloud and On-Premise connections.'}</p>
     <div class="guide-actions"><button class="btn primary" type="submit">Got it</button></div>`);
   form.addEventListener('submit', (e) => {
     e.preventDefault();

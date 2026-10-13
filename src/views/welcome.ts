@@ -1,6 +1,6 @@
 import { ctx } from '../ctx';
 import type { TenantState } from '../tenant';
-import { esc, icon, ICONS, layerName } from '../ui';
+import { esc, icon, ICONS, layerName, layerOf } from '../ui';
 
 /**
  * Page type A of docs/design/README.md: "Welcome to the <App>" with a short text, then a grey area with an illustration
@@ -29,7 +29,7 @@ export function spaceCardHtml(t: TenantState, id: string, attrs: string) {
   </button>`;
 }
 
-const layerKey = (id: string) => (id.endsWith('_IN') ? 'in' : id.endsWith('_HARM') ? 'ha' : id.endsWith('_REP') ? 'rep' : '');
+const layerKey = (id: string) => layerOf(id) ?? '';
 
 /** Simple line drawing in the spirit of the real empty states (no SAP artwork): cubes and a folder. */
 export const ILLUSTRATION = `<svg class="illu" viewBox="0 0 220 130" aria-hidden="true">

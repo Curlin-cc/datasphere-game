@@ -7,7 +7,7 @@ from common import Game, save_before
 from chapter12_data import TENANT12
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-C = 'RHN_HARM.RHN_HA_V_CONTRACTS'
+C = 'RHN_DSL.RHN_DS_V_CONTRACTS'
 save = save_before(12, 'c12-m07', TENANT12)
 for m in ['c12-m01', 'c12-m02', 'c12-m03', 'c12-m04', 'c12-m05', 'c12-m06']:
     save["missions"][m] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
@@ -29,7 +29,7 @@ with sync_playwright() as p:
     g.check('m07 nothing done')
 
     # A fix typed by hand: the result is right, but the history was not used
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     pg.click(f'#object-list [data-open="{C}"]'); pg.wait_for_selector('#editor')
     tim = pg.inner_text('.cm-content')
     print('   Tim\'s SQL starts:', tim.splitlines()[0][:80])
@@ -64,7 +64,7 @@ with sync_playwright() as p:
     g.check('m07 solved')
 
     g.reload()
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     pg.click(f'#object-list [data-open="{C}"]'); pg.wait_for_selector('#editor')
     pg.click('#ed-versions'); pg.wait_for_selector('#version-list')
     print('   versions after reload:', pg.locator('[data-version]').count(), '(before:', n, '+1)')

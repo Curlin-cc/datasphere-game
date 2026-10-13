@@ -7,8 +7,8 @@ import { runChain, type ChainDef } from '../../taskchain';
 import { M03_COLS, project, refCustomers } from './c05';
 
 /**
- * Chapter 10, Operations (Handbuch 6.8, 10.3.6, 10.3.8, 10.5, 10.6 Ablauf C). Task chains: a chain in RHN_IN that loads the
- * daily CRM file, shared with RHN_HARM and nested in the nightly chain there, which then persists the customers and the
+ * Chapter 10, Operations (Handbuch 6.8, 10.3.6, 10.3.8, 10.5, 10.6 Ablauf C). Task chains: a chain in RHN_ENTRY that loads the
+ * daily CRM file, shared with RHN_DSL and nested in the nightly chain there, which then persists the customers and the
  * meter readings; one schedule instead of three, a failure email to the on-call integrator. Then a real failure: a deployed
  * change that only breaks at run time, found from the chain run down to the step's own monitor. Finally the cross-space view
  * in Task Logs.
@@ -18,13 +18,13 @@ const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor',
 const LENA = { name: 'Lena Hoffmann', role: 'Integration Engineer, on call for loads', initials: 'LH' };
 const IT = { name: 'Jonas Becker', role: 'Head of IT, tenant owner', initials: 'JB' };
 
-const CRM_FLOW = 'RHN_IN.RHN_IN_RF_CRM';
-const MDM_FLOW = 'RHN_IN.RHN_IN_RF_MDM';
-const S4_FLOW = 'RHN_IN.RHN_IN_RF_S4U';
-const IN_CHAIN = 'RHN_IN.RHN_IN_TC_CRM';
-const NIGHTLY = 'RHN_HARM.RHN_HARM_TC_NIGHTLY';
-const CUSTOMERS = 'RHN_HARM.RHN_HA_V_CUSTOMERS';
-const READINGS = 'RHN_HARM.RHN_HA_V_METER_READINGS';
+const CRM_FLOW = 'RHN_ENTRY.RHN_EN_RF_CRM';
+const MDM_FLOW = 'RHN_ENTRY.RHN_EN_RF_MDM';
+const S4_FLOW = 'RHN_ENTRY.RHN_EN_RF_S4U';
+const IN_CHAIN = 'RHN_ENTRY.RHN_EN_TC_CRM';
+const NIGHTLY = 'RHN_DSL.RHN_DS_TC_NIGHTLY';
+const CUSTOMERS = 'RHN_DSL.RHN_DS_V_CUSTOMERS';
+const READINGS = 'RHN_DSL.RHN_DS_V_METER_READINGS';
 
 const nameOf = (key: string) => key.split('.')[1];
 
@@ -54,26 +54,26 @@ function ranOk(t: TenantState, key: string, since?: string): string | null {
 /** Makes sure the chapter-3 objects exist (connections, flows), for players who skipped parts or for test saves. */
 export function ensureInbound(t: TenantState) {
   const at = new Date().toISOString();
-  if (!findConnection(t, 'RHN_IN', 'RHN_CRM')) {
-    const c = { space: 'RHN_IN', name: 'RHN_CRM', businessName: 'CRM Export', type: 'S3', host: 'rheinau-crm-export', onprem: false, locationId: '', tls: true, auth: 'Access Key', changedAt: at };
+  if (!findConnection(t, 'RHN_ENTRY', 'RHN_CRM')) {
+    const c = { space: 'RHN_ENTRY', name: 'RHN_CRM', businessName: 'CRM Export', type: 'S3', host: 'rheinau-crm-export', onprem: false, locationId: '', tls: true, auth: 'Access Key', changedAt: at };
     t.connections.push(c);
   }
-  const crm = findConnection(t, 'RHN_IN', 'RHN_CRM')!;
+  const crm = findConnection(t, 'RHN_ENTRY', 'RHN_CRM')!;
   if (!crm.validation?.ok) crm.validation = validateConnection(t, crm);
   if (!findObject(t, CRM_FLOW)) {
     const flow = { connection: 'RHN_CRM', objects: [{ source: 'customers/CRM_CUSTOMERS.csv', target: 'CRM_CUSTOMERS', loadType: 'Initial Only' as const, truncate: true, extra: [{ name: 'SRC_SYS_ID', value: 'CRM' }] }], schedule: 'Daily' as const };
-    t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_RF_CRM', kind: 'Replication Flow', businessName: 'CRM customer file', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'CRM customer file', flow: structuredClone(flow) }, status: 'deployed', changedAt: at });
+    t.objects.push({ space: 'RHN_ENTRY', name: 'RHN_EN_RF_CRM', kind: 'Replication Flow', businessName: 'CRM customer file', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'CRM customer file', flow: structuredClone(flow) }, status: 'deployed', changedAt: at });
   }
-  if (!findConnection(t, 'RHN_IN', 'RHN_MDM')) {
-    const c = { space: 'RHN_IN', name: 'RHN_MDM', businessName: 'Meter Data (MDM)', type: 'HANA', host: 'mdm-db.rheinau.local', onprem: true, locationId: 'RHEINAU_DC', tls: true, auth: 'User Name and Password', changedAt: at };
+  if (!findConnection(t, 'RHN_ENTRY', 'RHN_MDM')) {
+    const c = { space: 'RHN_ENTRY', name: 'RHN_MDM', businessName: 'Meter Data (MDM)', type: 'HANA', host: 'mdm-db.rheinau.local', onprem: true, locationId: 'RHEINAU_DC', tls: true, auth: 'User Name and Password', changedAt: at };
     t.connections.push(c);
     if (!t.certificates.includes('Rheinau Root CA')) t.certificates.push('Rheinau Root CA');
   }
-  const mdm = findConnection(t, 'RHN_IN', 'RHN_MDM')!;
+  const mdm = findConnection(t, 'RHN_ENTRY', 'RHN_MDM')!;
   if (!mdm.validation?.ok) mdm.validation = validateConnection(t, mdm);
   if (!findObject(t, MDM_FLOW)) {
     const flow = { connection: 'RHN_MDM', objects: [{ source: 'METER_READINGS', target: 'METER_READINGS', loadType: 'Initial and Delta' as const, truncate: false, extra: [] }] };
-    t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_RF_MDM', kind: 'Replication Flow', businessName: 'Meter readings from MDM (Lena)', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'Meter readings from MDM (Lena)', flow: structuredClone(flow) }, status: 'deployed', changedAt: at });
+    t.objects.push({ space: 'RHN_ENTRY', name: 'RHN_EN_RF_MDM', kind: 'Replication Flow', businessName: 'Meter readings from MDM (Lena)', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'Meter readings from MDM (Lena)', flow: structuredClone(flow) }, status: 'deployed', changedAt: at });
   }
   t.consent = true;
 }
@@ -89,51 +89,51 @@ export const CHAPTER_10: Mission[] = [
     from: CALIN,
     ticket: `<p>Three schedules run our nights today: the CRM file flow, the persisted readings, and soon the customers. Nobody sees the
       order, and when one fails the next runs anyway. Time for <b>task chains</b>: several tasks as one unit, in a fixed order, one schedule.</p>
-      <p>A chain runs the objects of its own space. Start in <code>RHN_IN</code>: a task chain <code>RHN_IN_TC_CRM</code> that runs the
-      replication flow <code>RHN_IN_RF_CRM</code>. Try to add Lena's <code>RHN_IN_RF_MDM</code> too, and see what happens. Then share the chain
-      with <code>RHN_HARM</code>, where the nightly chain will call it, and remove the flow's own schedule: the chains take over.</p>`,
+      <p>A chain runs the objects of its own space. Start in <code>RHN_ENTRY</code>: a task chain <code>RHN_EN_TC_CRM</code> that runs the
+      replication flow <code>RHN_EN_RF_CRM</code>. Try to add Lena's <code>RHN_EN_RF_MDM</code> too, and see what happens. Then share the chain
+      with <code>RHN_DSL</code>, where the nightly chain will call it, and remove the flow's own schedule: the chains take over.</p>`,
     tasks: [
-      'In <code>RHN_IN</code>, create a <b>Task Chain</b> <code>RHN_IN_TC_CRM</code> with the step <code>RHN_IN_RF_CRM</code>. Try to add <code>RHN_IN_RF_MDM</code>.',
+      'In <code>RHN_ENTRY</code>, create a <b>Task Chain</b> <code>RHN_EN_TC_CRM</code> with the step <code>RHN_EN_RF_CRM</code>. Try to add <code>RHN_EN_RF_MDM</code>.',
       'Deploy the chain and <b>run</b> it once.',
-      'Share it with <code>RHN_HARM</code>, and remove the schedule of <code>RHN_IN_RF_CRM</code> (Data Integration Monitor › Flows).',
+      'Share it with <code>RHN_DSL</code>, and remove the schedule of <code>RHN_EN_RF_CRM</code> (Data Integration Monitor › Flows).',
       'Answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'Task Chain is a tile on the Data Builder start page. Add Step lists the deployed objects of the space. Run is in the toolbar of the editor once the chain is deployed.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A task chain waits for each step to end before the next starts. Which of the two flows never ends?' },
-      { label: 'Hint 3: the setup', cost: 25, text: 'RHN_IN_TC_CRM: one step RHN_IN_RF_CRM, Deploy, Run. Share icon in the object list → RHN_HARM. Monitor › RHN_IN › Flows › RHN_IN_RF_CRM › Schedule → No schedule.' },
+      { label: 'Hint 3: the setup', cost: 25, text: 'RHN_EN_TC_CRM: one step RHN_EN_RF_CRM, Deploy, Run. Share icon in the object list → RHN_DSL. Monitor › RHN_ENTRY › Flows › RHN_EN_RF_CRM › Schedule → No schedule.' },
     ],
     setup: ensureInbound,
     checks: [
       {
-        type: 'rule', label: 'The chain', ok: 'RHN_IN_TC_CRM runs RHN_IN_RF_CRM.',
+        type: 'rule', label: 'The chain', ok: 'RHN_EN_TC_CRM runs RHN_EN_RF_CRM.',
         test: ({ tenant }) => {
           const c = chainOf(tenant, IN_CHAIN);
           if (!c.def) return c.problem;
           const steps = c.def.steps.map((s) => s.object);
-          if (!steps.includes(CRM_FLOW)) return 'RHN_IN_TC_CRM has no step RHN_IN_RF_CRM.';
-          return steps.length === 1 ? null : `RHN_IN_TC_CRM has ${steps.length} steps. For now it runs the CRM flow only.`;
+          if (!steps.includes(CRM_FLOW)) return 'RHN_EN_TC_CRM has no step RHN_EN_RF_CRM.';
+          return steps.length === 1 ? null : `RHN_EN_TC_CRM has ${steps.length} steps. For now it runs the CRM flow only.`;
         },
       },
       {
         type: 'rule', label: 'You tried the delta flow', ok: 'You saw why the delta flow cannot be a step.',
-        test: ({ events }) => (events.has(`chain-refused:${MDM_FLOW}`) ? null : 'Try to add RHN_IN_RF_MDM as a step and read the message.'),
+        test: ({ events }) => (events.has(`chain-refused:${MDM_FLOW}`) ? null : 'Try to add RHN_EN_RF_MDM as a step and read the message.'),
       },
       { type: 'rule', label: 'Run once', ok: 'The chain ran and completed.', test: ({ tenant }) => ranOk(tenant, IN_CHAIN) },
       {
-        type: 'rule', label: 'Shared with RHN_HARM', ok: 'RHN_HARM can nest the chain.',
-        test: ({ tenant }) => (isShared(tenant, IN_CHAIN, 'RHN_HARM') ? null : 'RHN_IN_TC_CRM is not shared with RHN_HARM yet.'),
+        type: 'rule', label: 'Shared with RHN_DSL', ok: 'RHN_DSL can nest the chain.',
+        test: ({ tenant }) => (isShared(tenant, IN_CHAIN, 'RHN_DSL') ? null : 'RHN_EN_TC_CRM is not shared with RHN_DSL yet.'),
       },
       {
-        type: 'rule', label: 'One schedule, not two', ok: 'RHN_IN_RF_CRM has no schedule of its own any more.',
+        type: 'rule', label: 'One schedule, not two', ok: 'RHN_EN_RF_CRM has no schedule of its own any more.',
         test: ({ tenant }) => {
           const f = findObject(tenant, CRM_FLOW);
-          return f?.deployed?.flow?.schedule ? `RHN_IN_RF_CRM still runs ${f.deployed.flow.schedule.toLowerCase()} on its own. Remove that schedule: the chain will run it.` : null;
+          return f?.deployed?.flow?.schedule ? `RHN_EN_RF_CRM still runs ${f.deployed.flow.schedule.toLowerCase()} on its own. Remove that schedule: the chain will run it.` : null;
         },
       },
       {
         type: 'question', id: 'delta', label: 'Why not the delta flow',
-        prompt: 'Why can RHN_IN_RF_MDM not be a step of the chain?',
+        prompt: 'Why can RHN_EN_RF_MDM not be a step of the chain?',
         options: [
           'Flows from on-premise sources cannot be in task chains',
           'It has load type Initial and Delta: it keeps replicating and never ends, so the chain would wait forever. Chains run flows with Initial Only',
@@ -148,29 +148,29 @@ export const CHAPTER_10: Mission[] = [
     realTenant: `In a real tenant: <b>Data Builder › New Task Chain</b>, drag objects from the repository onto the canvas, deploy, then
       <b>Run</b> or <b>Schedule</b>. Replication flows in a chain usually have load type Initial Only. Since 2024 task chains can be
       shared with other spaces and nested there ("global" task chains).`,
-    debrief: `<p>The inbound part of the night is one object now. Next: the chain in RHN_HARM that calls it and then persists.</p>`,
+    debrief: `<p>The entry part of the night is one object now. Next: the chain in RHN_DSL that calls it and then persists.</p>`,
   },
   {
     id: 'c10-m02',
     chapter: 10,
     title: 'The night in order',
     from: CALIN,
-    ticket: `<p>Now the chain that runs the whole night: <code>RHN_HARM_TC_NIGHTLY</code> in <code>RHN_HARM</code>.</p>
-      <ol><li>Load the CRM file: the chain <code>RHN_IN_TC_CRM</code> from RHN_IN.</li>
-        <li>Persist <code>RHN_HA_V_CUSTOMERS</code>: removing duplicates from all customers is expensive too, and the controllers read it every day.</li>
-        <li>Persist <code>RHN_HA_V_METER_READINGS</code>.</li></ol>
+    ticket: `<p>Now the chain that runs the whole night: <code>RHN_DS_TC_NIGHTLY</code> in <code>RHN_DSL</code>.</p>
+      <ol><li>Load the CRM file: the chain <code>RHN_EN_TC_CRM</code> from RHN_ENTRY.</li>
+        <li>Persist <code>RHN_DS_V_CUSTOMERS</code>: removing duplicates from all customers is expensive too, and the controllers read it every day.</li>
+        <li>Persist <code>RHN_DS_V_METER_READINGS</code>.</li></ol>
       <p>The order matters. <b>Email notification</b> on failure to Lena (<code>LHOFFMANN</code>), who is on call. Schedule the chain
       <b>daily</b>, remove the separate schedule of the readings from chapter 9, and run it once.</p>`,
     tasks: [
-      'In <code>RHN_HARM</code>, create <code>RHN_HARM_TC_NIGHTLY</code> with the three steps in the right order.',
+      'In <code>RHN_DSL</code>, create <code>RHN_DS_TC_NIGHTLY</code> with the three steps in the right order.',
       'Email notification when the chain fails, to <code>LHOFFMANN</code>. Deploy.',
-      'Schedule it <b>daily</b> and run it once. Remove the schedule of <code>RHN_HA_V_METER_READINGS</code> (Data Integration Monitor › Views).',
+      'Schedule it <b>daily</b> and run it once. Remove the schedule of <code>RHN_DS_V_METER_READINGS</code> (Data Integration Monitor › Views).',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Add Step lists the views of RHN_HARM under View Persistence and the shared chain under Task Chain. Arrows move a step up or down.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Add Step lists the views of RHN_DSL under View Persistence and the shared chain under Task Chain. Arrows move a step up or down.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'The customer view reads the CRM table. Which step must be done before it can be persisted?' },
-      { label: 'Hint 3: the setup', cost: 25, text: '1 RHN_IN_TC_CRM, 2 RHN_HA_V_CUSTOMERS, 3 RHN_HA_V_METER_READINGS · When the task chain fails ✓, recipients LHOFFMANN · Deploy · Schedule Daily · Run.' },
+      { label: 'Hint 3: the setup', cost: 25, text: '1 RHN_EN_TC_CRM, 2 RHN_DS_V_CUSTOMERS, 3 RHN_DS_V_METER_READINGS · When the task chain fails ✓, recipients LHOFFMANN · Deploy · Schedule Daily · Run.' },
     ],
     checks: [
       {
@@ -180,8 +180,8 @@ export const CHAPTER_10: Mission[] = [
           if (!c.def) return c.problem;
           const steps = c.def.steps.map((s) => s.object);
           const missing = [IN_CHAIN, CUSTOMERS, READINGS].filter((k) => !steps.includes(k));
-          if (missing.length) return `RHN_HARM_TC_NIGHTLY has no step ${missing.map(nameOf).join(', ')}.`;
-          return steps.length === 3 ? null : `RHN_HARM_TC_NIGHTLY has ${steps.length} steps; the night needs exactly these three.`;
+          if (missing.length) return `RHN_DS_TC_NIGHTLY has no step ${missing.map(nameOf).join(', ')}.`;
+          return steps.length === 3 ? null : `RHN_DS_TC_NIGHTLY has ${steps.length} steps; the night needs exactly these three.`;
         },
       },
       {
@@ -190,7 +190,7 @@ export const CHAPTER_10: Mission[] = [
           const steps = chainOf(tenant, NIGHTLY).def?.steps.map((s) => s.object) ?? [];
           if (!steps.length) return 'Build the chain first.';
           return steps.indexOf(IN_CHAIN) < steps.indexOf(CUSTOMERS) ? null
-            : 'RHN_HA_V_CUSTOMERS is persisted before the CRM file is loaded. The snapshot would hold yesterday\'s customers until the next night.';
+            : 'RHN_DS_V_CUSTOMERS is persisted before the CRM file is loaded. The snapshot would hold yesterday\'s customers until the next night.';
         },
       },
       {
@@ -206,17 +206,17 @@ export const CHAPTER_10: Mission[] = [
         type: 'rule', label: 'Daily, one schedule', ok: 'The chain runs daily; the readings have no schedule of their own.',
         test: ({ tenant }) => {
           const c = findObject(tenant, NIGHTLY);
-          if (!c?.chainSchedule) return 'RHN_HARM_TC_NIGHTLY has no schedule yet.';
+          if (!c?.chainSchedule) return 'RHN_DS_TC_NIGHTLY has no schedule yet.';
           if (c.chainSchedule !== 'Daily') return `The chain runs ${c.chainSchedule.toLowerCase()}. The controllers want fresh data every morning.`;
           return findObject(tenant, READINGS)?.persistSchedule
-            ? 'RHN_HA_V_METER_READINGS still has its own schedule from chapter 9. Remove it: two schedules for one snapshot run it twice a night.'
+            ? 'RHN_DS_V_METER_READINGS still has its own schedule from chapter 9. Remove it: two schedules for one snapshot run it twice a night.'
             : null;
         },
       },
       { type: 'rule', label: 'Run once', ok: 'The nightly chain completed.', test: ({ tenant }) => ranOk(tenant, NIGHTLY) },
       {
         type: 'question', id: 'order', label: 'Why the order',
-        prompt: 'What happens if RHN_HA_V_CUSTOMERS is persisted before the CRM file is loaded?',
+        prompt: 'What happens if RHN_DS_V_CUSTOMERS is persisted before the CRM file is loaded?',
         options: [
           'Nothing, persistence always waits for new data',
           'The snapshot is built from yesterday\'s file: new customers appear only a day later',
@@ -228,7 +228,7 @@ export const CHAPTER_10: Mission[] = [
       },
     ],
     xp: 55,
-    realTenant: `In a real tenant: the nightly chain nests the shared chain of the inbound space, followed by two persistence tasks. Parallel
+    realTenant: `In a real tenant: the nightly chain nests the shared chain of the entry space, followed by two persistence tasks. Parallel
       branches (here: customers and readings could run side by side) are joined by an ALL or ANY operator; the game runs steps in sequence.
       The email notification is set in the chain's editor.`,
     debrief: `<p>One schedule, one order, one email if something goes wrong. Lena says thank you in advance.</p>
@@ -239,19 +239,19 @@ export const CHAPTER_10: Mission[] = [
     chapter: 10,
     title: 'The failure email',
     from: LENA,
-    ticket: `<p>Lena here. The email came in: the scheduled run of <code>RHN_HARM_TC_NIGHTLY</code> failed. The controllers' customer
+    ticket: `<p>Lena here. The email came in: the scheduled run of <code>RHN_DS_TC_NIGHTLY</code> failed. The controllers' customer
       numbers are from yesterday.</p>
       <p>Tim says he deployed a small change yesterday afternoon, "it deployed without errors". Please find the step that failed, read its
       own log, fix the cause, and run the chain again.</p>`,
     tasks: [
-      'Data Integration Monitor › <code>RHN_HARM</code> › Task Chains: open the failed run of <code>RHN_HARM_TC_NIGHTLY</code> and the step that failed.',
+      'Data Integration Monitor › <code>RHN_DSL</code> › Task Chains: open the failed run of <code>RHN_DS_TC_NIGHTLY</code> and the step that failed.',
       'Find the cause in the step\'s own log and fix the view in the Data Builder. Deploy.',
       'Run the chain again. Answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'The failed step is a link: it opens the Views monitor with the view selected and its run log.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Customer IDs look like K-100501. What happens when such a value is converted to a number?' },
-      { label: 'Hint 3: the fix', cost: 25, text: 'In RHN_HA_V_CUSTOMERS, remove Tim\'s CAST line, or convert only the digits: CAST(SUBSTR(x.CUSTOMER_ID, 3) AS INTEGER). Deploy, then Run the chain.' },
+      { label: 'Hint 3: the fix', cost: 25, text: 'In RHN_DS_V_CUSTOMERS, remove Tim\'s CAST line, or convert only the digits: CAST(SUBSTR(x.CUSTOMER_ID, 3) AS INTEGER). Deploy, then Run the chain.' },
     ],
     setup: (t) => {
       ensureInbound(t);
@@ -273,21 +273,21 @@ export const CHAPTER_10: Mission[] = [
       {
         type: 'rule', label: 'You followed the trail', ok: 'From the chain run to the step\'s own log.',
         test: ({ events }) => (events.has(`chain-step-open:${CUSTOMERS}`) || events.has(`monitor-open:${CUSTOMERS}`)
-          ? null : 'Open the failed run of RHN_HARM_TC_NIGHTLY and click the step that failed to see its own log.'),
+          ? null : 'Open the failed run of RHN_DS_TC_NIGHTLY and click the step that failed to see its own log.'),
       },
       {
         type: 'result', label: 'Customers are right again', object: CUSTOMERS, columns: M03_COLS, expected: project(M03_COLS, refCustomers()),
       },
       {
-        type: 'rule', label: 'The night runs again', ok: 'RHN_HARM_TC_NIGHTLY completed after the fix.',
+        type: 'rule', label: 'The night runs again', ok: 'RHN_DS_TC_NIGHTLY completed after the fix.',
         test: ({ tenant }) => {
           const failed = tenant.runs.find((r: Run) => r.object === NIGHTLY && r.status === 'Failed');
           return ranOk(tenant, NIGHTLY, failed?.start);
         },
       },
       {
-        type: 'rule', label: 'Customers persisted', ok: 'RHN_HA_V_CUSTOMERS reads a fresh snapshot.',
-        test: ({ tenant }) => (findObject(tenant, CUSTOMERS)?.persisted ? null : 'RHN_HA_V_CUSTOMERS is not persisted. Deploying removed its snapshot: run the chain again.'),
+        type: 'rule', label: 'Customers persisted', ok: 'RHN_DS_V_CUSTOMERS reads a fresh snapshot.',
+        test: ({ tenant }) => (findObject(tenant, CUSTOMERS)?.persisted ? null : 'RHN_DS_V_CUSTOMERS is not persisted. Deploying removed its snapshot: run the chain again.'),
       },
       {
         type: 'question', id: 'why-deploy', label: 'Deployed, yet failed',
@@ -325,13 +325,13 @@ export const CHAPTER_10: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'Task Logs is in the Monitoring group of the side navigation. Click the start time of a run to see its messages.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Count the failed runs per object. The messages of the same object tell the same story.' },
-      { label: 'Hint 3: the answer', cost: 25, text: 'RHN_IN_RF_S4U failed three times: the password of the technical user expired.' },
+      { label: 'Hint 3: the answer', cost: 25, text: 'RHN_EN_RF_S4U failed three times: the password of the technical user expired.' },
     ],
     setup: (t) => {
       ensureInbound(t);
       if (!findObject(t, S4_FLOW)) {
         const flow = { connection: 'RHN_S4U', objects: [{ source: 'BILLING_CONTRACTS', target: 'BILLING_CONTRACTS', loadType: 'Initial and Delta' as const, truncate: false, extra: [] }, { source: 'BILLING_INVOICES', target: 'BILLING_INVOICES', loadType: 'Initial and Delta' as const, truncate: false, extra: [] }] };
-        t.objects.push({ space: 'RHN_IN', name: 'RHN_IN_RF_S4U', kind: 'Replication Flow', businessName: 'Contracts and invoices from S/4HANA', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'Contracts and invoices from S/4HANA', flow: structuredClone(flow) }, status: 'deployed', changedAt: new Date().toISOString() });
+        t.objects.push({ space: 'RHN_ENTRY', name: 'RHN_EN_RF_S4U', kind: 'Replication Flow', businessName: 'Contracts and invoices from S/4HANA', semanticUsage: 'Relational Dataset', flow, deployed: { businessName: 'Contracts and invoices from S/4HANA', flow: structuredClone(flow) }, status: 'deployed', changedAt: new Date().toISOString() });
       }
       const day = (d: number, h: number) => {
         const x = new Date();
@@ -344,9 +344,9 @@ export const CHAPTER_10: Mission[] = [
         messages: ['Delta replication: reconnecting to RHN_S4U.', 'Connection RHN_S4U: logon failed for the technical user RHN_REPL. Its password expired on the S/4HANA side.', 'Delta replication stopped. Changes are not replicated until the connection works again.'],
       });
       s4fail(4); s4fail(3); s4fail(1);
-      addRun(t, { object: 'RHN_REP.RHN_REP_V_REGION_REVENUE', kind: 'View', start: day(2, 14), status: 'Failed', records: 0, ms: 0,
-        messages: ['Manual run: Persist RHN_REP_V_REGION_REVENUE.', 'RHN_REP_V_REGION_REVENUE reads RHN_REP_F_INVOICES, which has a data access control. A view that uses a view with a data access control cannot be persisted.', 'Run stopped. Nothing was persisted.'] });
-      addRun(t, { object: 'RHN_HARM.RHN_HA_V_METER_READINGS', kind: 'View', start: day(2, 2), status: 'Completed', records: 5726, ms: 72_200, messages: ['Scheduled run: Persist RHN_HA_V_METER_READINGS.', 'View executed, 5,726 records stored.'] });
+      addRun(t, { object: 'RHN_PRES.RHN_PR_V_REGION_REVENUE', kind: 'View', start: day(2, 14), status: 'Failed', records: 0, ms: 0,
+        messages: ['Manual run: Persist RHN_PR_V_REGION_REVENUE.', 'RHN_PR_V_REGION_REVENUE reads RHN_DS_F_INVOICES, which has a data access control. A view that uses a view with a data access control cannot be persisted.', 'Run stopped. Nothing was persisted.'] });
+      addRun(t, { object: 'RHN_DSL.RHN_DS_V_METER_READINGS', kind: 'View', start: day(2, 2), status: 'Completed', records: 5726, ms: 72_200, messages: ['Scheduled run: Persist RHN_DS_V_METER_READINGS.', 'View executed, 5,726 records stored.'] });
       t.runs.sort((a, b) => b.start.localeCompare(a.start));
     },
     checks: [
@@ -361,7 +361,7 @@ export const CHAPTER_10: Mission[] = [
       {
         type: 'question', id: 'which', label: 'Which object',
         prompt: 'Which object failed most often this week?',
-        options: ['RHN_HARM_TC_NIGHTLY', 'RHN_IN_RF_S4U', 'RHN_REP_V_REGION_REVENUE', 'RHN_HA_V_METER_READINGS'],
+        options: ['RHN_DS_TC_NIGHTLY', 'RHN_EN_RF_S4U', 'RHN_PR_V_REGION_REVENUE', 'RHN_DS_V_METER_READINGS'],
         answer: 1,
         nudge: 'Not quite. Count the failed rows per object.',
       },
@@ -369,7 +369,7 @@ export const CHAPTER_10: Mission[] = [
         type: 'question', id: 'cause', label: 'Why',
         prompt: 'Why does it fail, and who fixes it?',
         options: [
-          'The space RHN_IN is full; Jonas assigns more storage',
+          'The space RHN_ENTRY is full; Jonas assigns more storage',
           'The password of the technical user RHN_REPL expired in S/4HANA; the S/4HANA basis team renews it, then the connection is validated and the replication restarted',
           'A data access control blocks it; audit removes the control',
           'The view is too slow; it needs persistence',

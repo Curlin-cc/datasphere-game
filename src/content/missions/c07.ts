@@ -1,10 +1,13 @@
 import type { Mission, RuleContext } from '../../missions/types';
 import { findObject, type RepoObject } from '../../repo';
+import { isShared } from '../../tenant';
 import type { AnalyticModelDef, Measure } from '../../analytic';
 import { REF_F_CONS, REF_F_INV } from './c06';
 
 /**
- * Chapter 7, Analytic Model (Handbuch 6.10, 6.12.5). The CFO gets a model on the invoice fact: fact source measures,
+ * Chapter 7, Analytic Model (Handbuch 6.10, 6.12.5). The presentation layer RHN_PRES gets its first objects: the facts and the
+ * dimensions a model needs are shared from RHN_DSL (supporting entities, SAP help "Share Supporting Entities"; the customer
+ * dimension stays unshared). The CFO gets a model on the invoice fact: fact source measures,
  * the dimensions from the fact's associations, a calculated measure (gross, promised in c04-m02), a restricted measure
  * (unpaid gross), a filter variable (invoice date) and a count distinct (customers). Then a second, lean model on
  * the consumption fact: one model per fact and use case.
@@ -17,20 +20,20 @@ const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor',
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 const NORTH_MGR = { name: 'Markus Brandt', role: 'Regional Manager North', initials: 'MB' };
 
-const F_INV = 'RHN_REP.RHN_REP_F_INVOICES';
-const F_CONS = 'RHN_REP.RHN_REP_F_CONSUMPTION';
-const D_GRID = 'RHN_REP.RHN_REP_D_GRID_AREA';
-const D_TARIFF = 'RHN_REP.RHN_REP_D_TARIFF';
-const D_CUST = 'RHN_REP.RHN_REP_D_CUSTOMER';
-const AM_INV = 'RHN_REP.RHN_REP_AM_INVOICES';
-const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
+const F_INV = 'RHN_DSL.RHN_DS_F_INVOICES';
+const F_CONS = 'RHN_DSL.RHN_DS_F_CONSUMPTION';
+const D_GRID = 'RHN_DSL.RHN_DS_D_GRID_AREA';
+const D_TARIFF = 'RHN_DSL.RHN_DS_D_TARIFF';
+const D_CUST = 'RHN_DSL.RHN_DS_D_CUSTOMER';
+const AM_INV = 'RHN_PRES.RHN_PR_AM_INVOICES';
+const AM_CONS = 'RHN_PRES.RHN_PR_AM_CONSUMPTION';
 
-const REGION = 'RHN_REP_D_GRID_AREA.REGION';
+const REGION = 'RHN_DS_D_GRID_AREA.REGION';
 
 // ---------------------------------------------------------------- reference figures (never shown)
 
 const INV = `(${REF_F_INV}) f`;
-const BY_REGION = `JOIN RHN_IN.GRID_AREAS g ON f.GRID_AREA = g.GRID_AREA`;
+const BY_REGION = `JOIN RHN_ENTRY.GRID_AREAS g ON f.GRID_AREA = g.GRID_AREA`;
 const ref = {
   netByRegion: `SELECT g.REGION, SUM(f.NET_AMOUNT) FROM ${INV} ${BY_REGION} GROUP BY 1`,
   grossByStatus: `SELECT f.STATUS, SUM(f.NET_AMOUNT + f.TAX_AMOUNT) FROM ${INV} GROUP BY 1`,
@@ -125,6 +128,18 @@ const intervalVariable = (key: string, name: string, attribute: string, mandator
   return null;
 };
 
+/** Shared from RHN_DSL with the presentation layer. */
+const sharedWithPres = (keys: string[]) => ({ tenant }: RuleContext) => {
+  const missing = keys.filter((k) => !isShared(tenant, k, 'RHN_PRES'));
+  return missing.length ? `Not shared with RHN_PRES yet: ${missing.map((k) => k.split('.')[1]).join(', ')}. Share them in RHN_DSL (Data Builder, select, Share).` : null;
+};
+
+/** The customer dimension stays in the data & semantic layer. */
+const customerStaysHome = ({ tenant }: RuleContext) =>
+  isShared(tenant, D_CUST, 'RHN_PRES')
+    ? 'RHN_DS_D_CUSTOMER is shared with RHN_PRES. No presentation model needs customer names: stop sharing it in RHN_DSL.'
+    : null;
+
 // ---------------------------------------------------------------- missions
 
 export const CHAPTER_7: Mission[] = [
@@ -133,31 +148,36 @@ export const CHAPTER_7: Mission[] = [
     chapter: 7,
     title: 'A model for the CFO',
     from: CFO,
-    ticket: `<p>Calin says the invoice data is ready in reporting. Our board reports in SAP Analytics Cloud need one model to build on:
+    ticket: `<p>Calin says the invoice data is modeled now. Our board reports in SAP Analytics Cloud need one model to build on:
       <b>net</b> and <b>tax</b> amounts by <b>region</b>, <b>grid area</b> and <b>tariff</b>.</p>
-      <p><i>Calin adds:</i> That is an <b>analytic model</b>: <code>RHN_REP_AM_INVOICES</code> in <code>RHN_REP</code> on the fact
-      <code>RHN_REP_F_INVOICES</code>. Measures <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>, the grid area and tariff dimensions
-      with <code>REGION</code> and <code>TARIFF_NAME</code> visible. Petra reports on regions and tariffs, not on single customers:
-      <b>no customer dimension</b> in this model.</p>`,
+      <p><i>Calin adds:</i> That is an <b>analytic model</b>, and it lives in the <b>presentation layer</b> <code>RHN_PRES</code>: what consumers see,
+      nothing else. The fact and its dimensions stay in <code>RHN_DSL</code>; share <code>RHN_DS_F_INVOICES</code> together with the dimensions
+      the model needs, <code>RHN_DS_D_GRID_AREA</code> and <code>RHN_DS_D_TARIFF</code>, with <code>RHN_PRES</code>. Petra reports on regions and
+      tariffs, not on single customers: the customer dimension is <b>not</b> shared. Then build <code>RHN_PR_AM_INVOICES</code> on the shared fact:
+      measures <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>, the grid area and tariff dimensions with <code>REGION</code> and
+      <code>TARIFF_NAME</code> visible.</p>`,
     tasks: [
-      'In <code>RHN_REP</code>, create a <b>New Analytic Model</b> on the fact <code>RHN_REP_F_INVOICES</code>.',
+      'In <code>RHN_DSL</code>, share <code>RHN_DS_F_INVOICES</code>, <code>RHN_DS_D_GRID_AREA</code> and <code>RHN_DS_D_TARIFF</code> with <code>RHN_PRES</code>.',
+      'In <code>RHN_PRES</code>, create a <b>New Analytic Model</b> on the shared fact <code>RHN_DS_F_INVOICES</code>.',
       'Check the measures of the fact, and add the grid area and tariff dimensions from its associations.',
-      'Name it <code>RHN_REP_AM_INVOICES</code>, save and deploy.',
+      'Name it <code>RHN_PR_AM_INVOICES</code>, save and deploy.',
       'Open the <b>Data Preview</b> with tariff names in the rows and answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'The Analytic Model tile is on the Data Builder start page of RHN_REP. It asks for a fact source first.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Share in the space the objects live in: RHN_DSL. The Analytic Model tile is on the Data Builder start page of RHN_PRES; it asks for a fact source first and lists shared facts too.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'The model offers exactly the dimensions the fact is associated with. Click a dashed dimension node to add it; click a node to see its attributes.' },
-      { label: 'Hint 3: the setup', cost: 25, text: 'Fact RHN_REP_F_INVOICES, measures NET_AMOUNT and TAX_AMOUNT (SUM), dimensions RHN_REP_D_GRID_AREA and RHN_REP_D_TARIFF, nothing else. Business name e.g. "Invoices Model".' },
+      { label: 'Hint 3: the setup', cost: 25, text: 'Fact RHN_DS_F_INVOICES, measures NET_AMOUNT and TAX_AMOUNT (SUM), dimensions RHN_DS_D_GRID_AREA and RHN_DS_D_TARIFF, nothing else. Business name e.g. "Invoices Model".' },
     ],
     checks: [
-      { type: 'rule', label: 'Built on the invoice fact', ok: 'RHN_REP_AM_INVOICES is deployed on RHN_REP_F_INVOICES.', test: onFact(AM_INV, F_INV) },
+      { type: 'rule', label: 'Fact and dimensions shared', ok: 'The invoice fact, grid areas and tariffs are shared with RHN_PRES.', test: sharedWithPres([F_INV, D_GRID, D_TARIFF]) },
+      { type: 'rule', label: 'Customers stay in RHN_DSL', ok: 'The customer dimension is not shared with the presentation layer.', test: customerStaysHome },
+      { type: 'rule', label: 'Built on the invoice fact', ok: 'RHN_PR_AM_INVOICES is deployed on RHN_DS_F_INVOICES.', test: onFact(AM_INV, F_INV) },
       { type: 'rule', label: 'Net and tax as measures', ok: 'NET_AMOUNT and TAX_AMOUNT, both summed.', test: factMeasures(AM_INV, ['NET_AMOUNT', 'TAX_AMOUNT']) },
       {
         type: 'rule', label: 'Grid area and tariff, no customers', ok: 'Grid area and tariff dimensions, no customer dimension.',
         test: dimensions(AM_INV, [D_GRID, D_TARIFF], D_CUST, 'Petra reports on regions and tariffs. Whatever the model offers, every report user can see: leave the customer dimension out.'),
       },
-      { type: 'rule', label: 'Region and tariff name visible', ok: 'REGION and TARIFF_NAME are visible.', test: visible(AM_INV, [REGION, 'RHN_REP_D_TARIFF.TARIFF_NAME']) },
+      { type: 'rule', label: 'Region and tariff name visible', ok: 'REGION and TARIFF_NAME are visible.', test: visible(AM_INV, [REGION, 'RHN_DS_D_TARIFF.TARIFF_NAME']) },
       { type: 'model', label: 'Net revenue by region', object: AM_INV, rows: [REGION], measures: ['NET_AMOUNT'], expected: ref.netByRegion },
       {
         type: 'question', id: 'tariff', label: 'Top tariff',
@@ -166,14 +186,28 @@ export const CHAPTER_7: Mission[] = [
         answer: 1,
         nudge: 'Not quite. Put the tariff name in the rows of the Data Preview and compare NET_AMOUNT. It is close.',
       },
+      {
+        type: 'question', id: 'layer', label: 'Why a presentation layer',
+        prompt: 'Why does the model live in RHN_PRES on a shared fact, and not next to the fact in RHN_DSL?',
+        options: [
+          'Analytic models cannot be created in a space that has views',
+          'RHN_PRES holds only what consumers see. Report users get access to that space alone, and the share decides what they can reach: the customer dimension, the base views and the entry tables stay out of their sight',
+          'Shared facts are faster than local ones',
+          'A space can hold only one kind of object',
+        ],
+        answer: 1,
+        nudge: 'Not quite. Who gets access to which space, and what does sharing decide?',
+      },
     ],
-    xp: 40,
-    realTenant: `In a real tenant: <b>Data Builder › New Analytic Model</b>, choose the fact source, then the canvas shows the fact with its
-      associated dimensions. The properties panel lists measures and attributes per source. After deploying, the model appears in
+    xp: 45,
+    realTenant: `In a real tenant: share the fact with its <b>supporting entities</b> (the dimensions, texts and hierarchies it is associated with)
+      so their services work in the target space; SAP recommends sharing exactly those, not the source tables or the data access control.
+      Then <b>Data Builder › New Analytic Model</b>, choose the fact source, and the canvas shows the fact with its associated dimensions. The properties panel lists measures and attributes per source. After deploying, the model appears in
       SAP Analytics Cloud as a data source for stories.`,
     debrief: `<p>Thank you. That is what I will see in our stories from now on, with the names, not the codes.</p>
       <p><i>Calin adds:</i> Notice that you wrote no SQL and no join. The model followed the associations you built in chapter 6, and the
-      Data Preview joined a dimension only when you put one of its attributes in the rows.</p>`,
+      Data Preview joined a dimension only when you put one of its attributes in the rows. All three layers are in use now:
+      entry holds the sources, data &amp; semantic gives them shape and meaning, presentation shows them.</p>`,
   },
   {
     id: 'c07-m02',
@@ -181,10 +215,10 @@ export const CHAPTER_7: Mission[] = [
     title: 'Gross, defined once',
     from: CALIN,
     ticket: `<p>Remember the very first CFO ticket? Gross is net plus tax, and every query had to know that. Not any more: give
-      <code>RHN_REP_AM_INVOICES</code> a <b>calculated measure</b> <code>GROSS_AMOUNT</code> = <code>NET_AMOUNT + TAX_AMOUNT</code>.
+      <code>RHN_PR_AM_INVOICES</code> a <b>calculated measure</b> <code>GROSS_AMOUNT</code> = <code>NET_AMOUNT + TAX_AMOUNT</code>.
       Every report then gets gross from one formula.</p>`,
     tasks: [
-      'Open <code>RHN_REP_AM_INVOICES</code>, click the canvas background and add a <b>Calculated Measure</b> <code>GROSS_AMOUNT</code>.',
+      'Open <code>RHN_PR_AM_INVOICES</code>, click the canvas background and add a <b>Calculated Measure</b> <code>GROSS_AMOUNT</code>.',
       'Save and deploy.',
       'Check it in the Data Preview by <code>STATUS</code> and answer the questions below.',
     ],
@@ -242,7 +276,7 @@ export const CHAPTER_7: Mission[] = [
       <p><i>Calin adds:</i> A filter on the report would hide the paid invoices from the total too. What Petra needs is a
       <b>restricted measure</b> <code>UNPAID_GROSS</code>: gross, restricted to those two statuses.</p>`,
     tasks: [
-      'In <code>RHN_REP_AM_INVOICES</code>, add a <b>Restricted Measure</b> <code>UNPAID_GROSS</code> on <code>GROSS_AMOUNT</code>.',
+      'In <code>RHN_PR_AM_INVOICES</code>, add a <b>Restricted Measure</b> <code>UNPAID_GROSS</code> on <code>GROSS_AMOUNT</code>.',
       'Save, deploy and compare gross and unpaid gross by region in the Data Preview.',
       'Answer the questions below.',
     ],
@@ -305,7 +339,7 @@ export const CHAPTER_7: Mission[] = [
       <p><i>Calin adds:</i> A filter variable <code>V_INVOICE_DATE</code> on <code>INVOICE_DATE</code>, as an interval, mandatory. And a
       <b>count distinct</b> measure <code>CUSTOMERS</code> on <code>CUSTOMER_ID</code>. Then try it: customers by commodity, and in total.</p>`,
     tasks: [
-      'In <code>RHN_REP_AM_INVOICES</code>, add the filter variable <code>V_INVOICE_DATE</code>.',
+      'In <code>RHN_PR_AM_INVOICES</code>, add the filter variable <code>V_INVOICE_DATE</code>.',
       'Add the count distinct measure <code>CUSTOMERS</code>. Save and deploy.',
       'In the Data Preview, set the variable and look at <code>CUSTOMERS</code> by commodity and without rows. Answer the questions below.',
     ],
@@ -362,20 +396,23 @@ export const CHAPTER_7: Mission[] = [
     ticket: `<p>Markus Brandt, regional manager North. I plan grid capacity: I need <b>consumption in kWh</b> by region, grid area
       and commodity, for a period I choose. Customer names are none of my business.</p>
       <p><i>Calin adds:</i> Not in Petra's model: an analytic model has exactly one fact. Build a second, lean one,
-      <code>RHN_REP_AM_CONSUMPTION</code> on <code>RHN_REP_F_CONSUMPTION</code>: measure <code>CONSUMPTION_KWH</code>, the grid area and tariff
+      <code>RHN_PR_AM_CONSUMPTION</code> on <code>RHN_DS_F_CONSUMPTION</code>: measure <code>CONSUMPTION_KWH</code>, the grid area and tariff
       dimensions, no customer dimension, and an optional interval variable <code>V_READING_DATE</code> on <code>READING_DATE</code>.</p>`,
     tasks: [
-      'Create <code>RHN_REP_AM_CONSUMPTION</code> on the consumption fact with the measure and the two dimensions.',
+      'Share <code>RHN_DS_F_CONSUMPTION</code> with <code>RHN_PRES</code> (its dimensions are shared already).',
+      'Create <code>RHN_PR_AM_CONSUMPTION</code> on the consumption fact with the measure and the two dimensions.',
       'Add the optional variable <code>V_READING_DATE</code>, save and deploy.',
       'Look at 2025 by region and commodity in the Data Preview and answer the questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Same steps as the invoice model, from the New Analytic Model tile in RHN_REP.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Same steps as the invoice model, from the New Analytic Model tile in RHN_PRES.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Each fact gets its own model, built for one group of consumers. Optional variables can stay empty: then the model shows all dates.' },
-      { label: 'Hint 3: the setup', cost: 25, text: 'Fact RHN_REP_F_CONSUMPTION, measure CONSUMPTION_KWH (SUM), dimensions RHN_REP_D_GRID_AREA and RHN_REP_D_TARIFF. Variable V_READING_DATE: READING_DATE, Interval, not mandatory.' },
+      { label: 'Hint 3: the setup', cost: 25, text: 'Fact RHN_DS_F_CONSUMPTION, measure CONSUMPTION_KWH (SUM), dimensions RHN_DS_D_GRID_AREA and RHN_DS_D_TARIFF. Variable V_READING_DATE: READING_DATE, Interval, not mandatory.' },
     ],
     checks: [
-      { type: 'rule', label: 'Built on the consumption fact', ok: 'RHN_REP_AM_CONSUMPTION is deployed on RHN_REP_F_CONSUMPTION.', test: onFact(AM_CONS, F_CONS) },
+      { type: 'rule', label: 'Consumption fact shared', ok: 'RHN_DS_F_CONSUMPTION is shared with RHN_PRES.', test: sharedWithPres([F_CONS, D_GRID, D_TARIFF]) },
+      { type: 'rule', label: 'Customers stay in RHN_DSL', ok: 'The customer dimension is still not shared.', test: customerStaysHome },
+      { type: 'rule', label: 'Built on the consumption fact', ok: 'RHN_PR_AM_CONSUMPTION is deployed on RHN_DS_F_CONSUMPTION.', test: onFact(AM_CONS, F_CONS) },
       { type: 'rule', label: 'kWh as measure', ok: 'CONSUMPTION_KWH, summed.', test: factMeasures(AM_CONS, ['CONSUMPTION_KWH']) },
       {
         type: 'rule', label: 'Grid area and tariff, no customers', ok: 'Grid area and tariff dimensions, no customer dimension.',

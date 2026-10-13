@@ -42,7 +42,7 @@ with sync_playwright() as p:
     g.check('m11 nothing done')
 
     # Mistake: deploy the handed-over table without Delta Capture. Afterwards the switch is locked.
-    open_obj('RHN_IN', P)
+    open_obj('RHN_ENTRY', P)
     print('   status before deploy:', pg.inner_text('#prop-delta').strip() or 'switch', '| locked:', pg.is_disabled('#prop-delta'))
     assert not pg.is_disabled('#prop-delta')
     deploy()
@@ -50,15 +50,15 @@ with sync_playwright() as p:
     g.check('m11 deployed without delta capture')
 
     # The flow, with delta but without Delta Capture on the source
-    g.space('RHN_HARM')
+    g.space('RHN_DSL')
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)
     pg.click('#tf-preview'); pg.wait_for_timeout(600)
     print('   preview:', pg.inner_text('#tf-preview-out .result-status'))
     pg.click('[data-node="target"]'); pg.wait_for_timeout(200)
-    pg.fill('#tf-target', 'RHN_HA_T_PAYMENTS'); pg.keyboard.press('Tab'); pg.wait_for_timeout(200)
+    pg.fill('#tf-target', 'RHN_DS_T_PAYMENTS'); pg.keyboard.press('Tab'); pg.wait_for_timeout(200)
     load('Initial and Delta')
-    pg.fill('#prop-business', 'Payments (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_TF_PAYMENTS')
+    pg.fill('#prop-business', 'Payments (clean)'); pg.fill('#prop-technical', 'RHN_DS_TF_PAYMENTS')
     deploy()
     # Initial Only works without delta capture: full load twice
     load('Initial Only')
@@ -69,17 +69,17 @@ with sync_playwright() as p:
     g.check('m11 initial only')
 
     # Delete the table: Accounts Receivable hands it over again (saved, not deployed); now Delta Capture before the first deploy
-    g.space('RHN_IN')
+    g.space('RHN_ENTRY')
     pg.click(f'#object-list [data-delete="{P}"]'); pg.wait_for_timeout(1500)
     print('   handed over again:', g.toast())
-    open_obj('RHN_IN', P)
+    open_obj('RHN_ENTRY', P)
     print('   rows again:', pg.locator('[data-del-row]').count(), '| locked:', pg.is_disabled('#prop-delta'))
     assert not pg.is_disabled('#prop-delta')
     pg.check('#prop-delta'); pg.wait_for_timeout(200)
     deploy()
     print('   delta section:', pg.inner_text('#tbl-delta .tbl-head').replace('\n', ' '))
     # Back to the flow: Initial and Delta, deploy (starts over), initial load
-    open_obj('RHN_HARM', F)
+    open_obj('RHN_DSL', F)
     load('Initial and Delta')
     deploy()
     run()
@@ -87,39 +87,39 @@ with sync_playwright() as p:
     g.check('m11 initial load only')
 
     # Bank message saved, not deployed
-    open_obj('RHN_IN', P)
+    open_obj('RHN_ENTRY', P)
     bank_message(pg, deploy=False)
     print('   saved:', g.toast())
     g.check('m11 bank message not deployed')
     deploy()
     print('   delta table:', pg.inner_text('#tbl-delta tbody').replace('\n', ' | ')[:300])
     g.shot('c12-tf-delta-table')
-    open_obj('RHN_HARM', F)
+    open_obj('RHN_DSL', F)
     run()
     g.shot('c12-tf-delta-run')
     run()  # a third night without changes
     g.check('m11 after a night without changes')
     # Change PAY-0001 and back would be two records; instead check the rule wants changes: undo nothing, rerun after a real change
-    open_obj('RHN_IN', P)
+    open_obj('RHN_ENTRY', P)
     pg.fill('[data-cell="0:2"]', '2026-02-13'); pg.click('#ed-deploy'); pg.wait_for_timeout(700)
-    open_obj('RHN_HARM', F)
+    open_obj('RHN_DSL', F)
     run()
     g.check('m11 solved')
 
     # A SQL view on the delta table fails; a transform reading _Delta is refused
     g.reload()
-    open_obj('RHN_IN', P)
+    open_obj('RHN_ENTRY', P)
     print('   after reload, delta records:', pg.locator('#tbl-delta tbody tr').count(), '| rows:', pg.locator('[data-del-row]').count())
-    open_obj('RHN_HARM', 'RHN_HARM.RHN_HA_T_PAYMENTS')
+    open_obj('RHN_DSL', 'RHN_DSL.RHN_DS_T_PAYMENTS')
     print('   target after reload:', pg.locator('[data-del-row]').count(), 'rows; key:', pg.locator('[data-col-key]:checked').count())
     g.nav('monitor'); pg.click('[data-mon-tab="flows"]'); pg.wait_for_selector('#flow-list')
     print('   monitor flows:', pg.inner_text('#flow-list tbody').replace('\n', ' | ')[:200])
     g.nav('tasklogs'); pg.wait_for_timeout(500)
     print('   task logs:', 'TRANSFORMATION_FLOWS' in pg.inner_text('main'))
     # Task chain: the flow is a step candidate
-    open_obj('RHN_HARM', 'RHN_HARM.RHN_HARM_TC_NIGHTLY')
+    open_obj('RHN_DSL', 'RHN_DSL.RHN_DS_TC_NIGHTLY')
     pg.click('#chain-add'); pg.wait_for_timeout(300)
-    print('   chain candidates:', 'RHN_HA_TF_PAYMENTS' in pg.inner_text('.dialog'))
+    print('   chain candidates:', 'RHN_DS_TF_PAYMENTS' in pg.inner_text('.dialog'))
     pg.keyboard.press('Escape')
     g.done()
 
@@ -139,9 +139,9 @@ with sync_playwright() as p:
     tour(pg, 'Deploy'); pg.click('#ed-deploy')
     tour(pg, 'New Transformation Flow'); pg.click('[data-new="transformation"]')
     tour(pg, 'The view transform'); g.sql(SQL); pg.click('#tf-preview')
-    tour(pg, 'Target table'); pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_HA_T_PAYMENTS'); pg.keyboard.press('Tab')
+    tour(pg, 'Target table'); pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_DS_T_PAYMENTS'); pg.keyboard.press('Tab')
     tour(pg, 'Load type'); pg.click('#tf-general'); pg.select_option('#tf-load', 'Initial and Delta')
-    tour(pg, 'Name and deploy'); pg.fill('#prop-business', 'Payments (harmonized)'); pg.fill('#prop-technical', 'RHN_HA_TF_PAYMENTS'); pg.click('#ed-deploy')
+    tour(pg, 'Name and deploy'); pg.fill('#prop-business', 'Payments (clean)'); pg.fill('#prop-technical', 'RHN_DS_TF_PAYMENTS'); pg.click('#ed-deploy')
     tour(pg, 'The initial load'); pg.click('#tf-run')
     tour(pg, 'Back to the payments'); pg.click(f'#object-list [data-open="{P}"]')
     tour(pg, 'The bank message')

@@ -122,6 +122,10 @@ export interface RepoObject {
   persistSchedule?: Frequency;
   /** Local tables created by a flow: where the data comes from, reloaded after a reload. */
   loadFrom?: LoadFrom;
+  /** Local tables created empty by Import Entities: filled by the first run of their replication flow. */
+  loadPending?: boolean;
+  /** Created by Import Entities from this CDS view (Semantic Onboarding, c03-m07). */
+  importedFrom?: string;
   status: DeployStatus;
   changedAt: string;
   /** Loaded by IT from a source system; cannot be deleted. */
@@ -383,6 +387,8 @@ export function sanitizeObjects(data: unknown, spaceIds: Set<string>): RepoObjec
       loadFrom: o.kind === 'Local Table' && o.loadFrom && typeof o.loadFrom.connection === 'string' && typeof o.loadFrom.source === 'string'
         ? { connection: o.loadFrom.connection.slice(0, 50), source: o.loadFrom.source.slice(0, 120), extra: sanitizeFlow({ objects: [{ extra: o.loadFrom.extra }] })!.objects[0].extra }
         : undefined,
+      loadPending: o.kind === 'Local Table' && o.loadPending ? true : undefined,
+      importedFrom: typeof o.importedFrom === 'string' && /^[A-Z_][A-Z0-9_]{0,49}$/.test(o.importedFrom) ? o.importedFrom : undefined,
       persisted: o.kind === 'SQL View' && o.deployed?.sql ? sanitizePersist(o.persisted) : undefined,
       persistSchedule: o.kind === 'SQL View' && ['Daily', 'Weekly', 'Monthly'].includes(o.persistSchedule) ? o.persistSchedule : undefined,
       status: ['deployed', 'not_deployed', 'changes'].includes(o.status) ? o.status : 'not_deployed',

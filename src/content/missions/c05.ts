@@ -3,9 +3,9 @@ import { isShared } from '../../tenant';
 import { readsFrom } from '../../repo';
 
 /**
- * Chapter 5, Harmonization. The player builds deployed SQL views in RHN_HARM on shared inbound tables:
- * map legacy codes, replace legacy customer keys, merge CRM duplicates, convert MWh and drop duplicate readings,
- * then share the result with reporting. Handbuch 6.5.2 (SQL views), 6.11.2 (impact and lineage), 6.11.4 (sharing).
+ * Chapter 5, base views of the data & semantic layer. The player builds deployed SQL views (RHN_DS_V_) in RHN_DSL on shared entry
+ * tables: map legacy codes, replace legacy customer keys, merge CRM duplicates, convert MWh and drop duplicate readings, then
+ * answers the CFO's first question on them, still inside RHN_DSL (the presentation layer gets shared semantic objects in chapter 7). Handbuch 6.5.2 (SQL views), 6.11.2 (impact and lineage), 6.11.4 (sharing).
  *
  * Checks read the deployed views (result checks with `object`), so Save without Deploy does not count.
  * Numbers come from generator v1 (docs/DATA.md), checked with DuckDB on 2026-10-09. Reference SQL is never shown.
@@ -15,9 +15,9 @@ const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor',
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 const FRANK = { name: 'Frank Weber', role: 'Receivables management', initials: 'FW' };
 
-const CONTRACTS = 'RHN_HARM.RHN_HA_V_CONTRACTS';
-const CUSTOMERS = 'RHN_HARM.RHN_HA_V_CUSTOMERS';
-const READINGS = 'RHN_HARM.RHN_HA_V_METER_READINGS';
+const CONTRACTS = 'RHN_DSL.RHN_DS_V_CONTRACTS';
+const CUSTOMERS = 'RHN_DSL.RHN_DS_V_CUSTOMERS';
+const READINGS = 'RHN_DSL.RHN_DS_V_METER_READINGS';
 
 // ---------------------------------------------------------------- reference logic (never shown)
 
@@ -27,36 +27,36 @@ const TARIFF_CASE = `CASE c.TARIFF WHEN 'STROM_BASIS' THEN 'POWER_BASIC' WHEN 'S
 
 /** Contracts with one code per grid area and tariff (mission 1). */
 const REF_CONTRACTS_CODES = `SELECT c.CONTRACT_ID, c.CUSTOMER_ID, ${GRID_CASE} AS GRID_AREA, ${TARIFF_CASE} AS TARIFF,
-  c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`;
+  c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`;
 
 /** Contracts with CRM customer IDs (mission 2). */
 export const REF_CONTRACTS_KEYS = `SELECT c.CONTRACT_ID, COALESCE(m.CUSTOMER_ID, c.CUSTOMER_ID) AS CUSTOMER_ID, m.LEGACY_CUSTOMER_ID,
   ${GRID_CASE} AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID
-  FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`;
+  FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`;
 
 /** One row per person, the oldest record wins (mission 3). A person = same e-mail (any case) at the same address. */
 export const refCustomers = (order: 'ASC' | 'DESC' = 'ASC', partition = 'lower(EMAIL), STREET, ZIP') => `
   SELECT CUSTOMER_ID, trim(NAME) AS NAME, STREET, ZIP, CITY, lower(EMAIL) AS EMAIL FROM (
-    SELECT k.*, ROW_NUMBER() OVER (PARTITION BY ${partition} ORDER BY CREATED_AT ${order}) AS RN FROM RHN_IN.CRM_CUSTOMERS k
+    SELECT k.*, ROW_NUMBER() OVER (PARTITION BY ${partition} ORDER BY CREATED_AT ${order}) AS RN FROM RHN_ENTRY.CRM_CUSTOMERS k
   ) x WHERE RN = 1`;
 
 /** Readings without duplicates, all in kWh (mission 4). */
 const REF_READINGS = `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE,
-  CASE WHEN UNIT = 'MWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.METER_READINGS`;
+  CASE WHEN UNIT = 'MWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_ENTRY.METER_READINGS`;
 
 export const project = (cols: string[], sql: string) => `SELECT ${cols.join(', ')} FROM (${sql}) ref`;
 
 // ---------------------------------------------------------------- rule helpers
 
-const shared = (ctx: RuleContext, objects: string[], to: string, owner = 'RHN_IN') => {
+const shared = (ctx: RuleContext, objects: string[], to: string, owner = 'RHN_ENTRY') => {
   const missing = objects.filter((o) => !isShared(ctx.tenant, `${owner}.${o}`, to));
   return missing.length ? `Not shared with ${to} yet: ${missing.join(', ')}. Share ${missing.length > 1 ? 'them' : 'it'} from ${owner} with the share icon in the object list.` : null;
 };
 
-/** Views in RHN_HARM other than `keep` that read `source`: a second copy of logic that should exist once. */
+/** Views in RHN_DSL other than `keep` that read `source`: a second copy of logic that should exist once. */
 function secondCopy(ctx: RuleContext, keep: string, source: string): string | null {
   const copies = ctx.tenant.objects.filter(
-    (o) => o.space === 'RHN_HARM' && o.kind === 'SQL View' && `${o.space}.${o.name}` !== keep && readsFrom(o, ctx.tenant).includes(source),
+    (o) => o.space === 'RHN_DSL' && o.kind === 'SQL View' && `${o.space}.${o.name}` !== keep && readsFrom(o, ctx.tenant).includes(source),
   );
   return copies.length
     ? `${copies.map((o) => o.name).join(', ')} also read${copies.length > 1 ? '' : 's'} ${source}. The logic belongs in ${keep.split('.')[1]} only: change that view and delete the copy, so there is one version of the truth.`
@@ -77,7 +77,8 @@ export const CHAPTER_5: Mission[] = [
     title: 'Speak one language',
     from: CALIN,
     ticket: `<p>Remember the 91 legacy contracts that fell out of the regional count? Time to fix that, in the right place.</p>
-      <p>Build the central contracts view of our harmonization layer: <code>RHN_HA_V_CONTRACTS</code> in <code>RHN_HARM</code>.
+      <p>Build the central contracts <b>base view</b> of our data &amp; semantic layer: <code>RHN_DS_V_CONTRACTS</code> in <code>RHN_DSL</code>.
+      Base views are the lower half of this layer: they clean and combine the entry data, and everything above builds on them.
       It returns <b>every</b> contract, with the columns <code>CONTRACT_ID</code>, <code>CUSTOMER_ID</code>, <code>GRID_AREA</code>,
       <code>TARIFF</code>, <code>START_DATE</code>, <code>END_DATE</code> and <code>SRC_SYS_ID</code>.</p>
       <p>The legacy system uses German grid areas and its own tariff codes. In our view, every contract carries the S/4 codes:</p>
@@ -88,22 +89,22 @@ export const CHAPTER_5: Mission[] = [
       </ul>
       <p>Customer IDs stay as they are for now; that is the next ticket.</p>
       <p><i>Calin adds:</i> Nine codes fit into a <code>CASE</code>. If you want to do it the way we do it with longer lists, put the
-      translations into a small <b>mapping table</b> in <code>RHN_HARM</code> instead (for example <code>RHN_HA_T_CODE_MAP</code>, filled in the
+      translations into a small <b>mapping table</b> in <code>RHN_DSL</code> instead (for example <code>RHN_DS_T_CODE_MAP</code>, filled in the
       Data Editor) and join it. Either way counts; the view must deliver the same rows.</p>`,
     tasks: [
-      'In the Data Builder of <code>RHN_HARM</code>, check under "Shared with RHN_HARM" that <code>BILLING_CONTRACTS</code> is there.',
-      'Create a <b>New SQL View</b> in <code>RHN_HARM</code>. Write the SELECT with the mapping and look at it in the Data Preview. (Mapping table instead: <b>New Table</b> first, fill it in the Data Editor and deploy it, then join it in the view.)',
-      'Give it the technical name <code>RHN_HA_V_CONTRACTS</code> and a business name, then <b>Save</b> and <b>Deploy</b>.',
+      'In the Data Builder of <code>RHN_DSL</code>, check under "Shared with RHN_DSL" that <code>BILLING_CONTRACTS</code> is there.',
+      'Create a <b>New SQL View</b> in <code>RHN_DSL</code>. Write the SELECT with the mapping and look at it in the Data Preview. (Mapping table instead: <b>New Table</b> first, fill it in the Data Editor and deploy it, then join it in the view.)',
+      'Give it the technical name <code>RHN_DS_V_CONTRACTS</code> and a business name, then <b>Save</b> and <b>Deploy</b>.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder, space RHN_HARM, New SQL View. BILLING_CONTRACTS is in the Sources list under Shared Objects; a click inserts RHN_IN.BILLING_CONTRACTS.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Data Builder, space RHN_DSL, New SQL View. BILLING_CONTRACTS is in the Sources list under Shared Objects; a click inserts RHN_ENTRY.BILLING_CONTRACTS.' },
       { label: 'Hint 2: the concept', cost: 15, text: "CASE column WHEN 'old' THEN 'new' … ELSE column END translates values; without ELSE every value you did not list becomes NULL. Name the result with AS so the column keeps its name." },
-      { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT CONTRACT_ID, CUSTOMER_ID, CASE GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN ____ THEN ____ … ELSE GRID_AREA END AS GRID_AREA, CASE TARIFF WHEN ____ THEN ____ … ELSE ____ END AS ______, START_DATE, END_DATE, SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS" },
-      { label: 'Hint 4: the mapping-table way', cost: 15, text: "A table RHN_HA_T_CODE_MAP with CODE_TYPE, LEGACY_CODE (both key) and S4_CODE: one row per legacy code, e.g. GRID_AREA | Nord | NORTH. Deploy it, then join it twice with LEFT JOIN, once per code type: LEFT JOIN RHN_HARM.RHN_HA_T_CODE_MAP g ON g.CODE_TYPE = 'GRID_AREA' AND g.LEGACY_CODE = c.GRID_AREA, and take COALESCE(g.S4_CODE, c.GRID_AREA). An inner join would drop every S4U contract." },
+      { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT CONTRACT_ID, CUSTOMER_ID, CASE GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN ____ THEN ____ … ELSE GRID_AREA END AS GRID_AREA, CASE TARIFF WHEN ____ THEN ____ … ELSE ____ END AS ______, START_DATE, END_DATE, SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS" },
+      { label: 'Hint 4: the mapping-table way', cost: 15, text: "A table RHN_DS_T_CODE_MAP with CODE_TYPE, LEGACY_CODE (both key) and S4_CODE: one row per legacy code, e.g. GRID_AREA | Nord | NORTH. Deploy it, then join it twice with LEFT JOIN, once per code type: LEFT JOIN RHN_DSL.RHN_DS_T_CODE_MAP g ON g.CODE_TYPE = 'GRID_AREA' AND g.LEGACY_CODE = c.GRID_AREA, and take COALESCE(g.S4_CODE, c.GRID_AREA). An inner join would drop every S4U contract." },
     ],
     checks: [
-      { type: 'structure', label: 'The view and its columns', space: 'RHN_HARM', object: 'RHN_HA_V_CONTRACTS', kind: 'View',
+      { type: 'structure', label: 'The view and its columns', space: 'RHN_DSL', object: 'RHN_DS_V_CONTRACTS', kind: 'View',
         columns: ['CONTRACT_ID', 'CUSTOMER_ID', 'GRID_AREA', 'TARIFF', 'START_DATE', 'END_DATE', 'SRC_SYS_ID'] },
       {
         type: 'result',
@@ -118,26 +119,26 @@ export const CHAPTER_5: Mission[] = [
         },
         diagnose: [
           {
-            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, ${GRID_CASE} AS GRID_AREA, c.TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
+            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, ${GRID_CASE} AS GRID_AREA, c.TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`),
             message: 'The grid areas are right. The legacy tariff codes (STROM_BASIS, …) are not translated yet.',
           },
           {
-            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, c.GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
+            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, c.GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`),
             message: 'The tariffs are right. The German grid areas (Nord, Ost, …) are not translated yet.',
           },
           {
             sql: project(M01_COLS, `SELECT c.CONTRACT_ID, CASE c.GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN 'Ost' THEN 'EAST' WHEN 'Süd' THEN 'SOUTH' ELSE c.GRID_AREA END AS GRID_AREA,
-              ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
+              ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`),
             message: 'Almost. Some legacy contracts still say "West": it only differs from WEST in upper and lower case, but for a join that is a different value.',
           },
           {
             sql: project(M01_COLS, `SELECT c.CONTRACT_ID, CASE c.GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN 'Ost' THEN 'EAST' WHEN 'Süd' THEN 'SOUTH' WHEN 'West' THEN 'WEST' END AS GRID_AREA,
               CASE c.TARIFF WHEN 'STROM_BASIS' THEN 'POWER_BASIC' WHEN 'STROM_OEKO' THEN 'POWER_GREEN' WHEN 'STROM_WAERME' THEN 'POWER_HEAT' WHEN 'GAS_KOMFORT' THEN 'GAS_COMFORT' END AS TARIFF,
-              c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
+              c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`),
             message: 'Your legacy codes are translated, but the S4U contracts lost their grid area and tariff: a CASE without ELSE (or a LEFT JOIN on a mapping table without COALESCE) returns NULL for every value you did not list.',
           },
           {
-            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, upper(c.GRID_AREA) AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_IN.BILLING_CONTRACTS c`),
+            sql: project(M01_COLS, `SELECT c.CONTRACT_ID, upper(c.GRID_AREA) AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.START_DATE, c.END_DATE, c.SRC_SYS_ID FROM RHN_ENTRY.BILLING_CONTRACTS c`),
             message: 'Upper case fixes "West", but turns Nord into NORD and Süd into SÜD, which are still not S/4 codes. Translate each value.',
           },
         ],
@@ -145,20 +146,20 @@ export const CHAPTER_5: Mission[] = [
       {
         type: 'metric',
         label: 'Every contract finds its grid area and tariff',
-        sql: `SELECT count(*) FROM ${CONTRACTS} c LEFT JOIN RHN_IN.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA
-          LEFT JOIN RHN_IN.TARIFFS t ON c.TARIFF = t.TARIFF WHERE g.GRID_AREA IS NULL OR t.TARIFF IS NULL`,
-        missing: 'Deploy RHN_HA_V_CONTRACTS in RHN_HARM first.',
+        sql: `SELECT count(*) FROM ${CONTRACTS} c LEFT JOIN RHN_ENTRY.GRID_AREAS g ON c.GRID_AREA = g.GRID_AREA
+          LEFT JOIN RHN_ENTRY.TARIFFS t ON c.TARIFF = t.TARIFF WHERE g.GRID_AREA IS NULL OR t.TARIFF IS NULL`,
+        missing: 'Deploy RHN_DS_V_CONTRACTS in RHN_DSL first.',
         ok: 'All 1,178 contracts join to GRID_AREAS and TARIFFS. No contract falls out of a report by region or tariff any more.',
         test: (n) => (n ? `${n} contracts still have a grid area or tariff that is not in GRID_AREAS or TARIFFS. Preview your view grouped by GRID_AREA and TARIFF.` : null),
       },
       {
         type: 'question',
         id: 'where',
-        label: 'Why harmonization',
-        prompt: 'Why do we translate the codes in a view in RHN_HARM, instead of correcting the values in RHN_IN.BILLING_CONTRACTS?',
+        label: 'Why a base view',
+        prompt: 'Why do we translate the codes in a view in RHN_DSL, instead of correcting the values in RHN_ENTRY.BILLING_CONTRACTS?',
         options: [
-          'Tables in the inbound space cannot be changed at all',
-          'Inbound keeps what the source sent, so every load can be traced and repeated; the mapping lives once in harmonization, and everything built on the view gets the same codes',
+          'Tables in the entry space cannot be changed at all',
+          'The entry layer keeps what the source sent, so every load can be traced and repeated; the mapping lives once in a base view, and everything built on the view gets the same codes',
           'Views are always faster than tables',
           'The legacy system will be switched off next week anyway',
         ],
@@ -168,11 +169,11 @@ export const CHAPTER_5: Mission[] = [
     ],
     review: ['case_else', 'no_select_star', 'explicit_join'],
     xp: 35,
-    realTenant: `In a real tenant: <b>Data Builder</b> → space of the harmonization layer → <b>New SQL View</b>. Shared inbound tables are in the
+    realTenant: `In a real tenant: <b>Data Builder</b> → space of the data & semantic layer → <b>New SQL View</b>. Shared entry tables are in the
       source browser under <b>Shared Objects</b>. Larger mappings usually live in a small <b>mapping table</b> (Data Builder → New Table, rows
       typed in the Data Editor or uploaded with Import CSV File), so the business can maintain them without changing SQL.`,
-    debrief: `<p>That is the heart of harmonization: the raw data stays untouched, and one view speaks one language.
-      Every report built on <code>RHN_HA_V_CONTRACTS</code> now counts all 1,178 contracts by region and tariff.</p>
+    debrief: `<p>That is the heart of the data & semantic layer: the raw data stays untouched, and one view speaks one language.
+      Every report built on <code>RHN_DS_V_CONTRACTS</code> now counts all 1,178 contracts by region and tariff.</p>
       <p>CASE or mapping table? Both give the same rows. Once there are more than a handful of codes, the mapping table wins:
       the business maintains it in the Data Editor, and a new code does not need a new deployment of the view. Its price is one more
       object to deploy, share and transport with the view.</p>`,
@@ -184,27 +185,27 @@ export const CHAPTER_5: Mission[] = [
     from: FRANK,
     ticket: `<p>Hi, Frank from receivables management. When I look up the customer of a legacy contract, I find nothing:
       their customer numbers look like <code>OLD-0710</code>, and the CRM does not know them.</p>
-      <p>IT maintains a key mapping in <code>RHN_IN.LEGACY_CUSTOMER_MAP</code>: old number → CRM customer ID.</p>
-      <p><i>Calin adds:</i> Do not build a second view. Change <code>RHN_HA_V_CONTRACTS</code> itself, so everything that uses it gets the fix.
+      <p>IT maintains a key mapping in <code>RHN_ENTRY.LEGACY_CUSTOMER_MAP</code>: old number → CRM customer ID.</p>
+      <p><i>Calin adds:</i> Do not build a second view. Change <code>RHN_DS_V_CONTRACTS</code> itself, so everything that uses it gets the fix.
       <code>CUSTOMER_ID</code> becomes the CRM ID for <b>every</b> contract. Keep the old number in a new column <code>LEGACY_CUSTOMER_ID</code>
       (empty for S4U contracts), so we can always trace where a key came from.</p>`,
     tasks: [
-      'In <code>RHN_IN</code>, share <code>LEGACY_CUSTOMER_MAP</code> with <code>RHN_HARM</code>.',
-      'In <code>RHN_HARM</code>, open <code>RHN_HA_V_CONTRACTS</code>. Look at <b>Impact and Lineage</b> in the properties: what does it read, who uses it?',
+      'In <code>RHN_ENTRY</code>, share <code>LEGACY_CUSTOMER_MAP</code> with <code>RHN_DSL</code>.',
+      'In <code>RHN_DSL</code>, open <code>RHN_DS_V_CONTRACTS</code>. Look at <b>Impact and Lineage</b> in the properties: what does it read, who uses it?',
       'Change the SQL: join the key mapping, set <code>CUSTOMER_ID</code> and add <code>LEGACY_CUSTOMER_ID</code>. Check the Data Preview.',
       '<b>Save</b> (watch the status) and <b>Deploy</b>. Then answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Share in RHN_IN with the share icon. Then open RHN_HA_V_CONTRACTS from the object list of RHN_HARM and edit its SQL.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Share in RHN_ENTRY with the share icon. Then open RHN_DS_V_CONTRACTS from the object list of RHN_DSL and edit its SQL.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A LEFT JOIN keeps every contract, also those without a partner in the mapping; their mapping columns are NULL. COALESCE(a, b) takes a, or b if a is NULL.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT c.CONTRACT_ID, COALESCE(m.______, c.CUSTOMER_ID) AS CUSTOMER_ID, m.______ AS LEGACY_CUSTOMER_ID, … FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.______ = m.______' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT c.CONTRACT_ID, COALESCE(m.______, c.CUSTOMER_ID) AS CUSTOMER_ID, m.______ AS LEGACY_CUSTOMER_ID, … FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.______ = m.______' },
     ],
     checks: [
       {
         type: 'rule',
-        label: 'Key mapping shared with harmonization',
-        ok: 'LEGACY_CUSTOMER_MAP is shared with RHN_HARM.',
-        test: (ctx) => shared(ctx, ['LEGACY_CUSTOMER_MAP'], 'RHN_HARM'),
+        label: 'Key mapping shared with RHN_DSL',
+        ok: 'LEGACY_CUSTOMER_MAP is shared with RHN_DSL.',
+        test: (ctx) => shared(ctx, ['LEGACY_CUSTOMER_MAP'], 'RHN_DSL'),
       },
       {
         type: 'result',
@@ -218,22 +219,22 @@ export const CHAPTER_5: Mission[] = [
         diagnose: [
           {
             sql: project(M02_COLS, `SELECT c.CONTRACT_ID, m.CUSTOMER_ID, m.LEGACY_CUSTOMER_ID, ${GRID_CASE} AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.SRC_SYS_ID
-              FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
+              FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
             message: 'The legacy contracts have their CRM IDs now, but the S4U contracts lost theirs: the mapping has no row for them, so its column is NULL. Fall back to the original ID.',
           },
           {
             sql: project(M02_COLS, `SELECT c.CONTRACT_ID, COALESCE(m.CUSTOMER_ID, c.CUSTOMER_ID) AS CUSTOMER_ID, c.CUSTOMER_ID AS LEGACY_CUSTOMER_ID, ${GRID_CASE} AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.SRC_SYS_ID
-              FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
+              FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
             message: 'CUSTOMER_ID is right. LEGACY_CUSTOMER_ID should only hold an old OLD-… number, and stay empty (NULL) for S4U contracts.',
           },
           {
             sql: project(M02_COLS, `SELECT c.CONTRACT_ID, c.CUSTOMER_ID, m.LEGACY_CUSTOMER_ID, ${GRID_CASE} AS GRID_AREA, ${TARIFF_CASE} AS TARIFF, c.SRC_SYS_ID
-              FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
+              FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
             message: 'LEGACY_CUSTOMER_ID is right, but CUSTOMER_ID still holds the OLD-… numbers for legacy contracts. Take the CRM ID from the mapping.',
           },
           {
             sql: project(M02_COLS, `SELECT c.CONTRACT_ID, COALESCE(m.CUSTOMER_ID, c.CUSTOMER_ID) AS CUSTOMER_ID, m.LEGACY_CUSTOMER_ID, c.GRID_AREA, c.TARIFF, c.SRC_SYS_ID
-              FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
+              FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`),
             message: 'The customer keys are right, but the grid areas and tariffs are raw again. Keep the mapping from the last mission when you change the view.',
           },
         ],
@@ -241,16 +242,16 @@ export const CHAPTER_5: Mission[] = [
       {
         type: 'metric',
         label: 'Every contract finds its customer in the CRM',
-        sql: `SELECT count(*) FROM ${CONTRACTS} c LEFT JOIN RHN_IN.CRM_CUSTOMERS k ON c.CUSTOMER_ID = k.CUSTOMER_ID WHERE k.CUSTOMER_ID IS NULL`,
-        missing: 'Deploy RHN_HA_V_CONTRACTS in RHN_HARM first.',
+        sql: `SELECT count(*) FROM ${CONTRACTS} c LEFT JOIN RHN_ENTRY.CRM_CUSTOMERS k ON c.CUSTOMER_ID = k.CUSTOMER_ID WHERE k.CUSTOMER_ID IS NULL`,
+        missing: 'Deploy RHN_DS_V_CONTRACTS in RHN_DSL first.',
         ok: 'No contract without a customer any more.',
         test: (n) => (n ? `${n} contracts still have a customer ID the CRM does not know.` : null),
       },
       {
         type: 'rule',
         label: 'One central contracts view',
-        ok: 'The fix is in RHN_HA_V_CONTRACTS, the only contracts view.',
-        test: (ctx) => secondCopy(ctx, CONTRACTS, 'RHN_IN.BILLING_CONTRACTS'),
+        ok: 'The fix is in RHN_DS_V_CONTRACTS, the only contracts view.',
+        test: (ctx) => secondCopy(ctx, CONTRACTS, 'RHN_ENTRY.BILLING_CONTRACTS'),
       },
       {
         type: 'question',
@@ -278,7 +279,7 @@ export const CHAPTER_5: Mission[] = [
     from: CALIN,
     ticket: `<p>The CRM export has <b>946</b> records, but we do not have 946 customers. The call centre creates people a second time:
       a new customer ID, sometimes a typo in the name, the e-mail in capitals.</p>
-      <p>Build <code>RHN_HA_V_CUSTOMERS</code> in <code>RHN_HARM</code>: <b>one row per person</b>, with the columns <code>CUSTOMER_ID</code>,
+      <p>Build <code>RHN_DS_V_CUSTOMERS</code> in <code>RHN_DSL</code>: <b>one row per person</b>, with the columns <code>CUSTOMER_ID</code>,
       <code>NAME</code>, <code>STREET</code>, <code>ZIP</code>, <code>CITY</code>, <code>EMAIL</code>.</p>
       <ul>
         <li>A duplicate has the same e-mail address (ignoring upper and lower case) <b>and</b> the same address. Careful: e-mail alone is not enough,
@@ -287,22 +288,22 @@ export const CHAPTER_5: Mission[] = [
         <li>Names without leading or trailing spaces, e-mails in lower case.</li>
       </ul>`,
     tasks: [
-      'Share <code>CRM_CUSTOMERS</code> with <code>RHN_HARM</code>.',
-      'In a new SQL view in <code>RHN_HARM</code>, find the duplicates first: group by the e-mail in lower case and look at the groups with more than one record.',
-      'Write the view that keeps one record per person, then save it as <code>RHN_HA_V_CUSTOMERS</code> and deploy.',
+      'Share <code>CRM_CUSTOMERS</code> with <code>RHN_DSL</code>.',
+      'In a new SQL view in <code>RHN_DSL</code>, find the duplicates first: group by the e-mail in lower case and look at the groups with more than one record.',
+      'Write the view that keeps one record per person, then save it as <code>RHN_DS_V_CUSTOMERS</code> and deploy.',
       'Answer the questions below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'GROUP BY lower(EMAIL) HAVING COUNT(*) > 1 shows the groups. Compare STREET within each group: are they always the same person?' },
       { label: 'Hint 2: the concept', cost: 15, text: 'ROW_NUMBER() OVER (PARTITION BY … ORDER BY CREATED_AT) numbers the records of each person, oldest first. Number them in a subquery, then keep the rows with number 1 outside.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT CUSTOMER_ID, trim(NAME) AS NAME, …, lower(EMAIL) AS EMAIL FROM (SELECT k.*, ROW_NUMBER() OVER (PARTITION BY lower(EMAIL), ______, ______ ORDER BY ______) AS RN FROM RHN_IN.CRM_CUSTOMERS k) x WHERE RN = 1' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT CUSTOMER_ID, trim(NAME) AS NAME, …, lower(EMAIL) AS EMAIL FROM (SELECT k.*, ROW_NUMBER() OVER (PARTITION BY lower(EMAIL), ______, ______ ORDER BY ______) AS RN FROM RHN_ENTRY.CRM_CUSTOMERS k) x WHERE RN = 1' },
     ],
     checks: [
       {
         type: 'rule',
-        label: 'CRM shared with harmonization',
-        ok: 'CRM_CUSTOMERS is shared with RHN_HARM.',
-        test: (ctx) => shared(ctx, ['CRM_CUSTOMERS'], 'RHN_HARM'),
+        label: 'CRM shared with RHN_DSL',
+        ok: 'CRM_CUSTOMERS is shared with RHN_DSL.',
+        test: (ctx) => shared(ctx, ['CRM_CUSTOMERS'], 'RHN_DSL'),
       },
       {
         type: 'result',
@@ -329,8 +330,8 @@ export const CHAPTER_5: Mission[] = [
         type: 'metric',
         label: 'Every contract finds its customer',
         sql: `SELECT count(*) FROM ${CONTRACTS} c LEFT JOIN ${CUSTOMERS} k ON c.CUSTOMER_ID = k.CUSTOMER_ID WHERE k.CUSTOMER_ID IS NULL`,
-        missing: 'Deploy RHN_HA_V_CUSTOMERS (and RHN_HA_V_CONTRACTS from the last missions) in RHN_HARM first.',
-        ok: 'All 1,178 contracts find their customer in RHN_HA_V_CUSTOMERS.',
+        missing: 'Deploy RHN_DS_V_CUSTOMERS (and RHN_DS_V_CONTRACTS from the last missions) in RHN_DSL first.',
+        ok: 'All 1,178 contracts find their customer in RHN_DS_V_CUSTOMERS.',
         test: (n) => (n ? `${n} contracts point to a customer ID that is not in your view. Check which record of a person you keep, and that you do not merge different people.` : null),
       },
       {
@@ -346,10 +347,10 @@ export const CHAPTER_5: Mission[] = [
         type: 'question',
         id: 'source',
         label: 'Where the real fix belongs',
-        prompt: 'Why do we not simply delete the duplicates in RHN_IN.CRM_CUSTOMERS?',
+        prompt: 'Why do we not simply delete the duplicates in RHN_ENTRY.CRM_CUSTOMERS?',
         options: [
           'Deleting rows is not allowed in SAP Datasphere',
-          'The next load from the CRM would bring them back. Inbound stays as delivered, harmonization cleans what we report on, and the CRM team gets the list to fix the source',
+          'The next load from the CRM would bring them back. The entry layer stays as delivered, a base view cleans what we report on, and the CRM team gets the list to fix the source',
           'The duplicates do not hurt any report',
           'Only the DW Administrator can delete rows',
         ],
@@ -364,7 +365,7 @@ export const CHAPTER_5: Mission[] = [
       uncertain matches there. Exact rules like ours stay in SQL.`,
     debrief: `<p>900 customers, and every contract finds its customer. You also avoided the trap: an e-mail alone would have merged three pairs of namesakes,
       and two contracts would have lost their customer.</p>
-      <p>I sent the list of duplicates to the CRM team. Harmonization fixes our copy; the source has to be fixed at the source.</p>`,
+      <p>I sent the list of duplicates to the CRM team. Our base view fixes what we report on; the source has to be fixed at the source.</p>`,
   },
   {
     id: 'c05-m04',
@@ -372,29 +373,29 @@ export const CHAPTER_5: Mission[] = [
     title: 'Everything in kWh',
     from: CALIN,
     ticket: `<p>The meter readings have two problems you found in chapter 4: some gas meters report in <b>MWh</b>, and an interface hiccup sent some readings <b>twice</b>.</p>
-      <p>Build <code>RHN_HA_V_METER_READINGS</code> in <code>RHN_HARM</code> with the columns <code>METER_ID</code>, <code>CONTRACT_ID</code>,
+      <p>Build <code>RHN_DS_V_METER_READINGS</code> in <code>RHN_DSL</code> with the columns <code>METER_ID</code>, <code>CONTRACT_ID</code>,
       <code>READING_DATE</code>, <code>CONSUMPTION_KWH</code> and <code>SRC_SYS_ID</code>:</p>
       <ul>
         <li>every reading exactly once,</li>
         <li><code>CONSUMPTION_KWH</code> always in kWh (1 MWh = 1,000 kWh). The column name says the unit, so the unit column is not needed any more.</li>
       </ul>`,
     tasks: [
-      'Share <code>METER_READINGS</code> with <code>RHN_HARM</code>.',
-      'In a new SQL view in <code>RHN_HARM</code>, convert the values to kWh and remove the duplicate rows. Check the row count in the Data Preview.',
-      'Save as <code>RHN_HA_V_METER_READINGS</code> and deploy.',
+      'Share <code>METER_READINGS</code> with <code>RHN_DSL</code>.',
+      'In a new SQL view in <code>RHN_DSL</code>, convert the values to kWh and remove the duplicate rows. Check the row count in the Data Preview.',
+      'Save as <code>RHN_DS_V_METER_READINGS</code> and deploy.',
       'Answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'UNIT tells you how to read VALUE. The duplicates are exact copies: every column is the same.' },
       { label: 'Hint 2: the concept', cost: 15, text: "SELECT DISTINCT returns each different row once. CASE WHEN UNIT = 'MWh' THEN … ELSE … END converts per row." },
-      { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = '___' THEN VALUE * ____ ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.______" },
+      { label: 'Hint 3: a skeleton', cost: 25, text: "SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = '___' THEN VALUE * ____ ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_ENTRY.______" },
     ],
     checks: [
       {
         type: 'rule',
-        label: 'Readings shared with harmonization',
-        ok: 'METER_READINGS is shared with RHN_HARM.',
-        test: (ctx) => shared(ctx, ['METER_READINGS'], 'RHN_HARM'),
+        label: 'Readings shared with RHN_DSL',
+        ok: 'METER_READINGS is shared with RHN_DSL.',
+        test: (ctx) => shared(ctx, ['METER_READINGS'], 'RHN_DSL'),
       },
       {
         type: 'result',
@@ -407,15 +408,15 @@ export const CHAPTER_5: Mission[] = [
         },
         diagnose: [
           {
-            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, VALUE AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.METER_READINGS`),
+            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, VALUE AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_ENTRY.METER_READINGS`),
             message: 'The duplicates are gone, but the MWh values are not converted yet.',
           },
           {
-            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = 'MWh' THEN VALUE / 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.METER_READINGS`),
+            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = 'MWh' THEN VALUE / 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_ENTRY.METER_READINGS`),
             message: 'The MWh values got smaller, they should get bigger: 1 MWh is 1,000 kWh, so multiply.',
           },
           {
-            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = 'kWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_IN.METER_READINGS`),
+            sql: project(M04_COLS, `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE, CASE WHEN UNIT = 'kWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH, SRC_SYS_ID FROM RHN_ENTRY.METER_READINGS`),
             message: 'You converted the wrong rows: the kWh values are now 1,000 times too big. Only MWh needs converting.',
           },
         ],
@@ -424,7 +425,7 @@ export const CHAPTER_5: Mission[] = [
         type: 'metric',
         label: 'One reading per meter and date',
         sql: `SELECT count(*) FROM (SELECT METER_ID, READING_DATE FROM ${READINGS} GROUP BY METER_ID, READING_DATE HAVING count(*) > 1) d`,
-        missing: 'Deploy RHN_HA_V_METER_READINGS in RHN_HARM first.',
+        missing: 'Deploy RHN_DS_V_METER_READINGS in RHN_DSL first.',
         ok: 'No meter has two readings for the same date.',
         test: (n) => (n ? `${n} meters still have more than one reading for the same date.` : null),
       },
@@ -449,42 +450,35 @@ export const CHAPTER_5: Mission[] = [
   {
     id: 'c05-m05',
     chapter: 5,
-    title: 'Ready for reporting',
+    title: 'Ready for the board',
     from: CFO,
     ticket: `<p>Calin tells me the data is clean now. For the board I need the <b>consumption per grid area in kWh</b>, over all readings.</p>
-      <p><i>Calin adds:</i> Reporting reads only what harmonization prepares. Share our contracts and readings views with <code>RHN_REP</code>,
-      nothing from the inbound space. Then write the query in a scratch SQL view in <code>RHN_REP</code>, without any unit conversion or
-      code mapping: that work is done once, in harmonization.</p>`,
+      <p><i>Calin adds:</i> Answer it from our base views, in a scratch SQL view in <code>RHN_DSL</code>, without any unit conversion or
+      code mapping: that work is done once, in the base views. Nothing goes to <code>RHN_PRES</code> yet. The presentation layer will
+      not get base views at all; it gets facts and dimensions with meaning, which we build next chapter.</p>`,
     tasks: [
-      'In <code>RHN_HARM</code>, share <code>RHN_HA_V_CONTRACTS</code> and <code>RHN_HA_V_METER_READINGS</code> with <code>RHN_REP</code>.',
-      'In <code>RHN_REP</code>, create a New SQL View: join the readings with the contracts and sum the consumption per grid area. Leave the query in the editor.',
+      'In <code>RHN_DSL</code>, create a New SQL View: join the readings base view with the contracts base view and sum the consumption per grid area. Leave the query in the editor.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Sharing is set in the space the object belongs to: RHN_HARM. Afterwards both views show up in RHN_REP under Shared Objects.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Both base views are in the Sources of RHN_DSL under Repository. A click inserts the qualified name.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'Readings carry the CONTRACT_ID, contracts carry the GRID_AREA. JOIN on CONTRACT_ID, then GROUP BY the grid area and SUM the kWh.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT c.GRID_AREA, SUM(r.______) AS CONSUMPTION_KWH FROM RHN_HARM.RHN_HA_V_METER_READINGS r JOIN RHN_HARM.______ c ON r.______ = c.______ GROUP BY c.GRID_AREA' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT c.GRID_AREA, SUM(r.______) AS CONSUMPTION_KWH FROM RHN_DSL.RHN_DS_V_METER_READINGS r JOIN RHN_DSL.______ c ON r.______ = c.______ GROUP BY c.GRID_AREA' },
     ],
     checks: [
       {
         type: 'rule',
-        label: 'Harmonized views shared with reporting',
-        ok: 'RHN_HA_V_CONTRACTS and RHN_HA_V_METER_READINGS are shared with RHN_REP.',
-        test: (ctx) => shared(ctx, ['RHN_HA_V_CONTRACTS', 'RHN_HA_V_METER_READINGS'], 'RHN_REP', 'RHN_HARM'),
-      },
-      {
-        type: 'rule',
-        label: 'Reporting never reads inbound',
-        ok: 'Nothing from RHN_IN is shared with RHN_REP.',
+        label: 'Presentation stays clean',
+        ok: 'Nothing from RHN_ENTRY and no base view is shared with RHN_PRES.',
         test: ({ tenant }) => {
-          const leak = tenant.shares.filter((s) => s.to === 'RHN_REP' && s.object.startsWith('RHN_IN.'));
-          return leak.length ? `${leak.map((s) => s.object).join(', ')} ${leak.length > 1 ? 'are' : 'is'} shared with RHN_REP. Reporting reads only harmonized views: remove that share in RHN_IN.` : null;
+          const leak = tenant.shares.filter((s) => s.to === 'RHN_PRES' && (s.object.startsWith('RHN_ENTRY.') || s.object.startsWith('RHN_DSL.RHN_DS_V_')));
+          return leak.length ? `${leak.map((s) => s.object).join(', ')} ${leak.length > 1 ? 'are' : 'is'} shared with RHN_PRES. The presentation layer gets only facts and dimensions with meaning: remove that share.` : null;
         },
       },
       {
         type: 'result',
         label: 'Consumption per grid area',
-        space: 'RHN_REP',
+        space: 'RHN_DSL',
         expected: `SELECT c.GRID_AREA, SUM(r.CONSUMPTION_KWH) FROM (${REF_READINGS}) r JOIN (${REF_CONTRACTS_CODES}) c ON r.CONTRACT_ID = c.CONTRACT_ID GROUP BY c.GRID_AREA`,
         diagnose: [
           {
@@ -503,9 +497,9 @@ export const CHAPTER_5: Mission[] = [
         label: 'Where a change goes',
         prompt: 'Next year the legacy system sends a new grid area "Mitte" that belongs to NORTH. Where do you add it?',
         options: [
-          'In every report query in RHN_REP that groups by grid area',
-          'Once, in the mapping of RHN_HA_V_CONTRACTS: every view and report built on it gets the new code with the next deploy',
-          'In RHN_IN.BILLING_CONTRACTS, by updating the rows',
+          'In every report query that groups by grid area',
+          'Once, in the mapping of RHN_DS_V_CONTRACTS: every view and report built on it gets the new code with the next deploy',
+          'In RHN_ENTRY.BILLING_CONTRACTS, by updating the rows',
           'Nowhere: the CASE puts it into NORTH automatically',
         ],
         answer: 1,
@@ -514,11 +508,11 @@ export const CHAPTER_5: Mission[] = [
     ],
     review: ['alias_aggregates', 'explicit_join', 'no_select_star'],
     xp: 30,
-    realTenant: `In a real tenant the reporting space builds a <b>Fact</b> view on the shared harmonized views and an <b>Analytic Model</b> on top,
-      which SAP Analytics Cloud consumes. Sharing goes one layer up at a time; the source browser of the reporting space shows the views
-      under <b>Shared Objects</b>.`,
+    realTenant: `In a real tenant the data &amp; semantic layer builds <b>Fact</b> and <b>Dimension</b> views on its base views; they are shared
+      with the presentation space, where an <b>Analytic Model</b> on top is what SAP Analytics Cloud consumes. Sharing goes one layer up at a time;
+      the source browser of the target space shows the shared objects under <b>Shared Objects</b>.`,
     debrief: `<p>Thank you, that is the first number for the board that I fully trust.</p>
-      <p><i>Calin adds:</i> Your reporting query has no CASE and no × 1,000 in it. All the cleaning lives in three views in harmonization,
+      <p><i>Calin adds:</i> Your query has no CASE and no × 1,000 in it. All the cleaning lives in base views in the data &amp; semantic layer,
       and every consumer builds on them. Next chapter we give those views meaning: facts, dimensions and associations.</p>`,
   },
 ];

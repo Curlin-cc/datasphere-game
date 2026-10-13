@@ -21,12 +21,12 @@ with sync_playwright() as p:
     sfx = '-dark' if DARK else ''
     g.shot('look-home' + sfx)
     g.nav('builder'); pg.wait_for_selector('#space-picker'); g.shot('look-builder-spaces' + sfx)
-    pg.click('[data-space="RHN_REP"]'); pg.wait_for_selector('#new-tiles'); g.shot('look-builder-start' + sfx)
-    pg.click('#object-list [data-open="RHN_REP.RHN_REP_F_INVOICES"]'); pg.wait_for_selector('#editor'); pg.click('#run'); pg.wait_for_timeout(500)
+    pg.click('[data-space="RHN_PRES"]'); pg.wait_for_selector('#new-tiles'); g.shot('look-builder-start' + sfx)
+    pg.click('#object-list [data-open="RHN_DSL.RHN_DS_F_INVOICES"]'); pg.wait_for_selector('#editor'); pg.click('#run'); pg.wait_for_timeout(500)
     g.shot('look-sql-editor' + sfx)
     pg.click('#ed-back'); pg.wait_for_selector('#new-tiles')
     pg.click('#import-menu-btn'); pg.wait_for_timeout(200); g.shot('look-builder-import' + sfx); pg.click('#import-menu-btn')
-    pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker'); pg.click('[data-fact="RHN_REP.RHN_REP_F_INVOICES"]')
+    pg.click('[data-new="analytic"]'); pg.wait_for_selector('#am-fact-picker'); pg.click('[data-fact="RHN_DSL.RHN_DS_F_INVOICES"]')
     pg.wait_for_selector('#am-canvas'); g.shot('look-analytic' + sfx)
     for app in ['repository', 'spaces', 'monitor', 'connections', 'security', 'system', 'tasklogs', 'semantic']:
         g.nav(app); pg.wait_for_timeout(300); g.shot(f'look-{app}' + sfx)

@@ -5,7 +5,7 @@ import { registerLocation } from '../nav';
 
 /**
  * Business Builder (excursion, Handbuch 7; design: Bild 8 "Welcome to the Business Builder (Deprecated)").
- * Read-only in the game: RHN_REP holds the objects a predecessor built in 2023 (imported for reference). The player learns
+ * Read-only in the game: RHN_PRES holds the objects a predecessor built in 2023 (imported for reference). The player learns
  * the object chain (business entity → fact model → consumption model → perspective) and why new work uses the analytic model.
  * Versions and statuses: only "Ready to Use" is verified in the handbook (7.4.7); other details are simplified.
  */
@@ -27,14 +27,14 @@ const LEGACY: BbObject[] = [
   {
     name: 'RHN_BE_CUSTOMER', businessName: 'Customer (2023)', type: 'Dimension', version: 2, status: 'Ready to Use', changedOn: 'May 4, 2023',
     tabs: {
-      General: [['Source', 'RHN_REP_V_CUSTOMER_2023 (SQL View, Dimension)'], ['Key', 'CUSTOMER_ID'], ['Attributes', 'CUSTOMER_NAME, CITY, SEGMENT']],
+      General: [['Source', 'RHN_PR_V_CUSTOMER_2023 (SQL View, Dimension)'], ['Key', 'CUSTOMER_ID'], ['Attributes', 'CUSTOMER_NAME, CITY, SEGMENT']],
       'Authorization Scenario': [['Scenarios', 'none']],
     },
   },
   {
     name: 'RHN_BE_INVOICE', businessName: 'Invoice (2023)', type: 'Fact', version: 3, status: 'Ready to Use', changedOn: 'Jun 12, 2023',
     tabs: {
-      General: [['Source', 'RHN_REP_V_REVENUE_2023 (SQL View, semantic usage Analytical Dataset: deprecated, SAP recommends Fact)'],
+      General: [['Source', 'RHN_PR_V_REVENUE_2023 (SQL View, semantic usage Analytical Dataset: deprecated, SAP recommends Fact)'],
         ['Measures', 'NET_AMOUNT, TAX_AMOUNT'], ['Attributes', 'INVOICE_DATE, STATUS, GRID_AREA']],
       Associations: [['Customer (2023)', 'CUSTOMER_ID → RHN_BE_CUSTOMER.CUSTOMER_ID']],
       'Authorization Scenario': [['Scenarios', 'RHN_AS_REGION (Region managers 2023)']],
@@ -42,7 +42,7 @@ const LEGACY: BbObject[] = [
   },
   {
     name: 'RHN_AS_REGION', businessName: 'Region managers 2023', type: 'Authorization Scenario', version: 1, status: 'Ready to Use', changedOn: 'Jun 12, 2023',
-    tabs: { General: [['Based on', 'a data access control of the Data Builder (RHN_REP_DAC_REGION_2023)'], ['Used by', 'RHN_BE_INVOICE']] },
+    tabs: { General: [['Based on', 'a data access control of the Data Builder (RHN_PR_DAC_REGION_2023)'], ['Used by', 'RHN_BE_INVOICE']] },
   },
   {
     name: 'RHN_FM_REVENUE', businessName: 'Revenue', type: 'Fact Model', version: 1, status: 'Ready to Use', changedOn: 'Jun 14, 2023',
@@ -98,7 +98,7 @@ const crumb = () => setCrumb(`<button type="button" class="space-switch" id="bb-
   + (openName ? `<span class="crumb-sep">/</span><span>${esc(openName)}</span>` : ''));
 
 function renderStart(main: HTMLElement) {
-  const objects = space === 'RHN_REP' ? LEGACY : [];
+  const objects = space === 'RHN_PRES' ? LEGACY : [];
   crumb();
   main.innerHTML = `
     <div class="tr-page">

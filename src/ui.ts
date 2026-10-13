@@ -3,17 +3,17 @@
 export const esc = (v: unknown) =>
   String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export const LAYER_ORDER = ['in', 'ha', 'rep', undefined];
+export const LAYER_ORDER = ['en', 'ds', 'pr', undefined];
 
-/** Space ID → layer key for colour coding. */
-export function layerOf(space: string): 'in' | 'ha' | 'rep' | undefined {
-  if (space.endsWith('_IN')) return 'in';
-  if (space.endsWith('_HARM')) return 'ha';
-  if (space.endsWith('_REP')) return 'rep';
+/** Space ID → layer key for colour coding: entry, data & semantic, presentation. */
+export function layerOf(space: string): 'en' | 'ds' | 'pr' | undefined {
+  if (space.endsWith('_ENTRY')) return 'en';
+  if (space.endsWith('_DSL')) return 'ds';
+  if (space.endsWith('_PRES')) return 'pr';
   return undefined;
 }
 
-const LAYER_NAMES = { in: 'Inbound', ha: 'Harmonization', rep: 'Reporting' } as const;
+const LAYER_NAMES = { en: 'Entry', ds: 'Data & Semantic', pr: 'Presentation' } as const;
 
 export const layerName = (space: string) => {
   const l = layerOf(space);

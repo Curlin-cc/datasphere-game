@@ -41,9 +41,9 @@
   --warning: #e76500;
   --warning-soft: #fff8d6;
 
-  --layer-in: #5b738b;
-  --layer-ha: #07838f;
-  --layer-rep: #c35500;
+  --layer-en: #5b738b;
+  --layer-ds: #07838f;
+  --layer-pr: #c35500;
 
   --code-keyword: #8b2a9c;
   --code-string: #256f3a;
@@ -94,9 +94,9 @@
     --critical-soft: #331a1a;
     --warning: #ffab4a;
     --warning-soft: #33290f;
-    --layer-in: #9aaec2;
-    --layer-ha: #3fb3c2;
-    --layer-rep: #ffab4a;
+    --layer-en: #9aaec2;
+    --layer-ds: #3fb3c2;
+    --layer-pr: #ffab4a;
     --code-keyword: #d999e8;
     --code-string: #8fd4a8;
     --code-number: #ffab4a;
@@ -142,9 +142,9 @@
   --critical-soft: #331a1a;
   --warning: #ffab4a;
   --warning-soft: #33290f;
-  --layer-in: #9aaec2;
-  --layer-ha: #3fb3c2;
-  --layer-rep: #ffab4a;
+  --layer-en: #9aaec2;
+  --layer-ds: #3fb3c2;
+  --layer-pr: #ffab4a;
   --code-keyword: #d999e8;
   --code-string: #8fd4a8;
   --code-number: #ffab4a;
@@ -289,9 +289,9 @@ button { font: inherit; color: inherit; }
   border: 1px solid var(--line-strong); color: var(--ink-soft); background: var(--surface);
 }
 .chip::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--chip-color, var(--ink-faint)); }
-.chip[data-layer='in'] { --chip-color: var(--layer-in); }
-.chip[data-layer='ha'] { --chip-color: var(--layer-ha); }
-.chip[data-layer='rep'] { --chip-color: var(--layer-rep); }
+.chip[data-layer='en'] { --chip-color: var(--layer-en); }
+.chip[data-layer='ds'] { --chip-color: var(--layer-ds); }
+.chip[data-layer='pr'] { --chip-color: var(--layer-pr); }
 
 /* ---------- Home ---------- */
 .home-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; max-width: 1100px; }
@@ -313,7 +313,7 @@ button { font: inherit; color: inherit; }
 
 .arch { padding: 18px; }
 .arch h3 { margin: 0 0 12px; font-size: 15px; }
-.arch-stack { display: flex; flex-direction: column; gap: 8px; }
+.arch-stack { display: flex; flex-direction: column-reverse; gap: 8px; }
 .arch-layer {
   border: 1px solid var(--tile-border); border-left: 4px solid var(--c); border-radius: var(--radius-s);
   padding: 8px 12px; background: var(--surface-sunk);
@@ -844,6 +844,18 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .tour-arrow { color: var(--accent); }
 .tour-wait { margin: 4px 0 0; font-size: 12px; color: var(--ink-faint); }
 .tour-card.done .tour-do { background: var(--ok-soft); color: var(--ok); }
+/* Three-layer stack in tutorial cards (guided.ts layerStep): presentation on top, the mission's layers highlighted */
+.tour-layers { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 10px; }
+.tour-layers .tl { --c: var(--ink-faint); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: var(--radius-s);
+  padding: 5px 9px; background: var(--surface-sunk); opacity: .5; }
+.tour-layers .tl[data-layer='en'] { --c: var(--layer-en); }
+.tour-layers .tl[data-layer='ds'] { --c: var(--layer-ds); }
+.tour-layers .tl[data-layer='pr'] { --c: var(--layer-pr); }
+.tour-layers .tl.on { opacity: 1; background: var(--surface); box-shadow: 0 0 0 1px var(--c) inset; }
+.tour-layers .tl b { display: block; font-size: 13px; font-weight: 600; }
+.tour-layers .tl b code { font-weight: 500; color: var(--ink-soft); margin-left: 4px; }
+.tour-layers .tl small { display: block; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.tour-layers .tl-rule { margin: 2px 0 0; font-size: 12px; color: var(--ink-faint); }
 .tour-check { font-weight: 700; }
 
 /* ================================================================ chapter 7: analytic model */
@@ -853,7 +865,7 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .am-picker h2 { margin: 0 0 6px; font-size: 17px; }
 .am-fact-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
 .am-fact-card { display: grid; gap: 3px; text-align: left; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-s);
-  background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; border-left: 4px solid var(--layer-rep); }
+  background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; border-left: 4px solid var(--layer-pr); }
 .am-fact-card:hover { border-color: var(--accent); }
 .am-fact-card .mono, .am-fact-card small { font-size: 12px; color: var(--ink-faint); }
 .am-canvas { padding: 22px 26px; background-color: var(--surface);
@@ -865,11 +877,12 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .am-node b { font-size: 14px; }
 .am-node .mono { font-size: 11.5px; color: var(--ink-soft); }
 .am-node em { font-style: normal; font-size: 12px; color: var(--ink-faint); }
-.am-node.fact { border-left: 5px solid var(--layer-rep); padding: 16px 16px; }
+.am-node.fact { border-left: 5px solid var(--layer-pr); padding: 16px 16px; }
 .am-node.dim { border-left: 4px solid var(--accent); min-width: 220px; }
 .am-node.on { outline: 2px solid var(--accent); outline-offset: 1px; }
 .am-node.ghost { border-style: dashed; border-left-style: dashed; background: var(--surface-sunk); cursor: default; box-shadow: none; }
 .am-node.ghost .btn { justify-self: start; margin-top: 6px; }
+.am-node.not-shared { border-color: var(--warning); } .am-node.not-shared small { color: var(--warning); } .am-node.not-shared em { font-size: 12px; color: var(--ink-soft); }
 .am-dims { display: grid; gap: 12px; border-left: 2px solid var(--line-strong); padding: 6px 0; }
 .am-dim-row { display: grid; grid-template-columns: 110px auto; align-items: center; justify-content: start; }
 .am-link { position: relative; font-size: 11px; color: var(--ink-faint); padding: 0 10px 14px; border-bottom: 2px solid var(--line-strong); }
@@ -1874,3 +1887,31 @@ td.actions { white-space: nowrap; text-align: right; }
 .flow-props.props { margin-top: 0; padding-top: 0; border-top: 0; }
 .props-sec { margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; color: var(--ink); }
 .flow-center input.mono { width: 128px; } .flow-center select { max-width: 120px; }
+
+/* ================================================================ Import Entities wizard (Semantic Onboarding, c03-m07) */
+.ie-steps { display: flex; gap: 0; margin: 0; padding: 14px 48px; list-style: none; background: var(--surface); border-bottom: 1px solid var(--line); counter-reset: none; }
+.ie-steps li { display: flex; align-items: center; gap: 8px; color: var(--ink-faint); font-size: 13px; padding-right: 28px; position: relative; }
+.ie-steps li + li::before { content: ''; position: absolute; left: -22px; top: 50%; width: 14px; border-top: 1px solid var(--line); }
+.ie-steps li + li { padding-left: 28px; }
+.ie-steps li > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); font-size: 12px; }
+.ie-steps li > span .ic { width: 12px; height: 12px; }
+.ie-steps li.on { color: var(--ink); font-weight: 600; }
+.ie-steps li.on > span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ie-steps li.done > span { border-color: var(--ok); color: var(--ok); }
+.ie-panel { padding: 16px 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ie-panel h2 { margin: 0; font-size: 15px; }
+.ie-panel h3 { margin: 6px 0 0; font-size: 14px; }
+.ie-panel p { margin: 0; }
+.ie-access { display: grid; gap: 6px; max-width: 520px; margin-top: 6px; }
+.ie-access select { max-width: 320px; }
+.ie-select { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
+.ie-filters { padding: 14px 16px; display: grid; gap: 10px; }
+.ie-filters h3 { margin: 0; font-size: 14px; }
+.ie-facet { border: 0; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ie-facet legend { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+.ie-chosen { margin: 0; padding-left: 18px; }
+.ie-search input { width: min(420px, 100%); }
+.ie-foot { display: flex; gap: 8px; padding: 12px 48px; background: var(--surface); border-top: 1px solid var(--line); position: sticky; bottom: 0; margin-top: auto; }
+.ie-foot .spacer { flex: 1; }
+@media (max-width: 1450px) { .ie-steps, .ie-foot { padding-left: 24px; padding-right: 24px; } }
+.tour-layers small code { padding: 0 2px; font-size: 11.5px; }

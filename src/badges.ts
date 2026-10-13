@@ -29,7 +29,7 @@ const selfReliant = (p: Progress) => [5, 6, 7, 8, 9, 10].some((c) => chapterDone
 export const BADGES: Badge[] = [
   { id: 'pathfinder', name: 'Pathfinder', text: 'Finish chapter 0: you know your way around the tenant.', earned: chapterDone(0) },
   { id: 'key-keeper', name: 'Key Keeper', text: 'Finish chapter 2: everyone has exactly the access they need.', earned: chapterDone(2) },
-  { id: 'pipeline', name: 'Pipeline Builder', text: 'Finish chapter 3: the sources flow into the inbound space.', earned: chapterDone(3) },
+  { id: 'pipeline', name: 'Pipeline Builder', text: 'Finish chapter 3: the sources flow into the entry space.', earned: chapterDone(3) },
   { id: 'clean-data', name: 'Clean Data', text: 'Finish chapter 5: codes, keys and duplicates harmonized.', earned: chapterDone(5) },
   { id: 'modeler', name: 'Model Maker', text: 'Finish chapter 7: the CFO reads your analytic models.', earned: chapterDone(7) },
   { id: 'gatekeeper', name: 'Gatekeeper', text: 'Finish chapter 8: every manager sees only his grid areas.', earned: chapterDone(8) },

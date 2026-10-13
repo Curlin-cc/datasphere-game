@@ -7,7 +7,7 @@ import { ensureInbound } from './c10';
 
 /**
  * Chapter 11, Board request (no hints): one change from the fact to the story, with security, performance and operations
- * in mind. The board wants kWh per month and commodity. The player extends the deployed fact RHN_REP_F_CONSUMPTION by
+ * in mind. The board wants kWh per month and commodity. The player extends the deployed fact RHN_DS_F_CONSUMPTION by
  * READING_MONTH (text YYYY-MM), keeps its semantics and data access control, adds the attribute to the analytic model,
  * checks it as a regional manager, and makes sure the board pack is fast and fresh.
  * Figures checked with the playtest state on 2026-10-09 (see docs/DATA.md).
@@ -17,16 +17,16 @@ const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 
 const NORTH_MGR = { name: 'Markus Brandt', role: 'Regional Manager North', initials: 'MB' };
 const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor', initials: 'CM' };
 
-const F_CONS = 'RHN_REP.RHN_REP_F_CONSUMPTION';
-const AM_CONS = 'RHN_REP.RHN_REP_AM_CONSUMPTION';
-const NIGHTLY = 'RHN_HARM.RHN_HARM_TC_NIGHTLY';
-const COMMODITY = 'RHN_REP_D_TARIFF.COMMODITY';
+const F_CONS = 'RHN_DSL.RHN_DS_F_CONSUMPTION';
+const AM_CONS = 'RHN_PRES.RHN_PR_AM_CONSUMPTION';
+const NIGHTLY = 'RHN_DSL.RHN_DS_TC_NIGHTLY';
+const COMMODITY = 'RHN_DS_D_TARIFF.COMMODITY';
 
 const MONTH = `strftime(READING_DATE, '%Y-%m')`;
 const FACT_COLS = ['CONTRACT_ID', 'READING_DATE', 'READING_MONTH', 'CONSUMPTION_KWH'];
 const REF_FACT = `SELECT CONTRACT_ID, READING_DATE, ${MONTH} AS READING_MONTH, CONSUMPTION_KWH FROM (${REF_F_CONS}) f`;
 const BY_MONTH = (filter = '') => `SELECT ${MONTH} AS READING_MONTH, t.COMMODITY, SUM(f.CONSUMPTION_KWH)
-  FROM (${REF_F_CONS}) f JOIN RHN_IN.TARIFFS t ON f.TARIFF = t.TARIFF ${filter} GROUP BY 1, 2`;
+  FROM (${REF_F_CONS}) f JOIN RHN_ENTRY.TARIFFS t ON f.TARIFF = t.TARIFF ${filter} GROUP BY 1, 2`;
 const MONTH_ONLY = (areas: string) => `SELECT ${MONTH} AS READING_MONTH, SUM(f.CONSUMPTION_KWH) FROM (${REF_F_CONS}) f
   WHERE f.GRID_AREA IN (${areas}) GROUP BY 1`;
 
@@ -46,7 +46,7 @@ export const CHAPTER_11: Mission[] = [
       <p><i>Calin adds:</i> From here on you work without hints. You know every step; think about the whole stack before you deploy.</p>`,
     tasks: [
       'Give the consumption data a month in the format the board pack uses.',
-      'Make the month and the commodity available in <code>RHN_REP_AM_CONSUMPTION</code>.',
+      'Make the month and the commodity available in <code>RHN_PR_AM_CONSUMPTION</code>.',
       'Answer the question below.',
     ],
     hints: [],
@@ -59,11 +59,11 @@ export const CHAPTER_11: Mission[] = [
         }],
       },
       {
-        type: 'rule', label: 'Still a fact', ok: 'RHN_REP_F_CONSUMPTION is still a Fact with CONSUMPTION_KWH as measure, READING_MONTH is an attribute.',
+        type: 'rule', label: 'Still a fact', ok: 'RHN_DS_F_CONSUMPTION is still a Fact with CONSUMPTION_KWH as measure, READING_MONTH is an attribute.',
         test: ({ tenant }) => {
           const d = findObject(tenant, F_CONS)?.deployed;
-          if (!d) return 'RHN_REP_F_CONSUMPTION is not deployed.';
-          if (d.semanticUsage !== 'Fact') return `RHN_REP_F_CONSUMPTION is deployed as ${d.semanticUsage}. The model needs a Fact.`;
+          if (!d) return 'RHN_DS_F_CONSUMPTION is not deployed.';
+          if (d.semanticUsage !== 'Fact') return `RHN_DS_F_CONSUMPTION is deployed as ${d.semanticUsage}. The model needs a Fact.`;
           if (d.columnRoles?.CONSUMPTION_KWH !== 'Measure') return 'CONSUMPTION_KWH is no longer a measure in the deployed fact.';
           return d.columnRoles?.READING_MONTH === 'Attribute' ? null : 'READING_MONTH has no role Attribute in the deployed fact, so the model cannot offer it.';
         },
@@ -110,9 +110,9 @@ export const CHAPTER_11: Mission[] = [
       {
         type: 'rule', label: 'Nothing extra', ok: 'No second model or copy of the data for Markus.',
         test: ({ tenant }) => {
-          const extra = tenant.objects.filter((o) => o.space === 'RHN_REP' && (o.kind === 'Analytic Model' || o.kind === 'SQL View')
-            && !['RHN_REP_AM_INVOICES', 'RHN_REP_AM_CONSUMPTION', 'RHN_REP_V_REGION_REVENUE'].includes(o.name) && !/^RHN_REP_[DF]_/.test(o.name));
-          return extra.length ? `${extra.map((o) => o.name).join(', ')} is new in RHN_REP. Markus needs no object of his own: the protected model already shows him his rows.` : null;
+          const extra = tenant.objects.filter((o) => o.space === 'RHN_PRES' && (o.kind === 'Analytic Model' || o.kind === 'SQL View')
+            && !['RHN_PR_AM_INVOICES', 'RHN_PR_AM_CONSUMPTION', 'RHN_PR_V_REGION_REVENUE'].includes(o.name));
+          return extra.length ? `${extra.map((o) => o.name).join(', ')} is new in RHN_PRES. Markus needs no object of his own: the protected model already shows him his rows.` : null;
         },
       },
       {
@@ -157,21 +157,21 @@ export const CHAPTER_11: Mission[] = [
     setup: ensureInbound,
     checks: [
       {
-        type: 'rule', label: 'The night ran', ok: 'RHN_HARM_TC_NIGHTLY completed after the change.',
+        type: 'rule', label: 'The night ran', ok: 'RHN_DS_TC_NIGHTLY completed after the change.',
         test: ({ tenant }) => {
           const r = lastRun(tenant, NIGHTLY);
-          if (!r) return 'RHN_HARM_TC_NIGHTLY has not run. Run it.';
-          if (r.status === 'Failed') return 'The last run of RHN_HARM_TC_NIGHTLY failed. Find the step and fix it.';
+          if (!r) return 'RHN_DS_TC_NIGHTLY has not run. Run it.';
+          if (r.status === 'Failed') return 'The last run of RHN_DS_TC_NIGHTLY failed. Find the step and fix it.';
           const changed = findObject(tenant, F_CONS)?.changedAt ?? '';
-          return r.start >= changed ? null : 'The last run of RHN_HARM_TC_NIGHTLY is older than your change of the fact. Run the chain.';
+          return r.start >= changed ? null : 'The last run of RHN_DS_TC_NIGHTLY is older than your change of the fact. Run the chain.';
         },
       },
       {
         type: 'rule', label: 'Fast enough', ok: 'The board chart opens in under three seconds at production volume.',
         test: ({ events, tenant }) => {
-          if (!findObject(tenant, 'RHN_HARM.RHN_HA_V_METER_READINGS')?.persisted) return 'RHN_HA_V_METER_READINGS is not persisted: the model computes the duplicate removal on every read.';
+          if (!findObject(tenant, 'RHN_DSL.RHN_DS_V_METER_READINGS')?.persisted) return 'RHN_DS_V_METER_READINGS is not persisted: the model computes the duplicate removal on every read.';
           const runs = [...events].filter((e) => e.startsWith(`am-runtime:${AM_CONS}:`)).map((e) => Number(e.split(':').pop()));
-          if (!runs.length) return 'Run the Data Preview of RHN_REP_AM_CONSUMPTION to see its runtime at production volume.';
+          if (!runs.length) return 'Run the Data Preview of RHN_PR_AM_CONSUMPTION to see its runtime at production volume.';
           return runs.some((ms) => ms < FAST_MS) ? null : 'The consumption model still takes longer than three seconds.';
         },
       },

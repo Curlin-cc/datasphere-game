@@ -1,5 +1,5 @@
-"""Chapter 10 (Operations): task chain in RHN_IN (CRM flow, delta flow refused), shared and nested in the nightly chain of
-RHN_HARM (wrong order first), notification, schedule; the 2 a.m. failure (Tim's CAST) traced and fixed; Task Logs.
+"""Chapter 10 (Operations): task chain in RHN_ENTRY (CRM flow, delta flow refused), shared and nested in the nightly chain of
+RHN_DSL (wrong order first), notification, schedule; the 2 a.m. failure (Tim's CAST) traced and fixed; Task Logs.
 Start state: chapter10_data.py."""
 import sys
 from playwright.sync_api import sync_playwright
@@ -8,7 +8,7 @@ from chapter10_data import TENANT10
 from chapter6_data import CUSTOMERS
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-IN_CHAIN, NIGHTLY = 'RHN_IN.RHN_IN_TC_CRM', 'RHN_HARM.RHN_HARM_TC_NIGHTLY'
+IN_CHAIN, NIGHTLY = 'RHN_ENTRY.RHN_EN_TC_CRM', 'RHN_DSL.RHN_DS_TC_NIGHTLY'
 
 with sync_playwright() as p:
     g = Game(p, S)
@@ -42,25 +42,25 @@ with sync_playwright() as p:
     g.start(save_before(10, 'c10-m01', TENANT10))
     g.walk_tutorial(show=False)
 
-    # ---------------- m01: chain in RHN_IN, delta flow refused, share, flow schedule left first
-    new_chain('RHN_IN', 'CRM file', 'RHN_IN_TC_CRM')
-    add_step('RHN_IN.RHN_IN_RF_CRM')
-    add_step('RHN_IN.RHN_IN_RF_MDM', True)
+    # ---------------- m01: chain in RHN_ENTRY, delta flow refused, share, flow schedule left first
+    new_chain('RHN_ENTRY', 'CRM file', 'RHN_EN_TC_CRM')
+    add_step('RHN_ENTRY.RHN_EN_RF_CRM')
+    add_step('RHN_ENTRY.RHN_EN_RF_MDM', True)
     deploy()
     pg.click('#chain-run'); pg.wait_for_timeout(1200)
     print('   run:', g.toast()[:120])
     g.shot('c10-chain-in')
     g.answer('delta', 0)
     g.check('m01 not shared, schedule left, wrong answer')
-    g.space('RHN_IN'); g.share(IN_CHAIN, 'RHN_HARM')
-    monitor('RHN_IN', 'flows', 'RHN_IN_RF_CRM', 'data-flow'); schedule('#flow-schedule', 'None')
+    g.space('RHN_ENTRY'); g.share(IN_CHAIN, 'RHN_DSL')
+    monitor('RHN_ENTRY', 'flows', 'RHN_EN_RF_CRM', 'data-flow'); schedule('#flow-schedule', 'None')
     g.answer('delta', 1)
     g.check('m01 solved')
     g.next_mission()
 
     # ---------------- m02: wrong order and no email first
-    new_chain('RHN_HARM', 'Nightly', 'RHN_HARM_TC_NIGHTLY')
-    add_step('RHN_HARM.RHN_HA_V_CUSTOMERS'); add_step(IN_CHAIN); add_step('RHN_HARM.RHN_HA_V_METER_READINGS')
+    new_chain('RHN_DSL', 'Nightly', 'RHN_DS_TC_NIGHTLY')
+    add_step('RHN_DSL.RHN_DS_V_CUSTOMERS'); add_step(IN_CHAIN); add_step('RHN_DSL.RHN_DS_V_METER_READINGS')
     deploy()
     pg.click('#chain-run'); pg.wait_for_timeout(2000)
     g.answer('order', 1)
@@ -73,24 +73,24 @@ with sync_playwright() as p:
     print('   steps:', pg.locator('#step-list tbody tr').all_inner_texts())
     g.shot('c10-nightly')
     g.check('m02 readings schedule left')
-    monitor('RHN_HARM', 'views', 'RHN_HA_V_METER_READINGS', 'data-vw'); schedule('#vw-schedule', 'None')
+    monitor('RHN_DSL', 'views', 'RHN_DS_V_METER_READINGS', 'data-vw'); schedule('#vw-schedule', 'None')
     g.check('m02 solved')
     g.next_mission()
     pg.wait_for_timeout(3000)
 
     # ---------------- m03: the failed night, trace, fix, rerun
-    monitor('RHN_HARM', 'chains', 'RHN_HARM_TC_NIGHTLY', 'data-chain')
+    monitor('RHN_DSL', 'chains', 'RHN_DS_TC_NIGHTLY', 'data-chain')
     print('   failed run:', pg.inner_text('#run-log').replace('\n', ' | ')[:500])
     g.shot('c10-failed')
-    pg.click('[data-step-open="RHN_HARM.RHN_HA_V_CUSTOMERS"]'); pg.wait_for_timeout(400)
+    pg.click('[data-step-open="RHN_DSL.RHN_DS_V_CUSTOMERS"]'); pg.wait_for_timeout(400)
     print('   view log:', pg.inner_text('#run-log').replace('\n', ' | ')[:300])
     g.answer('why-deploy', 1)
     g.check('m03 before the fix')
-    g.space('RHN_HARM')
-    g.edit_view('RHN_HARM.RHN_HA_V_CUSTOMERS', f"SELECT x.*, CAST(SUBSTR(x.CUSTOMER_ID, 3) AS INTEGER) AS CUSTOMER_NO\nFROM (\n{CUSTOMERS}\n) x")
+    g.space('RHN_DSL')
+    g.edit_view('RHN_DSL.RHN_DS_V_CUSTOMERS', f"SELECT x.*, CAST(SUBSTR(x.CUSTOMER_ID, 3) AS INTEGER) AS CUSTOMER_NO\nFROM (\n{CUSTOMERS}\n) x")
     print('   deploy:', g.toast()[:120])
     g.check('m03 fixed, chain not rerun')
-    monitor('RHN_HARM', 'chains', 'RHN_HARM_TC_NIGHTLY', 'data-chain'); pg.click('#chain-run'); pg.wait_for_timeout(2500)
+    monitor('RHN_DSL', 'chains', 'RHN_DS_TC_NIGHTLY', 'data-chain'); pg.click('#chain-run'); pg.wait_for_timeout(2500)
     g.check('m03 solved')
     g.next_mission()
     pg.wait_for_timeout(500)
@@ -100,7 +100,7 @@ with sync_playwright() as p:
     print('   failed:', [r.replace('\t', ' | ') for r in pg.locator('#tasklog-list tbody tr').all_inner_texts()])
     g.answer('which', 1); g.answer('cause', 0); g.answer('why-logs', 1)
     g.check('m04 nothing opened, wrong cause')
-    pg.locator('[data-log-row="RHN_IN.RHN_IN_RF_S4U"] [data-log]').first.click(); pg.wait_for_timeout(200)
+    pg.locator('[data-log-row="RHN_ENTRY.RHN_EN_RF_S4U"] [data-log]').first.click(); pg.wait_for_timeout(200)
     g.shot('c10-tasklogs')
     g.answer('cause', 1)
     g.check('m04 solved')

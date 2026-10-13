@@ -49,7 +49,7 @@ export interface StructureCheck {
   kind?: 'Table' | 'View';
   /** Columns that must exist (case-insensitive). */
   columns?: string[];
-  /** Columns that must not exist, with the reason shown when one does (e.g. personal data in reporting). */
+  /** Columns that must not exist, with the reason shown when one does (e.g. personal data in the presentation layer). */
   absent?: { columns: string[]; message: string };
 }
 
@@ -69,7 +69,7 @@ export interface QuestionCheck {
 /** What a rule check can look at. */
 export interface RuleContext {
   tenant: TenantState;
-  /** What the player did while the mission was open, e.g. app:builder, open:RHN_IN.TARIFFS. */
+  /** What the player did while the mission was open, e.g. app:builder, open:RHN_ENTRY.TARIFFS. */
   events: Set<string>;
 }
 
@@ -107,7 +107,7 @@ export interface ModelCheck {
   label: string;
   /** SPACE.NAME of the analytic model. */
   object: string;
-  /** Attribute IDs in the rows, e.g. 'RHN_REP_D_GRID_AREA.REGION' or 'STATUS'. */
+  /** Attribute IDs in the rows, e.g. 'RHN_DS_D_GRID_AREA.REGION' or 'STATUS'. */
   rows: string[];
   /** Measure names, e.g. ['GROSS_AMOUNT']. */
   measures: string[];

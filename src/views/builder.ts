@@ -9,6 +9,7 @@ import {
 import { accessError, isShared } from '../tenant';
 import { lockError, remoteQueries, findConnection, sourceObject, sourceSql } from '../integration';
 import { openImportRemote, renderFlowEditor } from './flow';
+import { openImportEntities } from './onboarding';
 import { mountSemantics, viewColumns, type SemanticsDraft } from './semantics';
 import { renderModelEditor, newModelDraft, resetModelMode } from './analytic';
 import { renderTableEditor, newTableDraft } from './table';
@@ -43,7 +44,7 @@ const LIST_TABS: [ListTab, string][] = [
 ];
 
 /** "New" tiles that work in this build of the game, from their chapter on. */
-const BUILT_TILES = new Set(['sqlview', 'remote', 'replication', 'analytic', 'table', 'dac', 'taskchain', 'dataflow', 'transformation']);
+const BUILT_TILES = new Set(['sqlview', 'remote', 'entities', 'replication', 'analytic', 'table', 'dac', 'taskchain', 'dataflow', 'transformation']);
 /** Favorites (star column), for this visit. */
 const favorites = new Set<string>();
 let listFilter = '';
@@ -253,6 +254,7 @@ function renderLanding(main: HTMLElement) {
     ctx.track(`new:${n.id}`);
     if (!isBuilt(n)) return tileInfo(n);
     if (n.id === 'remote') return openImportRemote(() => renderLanding(main));
+    if (n.id === 'entities') return openImportEntities(t.activeSpace);
     if (n.id === 'replication') return go({ kind: 'new-flow' });
     if (n.id === 'analytic') {
       newModelDraft();
@@ -545,7 +547,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         if (bad) return toast(`Deployment failed. ${bad}`, 'error');
       }
       if (saved.space.endsWith('_IN') &&
-        !await ask('Calin: "The inbound layer holds source data 1:1. A view with logic belongs in harmonization." Deploy it in the inbound space anyway?')) {
+        !await ask('Calin: "The entry layer holds source data 1:1. A view with logic belongs in the data & semantic layer." Deploy it in the entry space anyway?')) {
         ctx.renderView();
         return;
       }
@@ -663,7 +665,7 @@ async function renderEditor(main: HTMLElement, o: RepoObject | null) {
         const so = sourceObject(t, o!.space, remote.connection, remote.source);
         remoteQueries.unshift({
           at: new Date().toISOString(), space: o!.space, connection: remote.connection, object: o!.name,
-          statement: so ? sourceSql(so).replace(`"RHN_IN"."${so.table}"`, `"${so.name}"`) + ' LIMIT 100' : '', records: res.rows.length, ms: Math.max(1, Math.round(res.ms * 6)),
+          statement: so ? sourceSql(so).replace(`"RHN_ENTRY"."${so.table}"`, `"${so.name}"`) + ' LIMIT 100' : '', records: res.rows.length, ms: Math.max(1, Math.round(res.ms * 6)),
         });
         if (!conn?.validation?.ok) toast('The connection of this remote table is not valid; the source may not answer in a real tenant.', 'info');
       }

@@ -28,10 +28,18 @@ have = {(c['space'], c['name']) for c in t['connections']}
 t['connections'] = [c for c in c3['connections'] if (c['space'], c['name']) not in have] + t['connections']
 t['certificates'] = sorted(set(t['certificates']) | set(c3['certificates']))
 t['statements'] = c9['statements']
+# Import Entities (c03-m07): the imported division objects, their shares and the import log come from the chapter 3 run.
+names = {(o['space'], o['name']) for o in t['objects']}
+imported = [o for o in c3['objects'] if o.get('importedFrom') and (o['space'], o['name']) not in names]
+t['objects'] = imported + t['objects']
+keys = {f"{o['space']}.{o['name']}" for o in imported}
+t['shares'] = [x for x in c3['shares'] if x['object'] in keys] + t['shares']
+t['importLogs'] = [l for l in c3.get('importLogs', []) if l.get('pkg') == 'IMPORT_ENTITIES'] + t.get('importLogs', [])
+t['runs'] = [r for r in c3.get('runs', []) if r['object'] in keys] + t.get('runs', [])
 ids = list(d['missions'])
 open_ = [m for m, p in d['missions'].items() if not p['done']]
 assert not open_, f'not solved: {open_}'
-d.update(xp=5000, tutorialsSeen=ids, tutorialVersion=2, currentMission=ids[-1])
+d.update(xp=5000, tutorialsSeen=ids, tutorialVersion=3, currentMission=ids[-1])
 json.dump(d, open('../../src/content/sandbox.json', 'w'), separators=(',', ':'))
 print(f'sandbox.json: {len(ids)} missions solved')
 EOF

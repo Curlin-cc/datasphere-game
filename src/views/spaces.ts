@@ -195,7 +195,7 @@ async function deleteSpace(id: string, objectCount: number) {
   t.shares = t.shares.filter((s) => s.to !== id && !s.object.startsWith(`${id}.`));
   t.roles.forEach((r) => (r.scope = r.scope.filter((x) => x !== id)));
   t.assignments.forEach((a) => (a.spaces = a.spaces.filter((x) => x !== id)));
-  if (t.activeSpace === id) t.activeSpace = 'RHN_IN';
+  if (t.activeSpace === id) t.activeSpace = 'RHN_ENTRY';
   ctx.save();
   ctx.renderView();
 }

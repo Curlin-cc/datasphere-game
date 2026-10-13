@@ -81,9 +81,9 @@ export const NEW_SPACE_DEFAULTS = { diskGB: 2, memoryGB: 1, priority: 3 };
 
 export function defaultTenant(): TenantState {
   return {
-    spaces: [{ id: 'RHN_IN', name: 'Rheinau Inbound', diskGB: 40, memoryGB: 8, priority: 3, system: true }],
+    spaces: [{ id: 'RHN_ENTRY', name: 'Rheinau Entry', diskGB: 40, memoryGB: 8, priority: 3, system: true }],
     shares: [],
-    activeSpace: 'RHN_IN',
+    activeSpace: 'RHN_ENTRY',
     roles: [],
     assignments: [],
     objects: [],
@@ -190,8 +190,8 @@ export function sanitizeTenant(data: unknown): TenantState {
   if (!data || typeof data !== 'object') return t;
   const d = data as Partial<TenantState>;
   for (const s of Array.isArray(d.spaces) ? d.spaces : []) {
-    if (!s || typeof s.id !== 'string' || s.id === 'RHN_IN' || !/^[A-Z0-9_]{1,20}$/.test(s.id)) {
-      if (s && s.id === 'RHN_IN') Object.assign(t.spaces[0], pickStorage(s));
+    if (!s || typeof s.id !== 'string' || s.id === 'RHN_ENTRY' || !/^[A-Z0-9_]{1,20}$/.test(s.id)) {
+      if (s && s.id === 'RHN_ENTRY') Object.assign(t.spaces[0], pickStorage(s));
       continue;
     }
     if (t.spaces.some((x) => x.id === s.id)) continue;

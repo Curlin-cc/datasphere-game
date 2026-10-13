@@ -38,7 +38,7 @@ with sync_playwright() as p:
     pg.click('#oauth-add'); shot('oauth-dialog'); pg.keyboard.press('Escape')
     for sub in ['users', 'roles', 'authorization', 'activities']:
         g.nav('security'); pg.click(f'.nav [data-sec="{sub}"]'); shot(f'security-{sub}')
-    g.space('RHN_HARM'); pg.click('#object-list [data-open="RHN_HARM.RHN_HA_V_CONTRACTS"]'); pg.wait_for_selector('#editor')
+    g.space('RHN_DSL'); pg.click('#object-list [data-open="RHN_DSL.RHN_DS_V_CONTRACTS"]'); pg.wait_for_selector('#editor')
     shot('editor'); pg.click('#ed-versions'); shot('versions'); pg.keyboard.press('Escape')
     pg.click('#shell-user'); pg.click('[data-um="settings"]'); shot('settings'); pg.keyboard.press('Escape')
     g.done()

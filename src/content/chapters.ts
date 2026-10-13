@@ -25,14 +25,14 @@ export interface Chapter {
 /** Learning path, see docs/PLAN.md section 3. */
 export const CHAPTERS: Chapter[] = [
   { nr: 0, title: 'Find your way', summary: 'The apps of the tenant, spaces, objects, save and deploy', guidance: 'full' },
-  { nr: 1, title: 'Space concept', summary: 'Design spaces per layer with storage and naming rules', guidance: 'full' },
+  { nr: 1, title: 'Space concept', summary: 'Three layers, three spaces: entry, data & semantic, presentation; storage and naming rules', guidance: 'full' },
   { nr: 2, title: 'Users and roles', summary: 'Give eight people exactly the access they need', guidance: 'light' },
-  { nr: 3, title: 'Data integration', summary: 'Connect sources, read live or replicate, load by delta, repair a failed load', guidance: 'light' },
-  { nr: 4, title: 'Inbound layer', summary: 'Profile the raw data with SQL and find its defects', guidance: 'light' },
-  { nr: 5, title: 'Harmonization', summary: 'Clean duplicates, units and legacy keys in views', guidance: 'paid' },
-  { nr: 6, title: 'Semantics', summary: 'Facts, dimensions, texts, hierarchies, associations', guidance: 'paid' },
-  { nr: 7, title: 'Analytic model', summary: 'Measures and variables for the CFO', guidance: 'paid' },
-  { nr: 8, title: 'Data access controls', summary: 'Regional managers see only their grid area', guidance: 'paid' },
+  { nr: 3, title: 'Data integration', summary: 'Connect sources into the entry layer, read live or replicate, load by delta, repair a failed load, import S/4HANA entities', guidance: 'light' },
+  { nr: 4, title: 'Entry layer', summary: 'Profile the raw data with SQL and find its defects', guidance: 'light' },
+  { nr: 5, title: 'Base views', summary: 'Data & semantic layer, part 1: clean duplicates, units and legacy keys in views', guidance: 'paid' },
+  { nr: 6, title: 'Semantics', summary: 'Data & semantic layer, part 2: facts, dimensions, associations', guidance: 'paid' },
+  { nr: 7, title: 'Analytic model', summary: 'Presentation layer: share facts and dimensions, measures and variables for the CFO', guidance: 'paid' },
+  { nr: 8, title: 'Data access controls', summary: 'Regional managers see only their grid area, protected in the data & semantic layer', guidance: 'paid' },
   { nr: 9, title: 'Persistence and performance', summary: 'Decide what to persist and why', guidance: 'paid' },
   { nr: 10, title: 'Operations', summary: 'Task chains, monitoring and failed loads', guidance: 'paid' },
   { nr: 11, title: 'Board request', summary: 'An end-to-end change, no hints', guidance: 'none' },
@@ -66,10 +66,10 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Data Builder > New Table (Data Editor for the rows), or created by a replication flow.',
   },
   {
-    term: 'Inbound layer',
+    term: 'Entry layer',
     chapter: 1,
-    text: 'The landing zone for source data. Data arrives 1:1 with a source system ID and without business logic.',
-    realTenant: 'Usually its own space, e.g. one per source or one shared inbound space.',
+    text: 'The bottom layer: the landing zone for source data. Data arrives 1:1 with a source system ID and without business logic: remote tables, replicated tables, files, and entities imported from SAP systems.',
+    realTenant: 'Usually its own space, e.g. one per source or one shared entry space. Connections live here.',
   },
   {
     term: 'SQL view',
@@ -92,7 +92,7 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Space priority',
     chapter: 1,
-    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 5 (highest). Reporting usually ranks above loading.',
+    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 5 (highest). The presentation space usually ranks above loading.',
     realTenant: 'Space Management > your space > Workload Management.',
   },
   {
@@ -222,10 +222,10 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Space Management > Unlock on the space.',
   },
   {
-    term: 'Harmonization layer',
+    term: 'Data & semantic layer',
     chapter: 5,
-    text: 'Views between inbound and reporting that make data uniform: one code per value, one key per business object, one unit, no duplicates. The logic lives here once and every consumer builds on it.',
-    realTenant: 'Usually its own space; views read the inbound tables through sharing.',
+    text: 'The middle layer. Its base views (RHN_DS_V_) make data uniform: one code per value, one key per business object, one unit, no duplicates. On top of them, the same layer gives the data its meaning: facts, dimensions, hierarchies, associations, and the data access controls that protect them. The logic lives here once and every consumer builds on it.',
+    realTenant: 'Usually its own space; base views read the entry tables through sharing, and facts and dimensions are shared upwards to the presentation layer.',
   },
   {
     term: 'Value mapping',
@@ -285,7 +285,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Star schema',
     chapter: 6,
     text: 'Facts in the middle, shared dimensions around them, connected by keys. Each dimension exists once and serves every fact.',
-    realTenant: 'Facts and dimensions with associations in the reporting space; analytic models on top.',
+    realTenant: 'Facts and dimensions with associations in the data & semantic space, shared with the presentation space; analytic models on top.',
   },
   {
     term: 'Analytic model',
@@ -357,7 +357,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Mapping table',
     chapter: 5,
     text: 'A small local table that translates codes (legacy code → target code), joined in a view with LEFT JOIN and COALESCE. Replaces a long CASE; the business can maintain it in the Data Editor without changing SQL.',
-    realTenant: 'Data Builder > New Table in the harmonization space, rows in the Data Editor or uploaded from a CSV file.',
+    realTenant: 'Data Builder > New Table in the data & semantic space, rows in the Data Editor or uploaded from a CSV file.',
   },
   {
     term: 'Data access control',
@@ -398,7 +398,7 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Required package',
     chapter: 12,
-    text: 'A package another package depends on, e.g. the harmonization views below a reporting model. It must be in the target tenant first, or be imported together.',
+    text: 'A package another package depends on, e.g. the facts and dimensions below a presentation model. It must be in the target tenant first, or be imported together.',
     realTenant: 'Package editor > Required Packages.',
   },
   {

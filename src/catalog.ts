@@ -18,7 +18,7 @@ export interface TagHierarchy {
 /** Tag hierarchies of the catalog, set up by the catalog administrator (Calin). */
 export const TAG_HIERARCHIES: TagHierarchy[] = [
   { name: 'Subject Area', tags: ['Billing', 'Consumption', 'Customers', 'Grid', 'Tariffs'] },
-  { name: 'Layer', tags: ['Inbound', 'Harmonization', 'Reporting'] },
+  { name: 'Layer', tags: ['Entry', 'Data & Semantic', 'Presentation'] },
 ];
 export const ALL_TAGS = TAG_HIERARCHIES.flatMap((h) => h.tags.map((t) => `${h.name}/${t}`));
 

@@ -10,9 +10,9 @@ import { PEOPLE } from '../people';
 const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor', initials: 'CM' };
 const IT = { name: 'Jonas Becker', role: 'Head of IT, tenant owner', initials: 'JB' };
 
-const IN = 'RHN_IN';
-const HA = 'RHN_HARM';
-const REP = 'RHN_REP';
+const IN = 'RHN_ENTRY';
+const HA = 'RHN_DSL';
+const REP = 'RHN_PRES';
 
 /** Which function lives in which layer. One scoped role per function, scope = these spaces. */
 const ROLE_PLAN: { template: Template; scope: string[] }[] = [
@@ -54,10 +54,10 @@ const NEEDS: Record<string, Need> = {
   cmucea: {
     need: [`SPACE_ADMIN@${HA}`, `SPACE_ADMIN@${REP}`],
     allow: [`MODELER@${HA}`, `MODELER@${REP}`],
-    why: 'runs the harmonization and reporting spaces',
+    why: 'runs the data & semantic and presentation spaces',
   },
-  lhoffmann: { need: [`INTEGRATOR@${IN}`], allow: [`MODELER@${IN}`], why: 'loads data into inbound' },
-  tschulz: { need: [`MODELER@${HA}`], why: 'builds views in harmonization' },
+  lhoffmann: { need: [`INTEGRATOR@${IN}`], allow: [`MODELER@${IN}`], why: 'loads data into the entry layer' },
+  tschulz: { need: [`MODELER@${HA}`], why: 'builds views in the data & semantic layer' },
   swolf: { need: [`VIEWER@${IN}`, `VIEWER@${HA}`, `VIEWER@${REP}`], why: 'reads every layer without changing anything' },
   plindner: { need: [`CONSUMER@${REP}`], why: 'reads reports in SAP Analytics Cloud' },
   mbrandt: { need: [`CONSUMER@${REP}`], why: 'reads reports in SAP Analytics Cloud' },
@@ -94,7 +94,7 @@ export const CHAPTER_2: Mission[] = [
       Please create <b>one scoped role per function</b>, named <code>RHN_&lt;FUNCTION&gt;</code>, for example <code>RHN_MODELER</code>.
       The scope of each role contains the spaces where that function happens:</p>
       <ul>
-        <li><b>Space administration</b> happens in the spaces Calin's team runs: harmonization and reporting.</li>
+        <li><b>Space administration</b> happens in the spaces Calin's team runs: data &amp; semantic, and presentation.</li>
         <li><b>Integration</b> only where data lands.</li>
         <li><b>Modeling</b> and <b>viewing</b> can happen in every layer.</li>
         <li><b>Consuming</b> only where the reports come from.</li>
@@ -107,8 +107,8 @@ export const CHAPTER_2: Mission[] = [
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Security > Roles. + › Create a Scoped Role asks for a name, a template and the spaces of the scope.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'Five templates, five roles. Data lands in RHN_IN, reports come from RHN_REP, Calin runs RHN_HARM and RHN_REP.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_SPACE_ADMIN: HARM + REP · RHN_INTEGRATOR: IN · RHN_MODELER: all three · RHN_VIEWER: __ · RHN_CONSUMER: __' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'Five templates, five roles. Data lands in RHN_ENTRY, reports come from RHN_PRES, Calin runs RHN_DSL and RHN_PRES.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_SPACE_ADMIN: DSL + PRES · RHN_INTEGRATOR: ENTRY · RHN_MODELER: all three · RHN_VIEWER: __ · RHN_CONSUMER: __' },
     ],
     checks: [
       ...ROLE_PLAN.map((p) => ({
@@ -154,7 +154,7 @@ export const CHAPTER_2: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Edit roles opens a dialog per person. Each role shows only the spaces of its scope.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Least privilege: the smallest set of rights that lets a person do their job. Reading reports in a BI tool needs Consumer; reading models in Datasphere needs Viewer.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Jonas: global admin · Calin: space admin HARM + REP · Lena: integrator IN · Tim: modeler __ · Sabine: viewer __ · Petra, Markus, Aylin: consumer __' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Jonas: global admin · Calin: space admin DSL + PRES · Lena: integrator ENTRY · Tim: modeler __ · Sabine: viewer __ · Petra, Markus, Aylin: consumer __' },
     ],
     checks: [
       ...Object.keys(NEEDS).map((id) => {
@@ -180,7 +180,7 @@ export const CHAPTER_2: Mission[] = [
     realTenant: `In a real tenant you assign roles under <b>Security → Users</b> or in the role itself. Larger companies map roles automatically
       from groups in their identity provider (SAML attributes) or provision users via SCIM. <b>Security → Authorization Overview</b> shows who can do what where.`,
     debrief: `<p>Clean. Sabine will like this: everyone can do their job, nobody can do more.</p>
-      <p><i>Calin adds:</i> Notice that the regional managers now see all of RHN_REP. Markus can read the figures of the south.
+      <p><i>Calin adds:</i> Notice that the regional managers now see all of RHN_PRES. Markus can read the figures of the south.
       Roles decide <i>what</i> someone may do; <i>which rows</i> they see is a different tool. We get there in chapter 8.</p>`,
   },
   {
@@ -190,13 +190,13 @@ export const CHAPTER_2: Mission[] = [
     from: CALIN,
     ticket: `<p>Two changes in my team:</p>
       <ul>
-        <li><b>Nina Krüger</b> starts on Monday as a modeler in harmonization.</li>
-        <li><b>Tim Schulz</b> moves to the reporting side. From now on he builds facts and models in reporting and no longer works in harmonization.</li>
+        <li><b>Nina Krüger</b> starts on Monday as a modeler in the data &amp; semantic layer.</li>
+        <li><b>Tim Schulz</b> moves to the presentation side. From now on he builds analytic models and consumption views in the presentation layer and no longer works in the data &amp; semantic layer.</li>
       </ul>
       <p>Please set both up. And think about it: in a real tenant, who could do this without waiting for Jonas?</p>`,
     tasks: [
       'In <b>Security → Users</b>, give Nina what she needs.',
-      'Change Tim\'s access: reporting yes, harmonization no.',
+      'Change Tim\'s access: presentation yes, data &amp; semantic no.',
       'Answer the two questions below.',
     ],
     hints: [
@@ -205,8 +205,8 @@ export const CHAPTER_2: Mission[] = [
       { label: 'Hint 3: a skeleton', cost: 20, text: 'Nina: RHN_MODELER in ______. Tim: RHN_MODELER in ______ only.' },
     ],
     checks: [
-      { type: 'rule', label: 'Nina Krüger', ok: 'Nina can start on Monday.', test: personRule('nkrueger', { need: [`MODELER@${HA}`], why: 'builds views in harmonization' }) },
-      { type: 'rule', label: 'Tim Schulz', ok: 'Tim moved cleanly.', test: personRule('tschulz', { need: [`MODELER@${REP}`], why: 'builds facts and models in reporting' }) },
+      { type: 'rule', label: 'Nina Krüger', ok: 'Nina can start on Monday.', test: personRule('nkrueger', { need: [`MODELER@${HA}`], why: 'builds views in the data & semantic layer' }) },
+      { type: 'rule', label: 'Tim Schulz', ok: 'Tim moved cleanly.', test: personRule('tschulz', { need: [`MODELER@${REP}`], why: 'builds models and consumption views in the presentation layer' }) },
       ...['jbecker', 'cmucea', 'lhoffmann', 'swolf', 'plindner', 'mbrandt', 'ademir'].map((id) => ({
         type: 'rule' as const,
         label: `${PEOPLE.find((p) => p.id === id)!.name} unchanged`,
@@ -217,8 +217,8 @@ export const CHAPTER_2: Mission[] = [
         type: 'question',
         id: 'who',
         label: 'Who can do this',
-        prompt: 'In a real tenant, who could add Nina to RHN_HARM without asking Jonas?',
-        options: ['Tim, because he is a modeler in RHN_HARM', 'Calin, because he is space administrator of RHN_HARM', 'Sabine, because she can see all spaces', 'Nobody, only DW Administrator can change members'],
+        prompt: 'In a real tenant, who could add Nina to RHN_DSL without asking Jonas?',
+        options: ['Tim, because he is a modeler in RHN_DSL', 'Calin, because he is space administrator of RHN_DSL', 'Sabine, because she can see all spaces', 'Nobody, only DW Administrator can change members'],
         answer: 1,
         nudge: 'Not quite. Look at the role cards: which template manages the members of a space?',
       },
@@ -227,7 +227,7 @@ export const CHAPTER_2: Mission[] = [
         id: 'rows',
         label: 'Rows, not roles',
         prompt: 'Markus should only see NORTH and EAST. Which tool restricts that?',
-        options: ['A separate scoped role per region', 'A separate reporting space per region', 'A data access control on the reporting data', 'Removing CONSUMER from Markus'],
+        options: ['A separate scoped role per region', 'A separate presentation space per region', 'A data access control on the facts he reads', 'Removing CONSUMER from Markus'],
         answer: 2,
         nudge: 'Not quite. Roles and spaces decide what someone may do and where. Which tool filters the rows inside the same view?',
       },

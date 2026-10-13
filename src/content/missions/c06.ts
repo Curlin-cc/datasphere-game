@@ -1,9 +1,8 @@
 import type { Mission, RuleContext } from '../../missions/types';
-import { isShared } from '../../tenant';
 import { findObject, readsFrom, type ColumnRole, type RepoObject, type SemanticUsage } from '../../repo';
 
 /**
- * Chapter 6, Semantics. The reporting layer RHN_REP gets dimensions and facts on top of the shared harmonized views:
+ * Chapter 6, Semantics. The data & semantic layer RHN_DSL gets dimensions and facts on top of its own base views (RHN_DS_V_):
  * semantic usage, key / attribute / measure per column, associations from facts to dimensions.
  * Handbuch 6.4.1 (column roles), 6.5.3 (semantic usage), 6.5.4 (associations), 6.10.4 (dimensions come from associations).
  *
@@ -16,11 +15,11 @@ const CALIN = { name: 'Calin Mucea', role: 'Senior Data Architect, your mentor',
 const CFO = { name: 'Petra Lindner', role: 'CFO, Stadtwerke Rheinau', initials: 'PL' };
 const AUDIT = { name: 'Sabine Wolf', role: 'Internal Auditor', initials: 'SW' };
 
-const D_GRID = 'RHN_REP.RHN_REP_D_GRID_AREA';
-const D_TARIFF = 'RHN_REP.RHN_REP_D_TARIFF';
-const D_CUSTOMER = 'RHN_REP.RHN_REP_D_CUSTOMER';
-const F_CONS = 'RHN_REP.RHN_REP_F_CONSUMPTION';
-const F_INV = 'RHN_REP.RHN_REP_F_INVOICES';
+const D_GRID = 'RHN_DSL.RHN_DS_D_GRID_AREA';
+const D_TARIFF = 'RHN_DSL.RHN_DS_D_TARIFF';
+const D_CUSTOMER = 'RHN_DSL.RHN_DS_D_CUSTOMER';
+const F_CONS = 'RHN_DSL.RHN_DS_F_CONSUMPTION';
+const F_INV = 'RHN_DSL.RHN_DS_F_INVOICES';
 
 // ---------------------------------------------------------------- reference logic (never shown)
 
@@ -28,15 +27,15 @@ const REF_CONTRACTS = `SELECT c.CONTRACT_ID, COALESCE(m.CUSTOMER_ID, c.CUSTOMER_
   CASE c.GRID_AREA WHEN 'Nord' THEN 'NORTH' WHEN 'Ost' THEN 'EAST' WHEN 'Süd' THEN 'SOUTH' WHEN 'West' THEN 'WEST' ELSE c.GRID_AREA END AS GRID_AREA,
   CASE c.TARIFF WHEN 'STROM_BASIS' THEN 'POWER_BASIC' WHEN 'STROM_OEKO' THEN 'POWER_GREEN' WHEN 'STROM_WAERME' THEN 'POWER_HEAT'
     WHEN 'GAS_KOMFORT' THEN 'GAS_COMFORT' ELSE c.TARIFF END AS TARIFF
-  FROM RHN_IN.BILLING_CONTRACTS c LEFT JOIN RHN_IN.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`;
+  FROM RHN_ENTRY.BILLING_CONTRACTS c LEFT JOIN RHN_ENTRY.LEGACY_CUSTOMER_MAP m ON c.CUSTOMER_ID = m.LEGACY_CUSTOMER_ID`;
 const REF_READINGS = `SELECT DISTINCT METER_ID, CONTRACT_ID, READING_DATE,
-  CASE WHEN UNIT = 'MWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH FROM RHN_IN.METER_READINGS`;
+  CASE WHEN UNIT = 'MWh' THEN VALUE * 1000 ELSE VALUE END AS CONSUMPTION_KWH FROM RHN_ENTRY.METER_READINGS`;
 const REF_CUSTOMERS = `SELECT CUSTOMER_ID, trim(NAME) AS NAME, ZIP, CITY FROM (
-  SELECT k.*, ROW_NUMBER() OVER (PARTITION BY lower(EMAIL), STREET, ZIP ORDER BY CREATED_AT) AS RN FROM RHN_IN.CRM_CUSTOMERS k) x WHERE RN = 1`;
+  SELECT k.*, ROW_NUMBER() OVER (PARTITION BY lower(EMAIL), STREET, ZIP ORDER BY CREATED_AT) AS RN FROM RHN_ENTRY.CRM_CUSTOMERS k) x WHERE RN = 1`;
 export const REF_F_CONS = `SELECT r.CONTRACT_ID, c.CUSTOMER_ID, c.GRID_AREA, c.TARIFF, r.READING_DATE, r.CONSUMPTION_KWH
   FROM (${REF_READINGS}) r JOIN (${REF_CONTRACTS}) c ON r.CONTRACT_ID = c.CONTRACT_ID`;
 export const REF_F_INV = `SELECT i.INVOICE_ID, i.CONTRACT_ID, c.CUSTOMER_ID, c.GRID_AREA, c.TARIFF, i.INVOICE_DATE, i.DUE_DATE, i.STATUS,
-  i.NET_AMOUNT, i.TAX_AMOUNT FROM RHN_IN.BILLING_INVOICES i JOIN (${REF_CONTRACTS}) c ON i.CONTRACT_ID = c.CONTRACT_ID`;
+  i.NET_AMOUNT, i.TAX_AMOUNT FROM RHN_ENTRY.BILLING_INVOICES i JOIN (${REF_CONTRACTS}) c ON i.CONTRACT_ID = c.CONTRACT_ID`;
 
 const project = (cols: string[], sql: string) => `SELECT ${cols.join(', ')} FROM (${sql}) ref`;
 
@@ -97,28 +96,23 @@ function associated(key: string, target: string, mapping: Record<string, string>
   };
 }
 
-/** A reporting object reads only the harmonization layer. */
-function readsHarmonization(key: string) {
+/** A semantic object reads only the base views (RHN_DS_V_) of its own layer, never the entry layer directly. */
+function readsBaseViews(key: string) {
   return ({ tenant }: RuleContext): string | null => {
     const o = findObject(tenant, key);
     if (!o) return `There is no ${key.split('.')[1]} yet.`;
-    const bad = readsFrom(o, tenant).filter((k) => !k.startsWith('RHN_HARM.'));
-    return bad.length ? `${o.name} reads ${bad.join(', ')}. Reporting objects read only shared harmonization views.` : null;
+    const bad = readsFrom(o, tenant).filter((k) => !k.startsWith('RHN_DSL.RHN_DS_V_'));
+    return bad.length ? `${o.name} reads ${bad.join(', ')}. Dimensions and facts build only on the base views (RHN_DS_V_) of RHN_DSL, never on the entry tables.` : null;
   };
 }
 
-const shared = (objects: string[], to: string, owner: string) => ({ tenant }: RuleContext) => {
-  const missing = objects.filter((o) => !isShared(tenant, `${owner}.${o}`, to));
-  return missing.length ? `Not shared with ${to} yet: ${missing.join(', ')}.` : null;
-};
-
-/** 1:1 pass-through view in RHN_HARM on one inbound table: exists, deployed, reads only that table. */
+/** 1:1 base view in RHN_DSL on one entry table: exists, deployed, reads only that table. */
 function passThrough(name: string, source: string) {
   return (ctx: RuleContext): string | null => {
-    const f = deployedObject(ctx, `RHN_HARM.${name}`);
+    const f = deployedObject(ctx, `RHN_DSL.${name}`);
     if (!f.o) return f.problem;
     const reads = readsFrom(f.o, ctx.tenant);
-    return reads.length === 1 && reads[0] === `RHN_IN.${source}` ? null : `${name} should read RHN_IN.${source} and nothing else. Now it reads ${list(reads)}.`;
+    return reads.length === 1 && reads[0] === `RHN_ENTRY.${source}` ? null : `${name} should read RHN_ENTRY.${source} and nothing else. Now it reads ${list(reads)}.`;
   };
 }
 
@@ -140,50 +134,49 @@ export const CHAPTER_6: Mission[] = [
     chapter: 6,
     title: 'The first dimension',
     from: CALIN,
-    ticket: `<p>Harmonization delivers clean data. Now the reporting layer gives it <b>meaning</b>: which entity holds numbers to add up
-      (a <b>fact</b>) and which describes them (a <b>dimension</b>).</p>
-      <p>We start with the grid areas. Reporting reads only harmonization, so first build a 1:1 view <code>RHN_HA_V_GRID_AREAS</code> in
-      <code>RHN_HARM</code> on the inbound table and share it with <code>RHN_REP</code>. Then build the dimension
-      <code>RHN_REP_D_GRID_AREA</code> in <code>RHN_REP</code> with the columns <code>GRID_AREA</code>, <code>GRID_AREA_NAME</code> and
+    ticket: `<p>Our base views deliver clean data. Now the same layer gives it <b>meaning</b>: that is why it is called the
+      <b>data &amp; semantic layer</b>. Which entity holds numbers to add up (a <b>fact</b>) and which describes them (a <b>dimension</b>)?</p>
+      <p>We start with the grid areas. Semantic objects build only on base views of their own layer, never on the entry tables. So first
+      a 1:1 base view <code>RHN_DS_V_GRID_AREAS</code> in <code>RHN_DSL</code> on the entry table, then the dimension
+      <code>RHN_DS_D_GRID_AREA</code> on it, in the same space, with the columns <code>GRID_AREA</code>, <code>GRID_AREA_NAME</code> and
       <code>REGION</code>: semantic usage <b>Dimension</b>, <code>GRID_AREA</code> as its <b>key</b>.</p>`,
     tasks: [
-      'In <code>RHN_HARM</code>, build and deploy <code>RHN_HA_V_GRID_AREAS</code>: all columns of <code>GRID_AREAS</code>, no logic. Share it with <code>RHN_REP</code>.',
-      'In <code>RHN_REP</code>, build <code>RHN_REP_D_GRID_AREA</code> on the shared view. Save it once.',
+      'In <code>RHN_DSL</code>, build and deploy the base view <code>RHN_DS_V_GRID_AREAS</code>: all columns of <code>GRID_AREAS</code>, no logic.',
+      'In <code>RHN_DSL</code>, build <code>RHN_DS_D_GRID_AREA</code> on the base view. Save it once.',
       'In its properties, set <b>Semantic Usage</b> to <i>Dimension</i>, run the Data Preview and mark <code>GRID_AREA</code> as <b>Key</b>. Save and deploy.',
       'Answer the questions below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'GRID_AREAS is already shared with RHN_HARM (chapter 1). Semantic usage and column roles are in the properties panel of the view, on the right.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'GRID_AREAS is already shared with RHN_DSL (chapter 1). Semantic usage and column roles are in the properties panel of the view, on the right.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A dimension has a key: the column that identifies one row. The analytic model later joins facts to it on that key. Roles only appear for a saved view whose columns are known (Data Preview).' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'RHN_HARM: SELECT GRID_AREA, GRID_AREA_NAME, REGION, SRC_SYS_ID FROM RHN_IN.GRID_AREAS. RHN_REP: SELECT GRID_AREA, GRID_AREA_NAME, REGION FROM RHN_HARM.______. Usage Dimension, GRID_AREA = Key.' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'Base view: SELECT GRID_AREA, GRID_AREA_NAME, REGION, SRC_SYS_ID FROM RHN_ENTRY.GRID_AREAS. Dimension: SELECT GRID_AREA, GRID_AREA_NAME, REGION FROM RHN_DSL.______. Usage Dimension, GRID_AREA = Key.' },
     ],
     checks: [
-      { type: 'rule', label: 'Pass-through view in harmonization', ok: 'RHN_HA_V_GRID_AREAS reads the inbound table 1:1.', test: passThrough('RHN_HA_V_GRID_AREAS', 'GRID_AREAS') },
-      { type: 'rule', label: 'Shared with reporting', ok: 'RHN_HA_V_GRID_AREAS is shared with RHN_REP.', test: shared(['RHN_HA_V_GRID_AREAS'], 'RHN_REP', 'RHN_HARM') },
+      { type: 'rule', label: 'Base view on the entry table', ok: 'RHN_DS_V_GRID_AREAS reads the entry table 1:1.', test: passThrough('RHN_DS_V_GRID_AREAS', 'GRID_AREAS') },
       {
         type: 'result', label: 'The grid area dimension', object: D_GRID, columns: D_GRID_COLS,
-        expected: project(D_GRID_COLS, 'SELECT * FROM RHN_IN.GRID_AREAS'),
+        expected: project(D_GRID_COLS, 'SELECT * FROM RHN_ENTRY.GRID_AREAS'),
       },
-      { type: 'rule', label: 'Reads only harmonization', ok: 'RHN_REP_D_GRID_AREA builds on the shared harmonized view.', test: readsHarmonization(D_GRID) },
+      { type: 'rule', label: 'Builds on a base view', ok: 'RHN_DS_D_GRID_AREA builds on the base view of its layer.', test: readsBaseViews(D_GRID) },
       { type: 'rule', label: 'Dimension with key GRID_AREA', ok: 'Deployed as Dimension with the key GRID_AREA.', test: typed(D_GRID, 'Dimension', 'Key', ['GRID_AREA']) },
       {
         type: 'question', id: 'usage', label: 'Fact or dimension',
-        prompt: 'RHN_HA_V_METER_READINGS has one row per meter and reading date with the kWh consumed. Which semantic usage fits such data in reporting?',
+        prompt: 'RHN_DS_V_METER_READINGS has one row per meter and reading date with the kWh consumed. Which semantic usage fits such data?',
         options: ['Dimension', 'Fact', 'Text', 'Relational Dataset'],
         answer: 1,
         nudge: 'Not quite. Does it describe something, or does it hold numbers you add up?',
       },
       {
         type: 'question', id: 'layer', label: 'Why a 1:1 view',
-        prompt: 'GRID_AREAS needs no cleaning. Why not simply share RHN_IN.GRID_AREAS with RHN_REP?',
+        prompt: 'GRID_AREAS needs no cleaning. Why not build the dimension straight on RHN_ENTRY.GRID_AREAS?',
         options: [
           'A table cannot be shared with more than one space',
-          'Reporting reads only harmonization. The 1:1 view keeps that rule, and if the grid areas ever need cleaning, it happens in one place without touching reporting',
+          'Semantic objects build only on base views. The 1:1 view keeps that rule, and if the grid areas ever need cleaning, it happens in one base view without touching the dimension or anything above it',
           'Dimensions must always be views, never tables',
           'Shared tables cannot have a key',
         ],
         answer: 1,
-        nudge: 'Not quite. Think about the layer rule from chapter 1, and about what happens when the source changes one day.',
+        nudge: 'Not quite. Think about the layer rules, and about what happens when the source changes one day.',
       },
     ],
     review: ['no_select_star'],
@@ -200,58 +193,57 @@ export const CHAPTER_6: Mission[] = [
     chapter: 6,
     title: 'Tariffs and customers',
     from: AUDIT,
-    ticket: `<p>Sabine Wolf, internal audit. I hear the reporting layer gets customer data. One condition from my side: reporting holds
-      <b>only what reports need</b>. The board does not need e-mail addresses or streets, and whatever reaches reporting can reach SAP Analytics Cloud.</p>
+    ticket: `<p>Sabine Wolf, internal audit. I hear you build a customer dimension for the reports. One condition from my side: the dimension holds
+      <b>only what reports need</b>. The board does not need e-mail addresses or streets, and whatever a dimension offers can reach SAP Analytics Cloud.</p>
       <p><i>Calin adds:</i> Two dimensions, same pattern as the grid areas:</p>
       <ul>
-        <li><code>RHN_REP_D_TARIFF</code>: <code>TARIFF</code> (key), <code>TARIFF_NAME</code>, <code>COMMODITY</code>. Build a 1:1 view
-          <code>RHN_HA_V_TARIFFS</code> in harmonization first; share <code>TARIFFS</code> with <code>RHN_HARM</code> for that.</li>
-        <li><code>RHN_REP_D_CUSTOMER</code>: <code>CUSTOMER_ID</code> (key), <code>NAME</code>, <code>ZIP</code>, <code>CITY</code>,
-          on our deduplicated <code>RHN_HA_V_CUSTOMERS</code>. No e-mail, no street.</li>
+        <li><code>RHN_DS_D_TARIFF</code>: <code>TARIFF</code> (key), <code>TARIFF_NAME</code>, <code>COMMODITY</code>. Build a 1:1 view
+          <code>RHN_DS_V_TARIFFS</code> first; share <code>TARIFFS</code> from the entry layer with <code>RHN_DSL</code> for that.</li>
+        <li><code>RHN_DS_D_CUSTOMER</code>: <code>CUSTOMER_ID</code> (key), <code>NAME</code>, <code>ZIP</code>, <code>CITY</code>,
+          on our deduplicated <code>RHN_DS_V_CUSTOMERS</code>. No e-mail, no street.</li>
       </ul>`,
     tasks: [
-      'Share <code>TARIFFS</code> with <code>RHN_HARM</code>, build and deploy <code>RHN_HA_V_TARIFFS</code>, share it with <code>RHN_REP</code>. Share <code>RHN_HA_V_CUSTOMERS</code> with <code>RHN_REP</code> as well.',
-      'In <code>RHN_REP</code>, build <code>RHN_REP_D_TARIFF</code> as a dimension with its key.',
-      'Build <code>RHN_REP_D_CUSTOMER</code> as a dimension with its key, without personal data the board does not need.',
+      'Share <code>TARIFFS</code> with <code>RHN_DSL</code>, then build and deploy the base view <code>RHN_DS_V_TARIFFS</code>.',
+      'In <code>RHN_DSL</code>, build <code>RHN_DS_D_TARIFF</code> as a dimension with its key.',
+      'Build <code>RHN_DS_D_CUSTOMER</code> as a dimension with its key, without personal data the board does not need.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'Sharing is set in the space the object lives in: TARIFFS in RHN_IN, the RHN_HA_V_ views in RHN_HARM.' },
-      { label: 'Hint 2: the concept', cost: 15, text: 'Pick the columns in the SELECT: a reporting view does not have to pass on every column of its source. Leaving columns out is how you keep personal data in its layer.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT TARIFF, TARIFF_NAME, COMMODITY FROM RHN_HARM.RHN_HA_V_TARIFFS   ·   SELECT CUSTOMER_ID, NAME, ZIP, CITY FROM RHN_HARM.______. Both: Dimension, key = the ID column.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'Sharing is set in the space the object lives in: TARIFFS in RHN_ENTRY, the RHN_DS_V_ views in RHN_DSL.' },
+      { label: 'Hint 2: the concept', cost: 15, text: 'Pick the columns in the SELECT: a dimension does not have to pass on every column of its base view. Leaving columns out is how you keep personal data out of the reports.' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT TARIFF, TARIFF_NAME, COMMODITY FROM RHN_DSL.RHN_DS_V_TARIFFS   ·   SELECT CUSTOMER_ID, NAME, ZIP, CITY FROM RHN_DSL.______. Both: Dimension, key = the ID column.' },
     ],
     checks: [
-      { type: 'rule', label: 'Tariffs in harmonization', ok: 'RHN_HA_V_TARIFFS reads TARIFFS 1:1.', test: passThrough('RHN_HA_V_TARIFFS', 'TARIFFS') },
-      { type: 'rule', label: 'Shared with reporting', ok: 'Both harmonized views are shared with RHN_REP.', test: shared(['RHN_HA_V_TARIFFS', 'RHN_HA_V_CUSTOMERS'], 'RHN_REP', 'RHN_HARM') },
-      { type: 'result', label: 'The tariff dimension', object: D_TARIFF, columns: D_TARIFF_COLS, expected: project(D_TARIFF_COLS, 'SELECT * FROM RHN_IN.TARIFFS') },
-      { type: 'rule', label: 'Tariff: dimension with key', ok: 'RHN_REP_D_TARIFF is a dimension with the key TARIFF.', test: typed(D_TARIFF, 'Dimension', 'Key', ['TARIFF']) },
+      { type: 'rule', label: 'Base view for tariffs', ok: 'RHN_DS_V_TARIFFS reads TARIFFS 1:1.', test: passThrough('RHN_DS_V_TARIFFS', 'TARIFFS') },
+      { type: 'result', label: 'The tariff dimension', object: D_TARIFF, columns: D_TARIFF_COLS, expected: project(D_TARIFF_COLS, 'SELECT * FROM RHN_ENTRY.TARIFFS') },
+      { type: 'rule', label: 'Tariff: dimension with key', ok: 'RHN_DS_D_TARIFF is a dimension with the key TARIFF.', test: typed(D_TARIFF, 'Dimension', 'Key', ['TARIFF']) },
       {
-        type: 'structure', label: 'Customer: only what reports need', space: 'RHN_REP', object: 'RHN_REP_D_CUSTOMER', kind: 'View', columns: D_CUSTOMER_COLS,
-        absent: { columns: ['EMAIL', 'STREET'], message: 'The board reports do not need it; leave personal data in harmonization.' },
+        type: 'structure', label: 'Customer: only what reports need', space: 'RHN_DSL', object: 'RHN_DS_D_CUSTOMER', kind: 'View', columns: D_CUSTOMER_COLS,
+        absent: { columns: ['EMAIL', 'STREET'], message: 'The board reports do not need it; leave personal data in the base view.' },
       },
       {
         type: 'result', label: 'The customer dimension', object: D_CUSTOMER, columns: D_CUSTOMER_COLS, expected: project(D_CUSTOMER_COLS, REF_CUSTOMERS),
-        counts: { 946: 'Your dimension has 946 rows, the duplicates are back. Build it on RHN_HA_V_CUSTOMERS, not on the raw CRM data.' },
+        counts: { 946: 'Your dimension has 946 rows, the duplicates are back. Build it on RHN_DS_V_CUSTOMERS, not on the raw CRM data.' },
       },
-      { type: 'rule', label: 'Customer: dimension with key', ok: 'RHN_REP_D_CUSTOMER is a dimension with the key CUSTOMER_ID.', test: typed(D_CUSTOMER, 'Dimension', 'Key', ['CUSTOMER_ID']) },
-      { type: 'rule', label: 'Reads only harmonization', ok: 'Both dimensions build on harmonized views.', test: (ctx) => readsHarmonization(D_TARIFF)(ctx) ?? readsHarmonization(D_CUSTOMER)(ctx) },
+      { type: 'rule', label: 'Customer: dimension with key', ok: 'RHN_DS_D_CUSTOMER is a dimension with the key CUSTOMER_ID.', test: typed(D_CUSTOMER, 'Dimension', 'Key', ['CUSTOMER_ID']) },
+      { type: 'rule', label: 'Builds on base views', ok: 'Both dimensions build on base views.', test: (ctx) => readsBaseViews(D_TARIFF)(ctx) ?? readsBaseViews(D_CUSTOMER)(ctx) },
       {
         type: 'question', id: 'minimize', label: 'Data minimization',
-        prompt: 'Why leave e-mail and street out of the reporting dimension, although they are clean in harmonization?',
+        prompt: 'Why leave e-mail and street out of the customer dimension, although they are clean in RHN_DS_V_CUSTOMERS?',
         options: [
           'Datasphere cannot share text columns',
-          'Reporting is consumed by many people in SAP Analytics Cloud. Personal data only goes where a report needs it; it stays available in harmonization for those who do',
+          'Dimensions end up in analytic models that many people open in SAP Analytics Cloud. Personal data only goes where a report needs it; it stays in the base view for those who do',
           'E-mail addresses change too often',
           'It makes the dimension faster, nothing else',
         ],
         answer: 1,
-        nudge: 'Not quite. Think about who reads the reporting layer, and what audit asked for.',
+        nudge: 'Not quite. Think about who reads what the dimension offers, and what audit asked for.',
       },
     ],
     review: ['no_select_star'],
     xp: 40,
     realTenant: `Datasphere also protects data with <b>Data Access Controls</b> (rows, chapter 8) and space membership (spaces, chapter 2).
-      Leaving columns out is the simplest protection of all: what never reaches the reporting layer cannot leak from it.`,
+      Leaving columns out is the simplest protection of all: what never reaches a dimension cannot leak into the presentation layer.`,
     debrief: `<p>Thank you, that is how I like to see it. Personal data stays where the people working on it are.</p>
       <p><i>Calin adds:</i> Three dimensions are ready. Next we build the first fact and see why it does not need any of the names you just modeled.</p>`,
   },
@@ -260,34 +252,34 @@ export const CHAPTER_6: Mission[] = [
     chapter: 6,
     title: 'The consumption fact',
     from: CALIN,
-    ticket: `<p>Now the first <b>fact</b>: <code>RHN_REP_F_CONSUMPTION</code> in <code>RHN_REP</code>, one row per reading, with the columns
+    ticket: `<p>Now the first <b>fact</b>: <code>RHN_DS_F_CONSUMPTION</code> in <code>RHN_DSL</code>, one row per reading, with the columns
       <code>CONTRACT_ID</code>, <code>CUSTOMER_ID</code>, <code>GRID_AREA</code>, <code>TARIFF</code>, <code>READING_DATE</code> and
-      <code>CONSUMPTION_KWH</code>. The keys come from our harmonized contracts.</p>
+      <code>CONSUMPTION_KWH</code>. The keys come from our cleaned contracts.</p>
       <p>Two rules for a fact:</p>
       <ul>
         <li>It holds <b>keys</b>, not descriptions: no grid area names, no regions, no tariff names. Those come from the dimensions.</li>
         <li>Only real <b>measures</b> are measures: values that make sense to add up.</li>
       </ul>`,
     tasks: [
-      'In <code>RHN_REP</code>, build <code>RHN_REP_F_CONSUMPTION</code>: join the readings with the contracts (both shared from harmonization since chapter 5).',
+      'In <code>RHN_DSL</code>, build <code>RHN_DS_F_CONSUMPTION</code>: join the base views of the readings and the contracts (chapter 5).',
       'Set the semantic usage to <i>Fact</i> and give each column its role: measure or attribute. Save and deploy.',
       'Answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'RHN_HA_V_METER_READINGS and RHN_HA_V_CONTRACTS are in the Sources of RHN_REP under Shared Objects.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'RHN_DS_V_METER_READINGS and RHN_DS_V_CONTRACTS are in the Sources of RHN_DSL under Repository: you built them in chapter 5.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'A measure is aggregated (summed) in reports. Everything you group or filter by is an attribute: IDs, codes, dates.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT r.CONTRACT_ID, c.CUSTOMER_ID, c.______, c.______, r.READING_DATE, r.CONSUMPTION_KWH FROM RHN_HARM.RHN_HA_V_METER_READINGS r JOIN RHN_HARM.RHN_HA_V_CONTRACTS c ON r.______ = c.______' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT r.CONTRACT_ID, c.CUSTOMER_ID, c.______, c.______, r.READING_DATE, r.CONSUMPTION_KWH FROM RHN_DSL.RHN_DS_V_METER_READINGS r JOIN RHN_DSL.RHN_DS_V_CONTRACTS c ON r.______ = c.______' },
     ],
     checks: [
       {
-        type: 'structure', label: 'Keys, not descriptions', space: 'RHN_REP', object: 'RHN_REP_F_CONSUMPTION', kind: 'View', columns: F_CONS_COLS,
+        type: 'structure', label: 'Keys, not descriptions', space: 'RHN_DSL', object: 'RHN_DS_F_CONSUMPTION', kind: 'View', columns: F_CONS_COLS,
         absent: { columns: ['REGION', 'GRID_AREA_NAME', 'TARIFF_NAME', 'NAME', 'COMMODITY'], message: 'A fact holds keys; names and regions come from the dimensions through associations.' },
       },
       {
         type: 'result', label: 'One row per reading', object: F_CONS, columns: F_CONS_COLS, expected: project(F_CONS_COLS, REF_F_CONS),
-        counts: { 5824: 'Your fact has 5,824 rows: the duplicate readings are back. Build it on RHN_HA_V_METER_READINGS.' },
+        counts: { 5824: 'Your fact has 5,824 rows: the duplicate readings are back. Build it on RHN_DS_V_METER_READINGS.' },
       },
-      { type: 'rule', label: 'Reads only harmonization', ok: 'The fact builds on harmonized views.', test: readsHarmonization(F_CONS) },
+      { type: 'rule', label: 'Builds on base views', ok: 'The fact builds on base views.', test: readsBaseViews(F_CONS) },
       { type: 'rule', label: 'Fact with one measure', ok: 'Deployed as Fact; CONSUMPTION_KWH is the only measure.', test: typed(F_CONS, 'Fact', 'Measure', ['CONSUMPTION_KWH']) },
       {
         type: 'question', id: 'names', label: 'Why no names in the fact',
@@ -296,7 +288,7 @@ export const CHAPTER_6: Mission[] = [
           'Facts may only have six columns',
           'The dimension holds them once and every fact reaches them through an association; a renamed grid area changes in one place, and the fact stays narrow',
           'Text columns cannot be stored in a fact',
-          'REGION is not available in RHN_REP',
+          'REGION is not available in RHN_DSL',
         ],
         answer: 1,
         nudge: 'Not quite. Think about two facts (consumption and invoices) that both need the region, and a grid area that is renamed.',
@@ -314,31 +306,31 @@ export const CHAPTER_6: Mission[] = [
     chapter: 6,
     title: 'Connect the fact',
     from: CALIN,
-    ticket: `<p>An analytic model only offers the dimensions a fact is <b>associated</b> with. Give <code>RHN_REP_F_CONSUMPTION</code> three associations:
-      to <code>RHN_REP_D_GRID_AREA</code>, <code>RHN_REP_D_TARIFF</code> and <code>RHN_REP_D_CUSTOMER</code>, each with the right key mapping.</p>
+    ticket: `<p>An analytic model only offers the dimensions a fact is <b>associated</b> with. Give <code>RHN_DS_F_CONSUMPTION</code> three associations:
+      to <code>RHN_DS_D_GRID_AREA</code>, <code>RHN_DS_D_TARIFF</code> and <code>RHN_DS_D_CUSTOMER</code>, each with the right key mapping.</p>
       <p>Before that, make sure every key in the fact finds its partner in the dimension. An association to a dimension with gaps
       gives "unassigned" rows in every report.</p>`,
     tasks: [
-      'Check in a scratch view in <code>RHN_REP</code> that every <code>GRID_AREA</code>, <code>TARIFF</code> and <code>CUSTOMER_ID</code> of the fact exists in its dimension.',
-      'Open <code>RHN_REP_F_CONSUMPTION</code> and add the three associations under <b>Associations</b>, with the key mapping.',
+      'Check in a scratch view in <code>RHN_DSL</code> that every <code>GRID_AREA</code>, <code>TARIFF</code> and <code>CUSTOMER_ID</code> of the fact exists in its dimension.',
+      'Open <code>RHN_DS_F_CONSUMPTION</code> and add the three associations under <b>Associations</b>, with the key mapping.',
       '<b>Save</b> and <b>Deploy</b>. Then answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 10, text: 'Associations are in the properties of the fact, under the column roles. Only deployed dimensions with a key can be targets.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'The key mapping says which column of the fact holds the key of the target. A LEFT JOIN from fact to dimension with WHERE d.key IS NULL finds gaps.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'Associations: GRID_AREA → RHN_REP_D_GRID_AREA.GRID_AREA, TARIFF → RHN_REP_D_TARIFF.TARIFF, CUSTOMER_ID → RHN_REP_D_CUSTOMER.______' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'Associations: GRID_AREA → RHN_DS_D_GRID_AREA.GRID_AREA, TARIFF → RHN_DS_D_TARIFF.TARIFF, CUSTOMER_ID → RHN_DS_D_CUSTOMER.______' },
     ],
     checks: [
-      { type: 'rule', label: 'Association to grid areas', ok: 'GRID_AREA → RHN_REP_D_GRID_AREA.', test: associated(F_CONS, D_GRID, { GRID_AREA: 'GRID_AREA' }) },
-      { type: 'rule', label: 'Association to tariffs', ok: 'TARIFF → RHN_REP_D_TARIFF.', test: associated(F_CONS, D_TARIFF, { TARIFF: 'TARIFF' }) },
-      { type: 'rule', label: 'Association to customers', ok: 'CUSTOMER_ID → RHN_REP_D_CUSTOMER.', test: associated(F_CONS, D_CUSTOMER, { CUSTOMER_ID: 'CUSTOMER_ID' }) },
+      { type: 'rule', label: 'Association to grid areas', ok: 'GRID_AREA → RHN_DS_D_GRID_AREA.', test: associated(F_CONS, D_GRID, { GRID_AREA: 'GRID_AREA' }) },
+      { type: 'rule', label: 'Association to tariffs', ok: 'TARIFF → RHN_DS_D_TARIFF.', test: associated(F_CONS, D_TARIFF, { TARIFF: 'TARIFF' }) },
+      { type: 'rule', label: 'Association to customers', ok: 'CUSTOMER_ID → RHN_DS_D_CUSTOMER.', test: associated(F_CONS, D_CUSTOMER, { CUSTOMER_ID: 'CUSTOMER_ID' }) },
       { type: 'rule', label: 'Still a fact with one measure', ok: 'Fact and measure unchanged.', test: typed(F_CONS, 'Fact', 'Measure', ['CONSUMPTION_KWH']) },
       {
         type: 'metric', label: 'Every key finds its dimension row',
         sql: `SELECT (${orphans(F_CONS, 'GRID_AREA', D_GRID)}) + (${orphans(F_CONS, 'TARIFF', D_TARIFF)}) + (${orphans(F_CONS, 'CUSTOMER_ID', D_CUSTOMER)})`,
-        missing: 'The fact and all three dimensions must be deployed in RHN_REP.',
+        missing: 'The fact and all three dimensions must be deployed in RHN_DSL.',
         ok: 'No unassigned rows: every reading finds its grid area, tariff and customer.',
-        test: (n) => (n ? `${n} key values of the fact have no row in their dimension. Check that the dimensions are built on the harmonized views.` : null),
+        test: (n) => (n ? `${n} key values of the fact have no row in their dimension. Check that the dimensions are built on the base views.` : null),
       },
       {
         type: 'question', id: 'runtime', label: 'What an association does',
@@ -366,40 +358,39 @@ export const CHAPTER_6: Mission[] = [
     chapter: 6,
     title: 'The invoice fact',
     from: CFO,
-    ticket: `<p>For revenue and receivables I need the invoices in reporting, by grid area, tariff and customer.</p>
-      <p><i>Calin adds:</i> Same path as before. A 1:1 view <code>RHN_HA_V_INVOICES</code> in harmonization (share <code>BILLING_INVOICES</code>
-      with <code>RHN_HARM</code> first), shared with <code>RHN_REP</code>. Then the fact <code>RHN_REP_F_INVOICES</code> with
+    ticket: `<p>For revenue and receivables I need the invoices as well, by grid area, tariff and customer.</p>
+      <p><i>Calin adds:</i> Same path as before. A 1:1 base view <code>RHN_DS_V_INVOICES</code> (share <code>BILLING_INVOICES</code>
+      with <code>RHN_DSL</code> first). Then the fact <code>RHN_DS_F_INVOICES</code> with
       <code>INVOICE_ID</code>, <code>CONTRACT_ID</code>, <code>CUSTOMER_ID</code>, <code>GRID_AREA</code>, <code>TARIFF</code>,
       <code>INVOICE_DATE</code>, <code>DUE_DATE</code>, <code>STATUS</code>, <code>NET_AMOUNT</code> and <code>TAX_AMOUNT</code>,
       associated with the same three dimensions. Gross is not a column: it becomes a calculated measure in the analytic model.</p>`,
     tasks: [
-      'Share <code>BILLING_INVOICES</code> with <code>RHN_HARM</code>, build and deploy <code>RHN_HA_V_INVOICES</code>, share it with <code>RHN_REP</code>.',
-      'In <code>RHN_REP</code>, build <code>RHN_REP_F_INVOICES</code> on invoices and contracts: Fact, with its measures.',
+      'Share <code>BILLING_INVOICES</code> with <code>RHN_DSL</code>, then build and deploy the base view <code>RHN_DS_V_INVOICES</code>.',
+      'In <code>RHN_DSL</code>, build <code>RHN_DS_F_INVOICES</code> on invoices and contracts: Fact, with its measures.',
       'Add the associations to the three dimensions, save and deploy.',
-      'In a scratch view in <code>RHN_REP</code>, join the fact with the grid area dimension and answer the question below.',
+      'In a scratch view in <code>RHN_DSL</code>, join the fact with the grid area dimension and answer the question below.',
     ],
     hints: [
-      { label: 'Hint 1: where to look', cost: 10, text: 'The fact needs RHN_HA_V_INVOICES for the amounts and RHN_HA_V_CONTRACTS for the keys; both are shared harmonized views.' },
+      { label: 'Hint 1: where to look', cost: 10, text: 'The fact needs RHN_DS_V_INVOICES for the amounts and RHN_DS_V_CONTRACTS for the keys; both are base views in RHN_DSL.' },
       { label: 'Hint 2: the concept', cost: 15, text: 'NET_AMOUNT and TAX_AMOUNT are measures. The dimensions are reused as they are: an association per key column.' },
-      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT i.INVOICE_ID, i.CONTRACT_ID, c.CUSTOMER_ID, c.GRID_AREA, c.TARIFF, i.INVOICE_DATE, i.DUE_DATE, i.STATUS, i.NET_AMOUNT, i.TAX_AMOUNT FROM RHN_HARM.______ i JOIN RHN_HARM.______ c ON …' },
+      { label: 'Hint 3: a skeleton', cost: 25, text: 'SELECT i.INVOICE_ID, i.CONTRACT_ID, c.CUSTOMER_ID, c.GRID_AREA, c.TARIFF, i.INVOICE_DATE, i.DUE_DATE, i.STATUS, i.NET_AMOUNT, i.TAX_AMOUNT FROM RHN_DSL.______ i JOIN RHN_DSL.______ c ON …' },
     ],
     checks: [
-      { type: 'rule', label: 'Invoices in harmonization', ok: 'RHN_HA_V_INVOICES reads BILLING_INVOICES 1:1.', test: passThrough('RHN_HA_V_INVOICES', 'BILLING_INVOICES') },
-      { type: 'rule', label: 'Shared with reporting', ok: 'RHN_HA_V_INVOICES is shared with RHN_REP.', test: shared(['RHN_HA_V_INVOICES'], 'RHN_REP', 'RHN_HARM') },
+      { type: 'rule', label: 'Base view for invoices', ok: 'RHN_DS_V_INVOICES reads BILLING_INVOICES 1:1.', test: passThrough('RHN_DS_V_INVOICES', 'BILLING_INVOICES') },
       {
-        type: 'structure', label: 'Keys and amounts', space: 'RHN_REP', object: 'RHN_REP_F_INVOICES', kind: 'View', columns: F_INV_COLS,
+        type: 'structure', label: 'Keys and amounts', space: 'RHN_DSL', object: 'RHN_DS_F_INVOICES', kind: 'View', columns: F_INV_COLS,
         absent: { columns: ['REGION', 'GRID_AREA_NAME', 'TARIFF_NAME', 'NAME', 'GROSS_AMOUNT'], message: 'Names come from the dimensions, and gross becomes a calculated measure in the analytic model.' },
       },
       {
         type: 'result', label: 'One row per invoice', object: F_INV, columns: F_INV_COLS, expected: project(F_INV_COLS, REF_F_INV),
         diagnose: [
           {
-            sql: project(F_INV_COLS, REF_F_INV.replace(`(${REF_CONTRACTS}) c`, 'RHN_IN.BILLING_CONTRACTS c')),
-            message: 'The keys come from the raw contracts: legacy grid areas, tariffs and customer numbers are back. Take them from RHN_HA_V_CONTRACTS.',
+            sql: project(F_INV_COLS, REF_F_INV.replace(`(${REF_CONTRACTS}) c`, 'RHN_ENTRY.BILLING_CONTRACTS c')),
+            message: 'The keys come from the raw contracts: legacy grid areas, tariffs and customer numbers are back. Take them from RHN_DS_V_CONTRACTS.',
           },
         ],
       },
-      { type: 'rule', label: 'Reads only harmonization', ok: 'The fact builds on harmonized views.', test: readsHarmonization(F_INV) },
+      { type: 'rule', label: 'Builds on base views', ok: 'The fact builds on base views.', test: readsBaseViews(F_INV) },
       { type: 'rule', label: 'Fact with two measures', ok: 'NET_AMOUNT and TAX_AMOUNT are the measures.', test: typed(F_INV, 'Fact', 'Measure', ['NET_AMOUNT', 'TAX_AMOUNT']) },
       {
         type: 'rule', label: 'Reuses the three dimensions', ok: 'Associated with grid area, tariff and customer.',

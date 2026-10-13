@@ -17,9 +17,9 @@ with sync_playwright() as p:
     g.nav('home')
     stats = pg.inner_text('.progress-row')
     print('   home:', stats.replace('\n', ' | '))
-    assert '63 of 63' in stats, stats
+    assert '64 of 64' in stats, stats
     g.shot('sandbox-home')
-    for sid in ['RHN_IN', 'RHN_HARM', 'RHN_REP']:
+    for sid in ['RHN_ENTRY', 'RHN_DSL', 'RHN_PRES']:
         g.space(sid)
         n = pg.locator('#object-list tbody tr').count()
         print(f'   {sid}: {n} objects')
@@ -27,13 +27,13 @@ with sync_playwright() as p:
     g.shot('sandbox-builder')
     g.reload()
     g.nav('home')
-    assert '63 of 63' in pg.inner_text('.progress-row')
-    print('   after reload: still 63 of 63')
+    assert '64 of 64' in pg.inner_text('.progress-row')
+    print('   after reload: still 64 of 64')
     # Start over asks in the game's own dialog (browser confirm is blocked in the artifact)
     pg.click('#save-reset'); pg.wait_for_timeout(2500)
     g.skip_tutorial()
     g.nav('home')
-    assert '0 of 63' in pg.inner_text('.progress-row'), pg.inner_text('.progress-row')
-    print('   start over: 0 of 63')
+    assert '0 of 64' in pg.inner_text('.progress-row'), pg.inner_text('.progress-row')
+    print('   start over: 0 of 64')
     print('   GAIN sandbox')
     g.done()

@@ -99,7 +99,7 @@ function renderPackages(main: HTMLElement) {
   });
   main.querySelector('#pkg-create')!.addEventListener('click', () => {
     editing = 'new';
-    draft = { name: '', businessName: '', space: 'RHN_REP', description: '', version: '1.0.0', objects: [], required: [], targets: [], createdBy: YOU, changedAt: '' };
+    draft = { name: '', businessName: '', space: 'RHN_PRES', description: '', version: '1.0.0', objects: [], required: [], targets: [], createdBy: YOU, changedAt: '' };
     renderTransport(main);
   });
   main.querySelectorAll<HTMLButtonElement>('[data-pkg]').forEach((b) => b.addEventListener('click', () => {

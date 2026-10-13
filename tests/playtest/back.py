@@ -37,7 +37,7 @@ with sync_playwright() as p:
     if pg.locator('#space-switch').count():
         pg.click('#space-switch'); pg.wait_for_selector('#space-picker')
     trail.append(where(pg))
-    pg.click('[data-space="RHN_HARM"]'); pg.wait_for_selector('#new-tiles')
+    pg.click('[data-space="RHN_DSL"]'); pg.wait_for_selector('#new-tiles')
     trail.append(where(pg))
     pg.click('#object-list [data-open]')
     pg.wait_for_selector('#editor'); pg.wait_for_timeout(300)

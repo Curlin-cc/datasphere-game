@@ -10,7 +10,7 @@ import { checkMission, type CheckReport } from './missions/engine';
 import type { QuestionCheck } from './missions/types';
 import { startTour, TRACK_EVENT, type TourStep } from './tutorial';
 import {
-  loadProgress, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
+  loadProgress, oldSaveDiscarded, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
   exportProgress, importProgress, freshProgress, sandboxProgress, CLEAN_BONUS,
 } from './progress';
 import { seedSourceTables, restoreViews, restoreTables, STATUS_LABEL } from './repo';
@@ -20,7 +20,7 @@ import { renderSystemSpaces, renderCapacities } from './views/sysmon';
 import { renderEcnMonitor } from './views/ecn';
 import { renderMarketplace, renderTranslation, renderSharing, SHARING_PAGES, sharingPage, sharingTo, type SharingPage } from './views/exchange';
 import { ctx, type ViewId } from './ctx';
-import { esc, icon, ICONS, setCrumb, ask, toast } from './ui';
+import { esc, icon, ICONS, setCrumb, ask, toast, tell } from './ui';
 import { renderBuilder, enterBuilder, builderTo, rememberEditor, typeIcon } from './views/builder';
 import { renderRepository } from './views/repository';
 import { renderSpaces } from './views/spaces';
@@ -31,11 +31,11 @@ import { openUserMenu } from './views/settings';
 import { renderSystem, systemTo, systemArea, SYSTEM_PAGES, type SystemArea } from './views/system';
 import { renderStatements } from './views/statements';
 import { renderTaskLogs } from './views/tasklogs';
-import { restoreIntegration } from './integration';
+import { restoreIntegration, cdsSourceSql } from './integration';
 import { renderTransport, transportTo, transportPage, TRANSPORT_PAGES, type TransportPage } from './views/transport';
 import { renderCatalog, catalogReset } from './views/catalog';
 import { renderBusiness, businessReset } from './views/business';
-import { renderOnboarding, onboardingReset, onboardingToPackage } from './views/onboarding';
+import { renderOnboarding, onboardingReset, onboardingToPackage, onboardingToImport, onboardingToLogs } from './views/onboarding';
 import { EXCURSIONS } from './content/chapters';
 import { locationOf, restoreLocation, sameLocation, isTransient, type Location } from './nav';
 import { BADGES, BADGE_ICON, earnedBadges, type Badge } from './badges';
@@ -343,7 +343,8 @@ function renderView() {
     case 'business':
       return currentChapter() >= EXCURSIONS ? renderBusiness(main) : renderAppInfo(main, a!);
     case 'semantic':
-      return currentChapter() >= EXCURSIONS ? renderOnboarding(main) : renderAppInfo(main, a!);
+      // Import Entities from chapter 3 (c03-m07); the Content Network part opens with the excursions.
+      return currentChapter() >= 3 ? renderOnboarding(main) : renderAppInfo(main, a!);
     case 'sysmonitor':
       return currentChapter() >= 9 ? renderSystemSpaces(main) : renderAppInfo(main, a!);
     case 'capacities':
@@ -398,6 +399,13 @@ function tourHooks(onFinish: () => void) {
         setView('transport', true);
       } else if (view === 'semantic' && target === 'pkg' && space) {
         onboardingToPackage(space);
+        setView('semantic', true);
+      } else if (view === 'semantic' && (target === 'import' || target === 'logs')) {
+        if (target === 'import') onboardingToImport();
+        else {
+          if (space && ctx.tenant().spaces.some((s) => s.id === space)) ctx.tenant().activeSpace = space;
+          onboardingToLogs();
+        }
         setView('semantic', true);
       } else if (view === 'catalog' || view === 'business' || view === 'semantic') {
         if (view === 'catalog') catalogReset();
@@ -579,9 +587,9 @@ function renderHome(main: HTMLElement) {
         <section class="home-card arch" aria-label="Target architecture">
           <div class="hc-head"><h3>What you will build</h3><small>Three spaces, three layers</small></div>
           <div class="hc-body"><div class="arch-stack">
-            <div class="arch-layer" style="--c:var(--layer-in)"><b>RHN_IN</b>Inbound layer<br><span>Source data 1:1, tagged with its source system</span></div>
-            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_HARM') ? '' : 'dim'}" style="--c:var(--layer-ha)"><b>RHN_HARM</b>Harmonization layer<br><span>Cleaned, unified and reusable views</span></div>
-            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_REP') ? '' : 'dim'}" style="--c:var(--layer-rep)"><b>RHN_REP</b>Reporting layer<br><span>Facts, dimensions, analytic models and access controls</span></div>
+            <div class="arch-layer" style="--c:var(--layer-en)"><b>RHN_ENTRY</b>Entry layer<br><span>Source data 1:1 from the source systems, tagged with its source system; no business logic</span></div>
+            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_DSL') ? '' : 'dim'}" style="--c:var(--layer-ds)"><b>RHN_DSL</b>Data &amp; semantic layer<br><span>Base views clean and combine; facts, dimensions, associations and access controls give the data its meaning</span></div>
+            <div class="arch-layer ${t.spaces.some((x) => x.id === 'RHN_PRES') ? '' : 'dim'}" style="--c:var(--layer-pr)"><b>RHN_PRES</b>Presentation layer<br><span>Only what consumers see: analytic models and consumption views on shared facts and dimensions</span></div>
           </div></div>
         </section>
         <section class="home-card full app-guide" id="app-guide" aria-label="Your tenant">
@@ -939,11 +947,16 @@ async function boot() {
     await initDb();
     // Same seed on every start, so every player sees the same Stadtwerke Rheinau.
     for (const stmt of datasetToSql(generateDataset())) await exec(stmt);
+    for (const stmt of cdsSourceSql()) await exec(stmt);
     await prepareTenant();
     setupMission(ctx.progress.currentMission);
     save();
     renderFrame();
     const id = ctx.progress.currentMission;
+    if (oldSaveDiscarded) {
+      await tell('The training tenant was rebuilt with the layers Entry (RHN_ENTRY), Data & Semantic (RHN_DSL) and Presentation (RHN_PRES). '
+        + 'Your old save was built on the former spaces and cannot be carried over, so the game starts from the beginning.', 'New layer architecture');
+    }
     if (!ctx.progress.tutorialsSeen.includes(id)) openTutorial(id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

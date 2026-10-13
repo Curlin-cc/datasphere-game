@@ -5,9 +5,9 @@ import SANDBOX from './content/sandbox.json';
 
 /**
  * Save game: localStorage plus JSON export/import.
- * v4 stores progress per mission. Older saves are migrated:
- *  - v2 (xp, hintsOpen, tutorialsSeen)
- *  - v3: the old chapter 0 (SQL on raw data) became chapter 4, so c00-mN is renamed to c04-mN
+ * v5 stores progress per mission in the three-layer landscape RHN_ENTRY / RHN_DSL / RHN_PRES (2026-10-13).
+ * Saves v2 to v4 were built on the old spaces RHN_IN / RHN_HARM / RHN_REP. Their tenant cannot be carried over (facts and
+ * dimensions moved to another space), so they are discarded and the player starts fresh; `oldSaveDiscarded` tells the UI.
  */
 
 export const SAVE_KEY = 'dsg-progress-v3';
@@ -24,12 +24,12 @@ export interface MissionProgress {
   done: boolean;
   /** XP earned for this mission including the clean-review bonus. */
   xpEarned: number;
-  /** What the player did in the tenant while this mission was open, e.g. app:builder, open:RHN_IN.TARIFFS. */
+  /** What the player did in the tenant while this mission was open, e.g. app:builder, open:RHN_ENTRY.TARIFFS. */
   events: string[];
 }
 
 export interface Progress {
-  version: 4;
+  version: 5;
   xp: number;
   currentMission: string;
   missions: Record<string, MissionProgress>;
@@ -40,8 +40,8 @@ export interface Progress {
   tenant: TenantState;
 }
 
-/** Raise when the tutorials change a lot: every save then sees them again (2 = hands-on tutorials, 2026-10-09). */
-export const TUTORIAL_VERSION = 2;
+/** Raise when the tutorials change a lot: every save then sees them again (2 = hands-on tutorials, 2026-10-09; 3 = three-layer architecture, 2026-10-13). */
+export const TUTORIAL_VERSION = 3;
 
 /** Bonus for a solution without review notes. */
 export const CLEAN_BONUS = 5;
@@ -50,26 +50,31 @@ export const CLEAN_BONUS = 5;
 export const RANK_XP = [0, 100, 350, 750];
 
 export function freshProgress(): Progress {
-  return { version: 4, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tutorialVersion: TUTORIAL_VERSION, tenant: defaultTenant() };
+  return { version: 5, xp: 0, currentMission: MISSIONS[0].id, missions: {}, tutorialsSeen: [], tutorialVersion: TUTORIAL_VERSION, tenant: defaultTenant() };
 }
 
 export function missionProgress(p: Progress, id: string): MissionProgress {
   return (p.missions[id] ??= { hintsOpen: 0, answers: {}, attempts: 0, done: false, xpEarned: 0, events: [] });
 }
 
+/** True when the stored save was from the old layer design (v2 to v4) and was replaced by a fresh start. */
+export let oldSaveDiscarded = false;
+
+/** A save of the old landscape (RHN_IN / RHN_HARM / RHN_REP). */
+export const isOldLayout = (data: unknown) => {
+  const v = (data as { version?: unknown } | null)?.version;
+  return typeof v === 'number' && v >= 2 && v <= 4;
+};
+
 export function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return sanitize(JSON.parse(raw)) ?? freshProgress();
-    const old = localStorage.getItem(OLD_KEY);
-    if (old) {
-      const v2 = JSON.parse(old) as { xp?: number; hintsOpen?: number; tutorialsSeen?: string[] };
-      const p = freshProgress();
-      p.xp = Math.max(0, Number(v2.xp) || 0);
-      p.tutorialsSeen = Array.isArray(v2.tutorialsSeen) ? v2.tutorialsSeen.map(String) : [];
-      missionProgress(p, 'c00-m01').hintsOpen = Number(v2.hintsOpen) || 0;
-      return p;
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (isOldLayout(data)) oldSaveDiscarded = true;
+      return sanitize(data) ?? freshProgress();
     }
+    if (localStorage.getItem(OLD_KEY)) oldSaveDiscarded = true;
   } catch {
     /* unreadable or blocked storage: start fresh */
   }
@@ -88,13 +93,7 @@ export function saveProgress(p: Progress) {
 export function sanitize(data: unknown): Progress | null {
   if (!data || typeof data !== 'object') return null;
   const d = data as Partial<Omit<Progress, 'version'>> & { version?: number };
-  if ((d.version !== 3 && d.version !== 4) || typeof d.xp !== 'number' || typeof d.missions !== 'object' || !d.missions) return null;
-  if (d.version === 3) {
-    const rename = (id: string) => id.replace(/^c00-/, 'c04-');
-    d.missions = Object.fromEntries(Object.entries(d.missions).map(([id, mp]) => [rename(id), mp]));
-    d.tutorialsSeen = (Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen : []).map((x) => rename(String(x)));
-    if (typeof d.currentMission === 'string') d.currentMission = rename(d.currentMission);
-  }
+  if (d.version !== 5 || typeof d.xp !== 'number' || typeof d.missions !== 'object' || !d.missions) return null;
   const p = freshProgress();
   p.xp = Math.max(0, Math.round(d.xp));
   // Saves from before the current tutorials see every tutorial again; progress and XP stay.
@@ -174,8 +173,12 @@ export function importProgress(): Promise<Progress> {
       const file = input.files?.[0];
       if (!file) return reject(new Error('No file chosen.'));
       try {
-        const p = sanitize(JSON.parse(await file.text()));
-        p ? resolve(p) : reject(new Error('This file is not a Datasphere Game save.'));
+        const data = JSON.parse(await file.text());
+        const p = sanitize(data);
+        if (p) resolve(p);
+        else reject(new Error(isOldLayout(data)
+          ? 'This save is from the old three spaces RHN_IN, RHN_HARM and RHN_REP. The game now uses RHN_ENTRY, RHN_DSL and RHN_PRES, so old saves cannot be loaded.'
+          : 'This file is not a Datasphere Game save.'));
       } catch {
         reject(new Error('This file could not be read as a save.'));
       }

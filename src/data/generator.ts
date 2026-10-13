@@ -359,7 +359,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
   // ---- assemble ----------------------------------------------------------
   const tables: TableData[] = [
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'BILLING_CONTRACTS',
       description: 'Supply contracts from S/4HANA billing (S4U) and the legacy billing system (LEGACY)',
       columns: [
@@ -374,7 +374,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: contractRows,
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'BILLING_INVOICES',
       description: 'Half-yearly invoices per contract, net and tax in EUR',
       columns: [
@@ -394,7 +394,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: invoiceRows,
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'TARIFFS',
       description: 'Tariff master data with prices (current codes only)',
       columns: [
@@ -408,7 +408,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: TARIFFS.map((t) => [t.code, t.commodity, t.name, t.pricePerKwh, t.baseFeeMonth, 'S4U']),
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'GRID_AREAS',
       description: 'Grid areas and the sales region they belong to',
       columns: [
@@ -420,7 +420,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: GRID_AREAS.map((a) => [a.code, a.name, a.region, 'S4U']),
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'METER_READINGS',
       description: 'Consumption per meter since the previous reading, from the meter data system',
       columns: [
@@ -434,7 +434,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: readingRows,
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'CRM_CUSTOMERS',
       description: 'Customer export from the CRM as a CSV file',
       columns: [
@@ -449,7 +449,7 @@ export function generateDataset(seed = DEFAULT_SEED, size = { customers: 900 }):
       rows: crmRows,
     },
     {
-      space: 'RHN_IN',
+      space: 'RHN_ENTRY',
       name: 'LEGACY_CUSTOMER_MAP',
       description: 'Key mapping from legacy customer numbers to CRM customer IDs, maintained by IT',
       columns: [

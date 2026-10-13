@@ -260,7 +260,8 @@ function addObjectsDialog(main: HTMLElement) {
   const x = t.extras;
   const models = t.objects.filter((o) => o.space === trSpace && o.kind === 'Analytic Model' && translatable(o));
   const { form, close } = openDialog('Add Objects', `
-    <p class="guide-lead">Only analytic models can be selected. Their dimensions are added automatically.</p>
+    <p class="guide-lead">Only analytic models can be selected. Their dimensions of this space are added automatically; dimensions shared from
+      another space (in this game: from RHN_DSL) are translated in their own space.</p>
     <fieldset class="question share-targets"><legend>Analytic Models in ${esc(trSpace)}</legend>${models.map((o) => `<label><input type="checkbox" name="am" value="${esc(objectKey(o))}" ${x.translations[objectKey(o)] ? 'checked disabled' : ''}>
       ${esc(o.businessName)} <span class="mono muted">${esc(o.name)}</span></label>`).join('') || '<p class="muted">No analytic models in this space.</p>'}</fieldset>
     <div class="guide-actions"><button class="btn link" type="button" data-act="cancel">Cancel</button><button class="btn primary" type="submit">Add Objects</button></div>`);

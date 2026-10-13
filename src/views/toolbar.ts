@@ -17,7 +17,7 @@ export interface ToolButton {
 export interface ToolbarOptions {
   space: string;
   title: string;
-  /** e.g. "SQL View · RHN_REP.RHN_REP_F_INVOICES" */
+  /** e.g. "SQL View · RHN_DSL.RHN_DS_F_INVOICES" */
   sub: string;
   statusHtml: string;
   groups: { label: string; buttons: ToolButton[] }[];
