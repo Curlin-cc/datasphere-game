@@ -11,17 +11,16 @@ wird nach der SAP-Hilfe (GitHub `SAP-docs/sap-datasphere`) gebaut – Wunsch von
 
 ## Fachliche Prüfpunkte, noch offen
 
-Neu am 13.10.2026 (Layer-Umbau und Import Entities). Alles ist gebaut; die Punkte prüfen, ob es zu eurem Projekt passt:
-
-- [ ] **Space-IDs und Präfixe:** `RHN_ENTRY` / `RHN_DSL` / `RHN_PRES` mit `RHN_EN_` / `RHN_DS_` / `RHN_PR_`. Nennt ihr die Layer im Projekt genauso,
-  oder gibt es eine andere Konvention (z. B. Kürzel `EL` / `DSL` / `PL`)?
-- [ ] **Wo liegen bei euch die DACs?** Im Spiel neben den Facts in der Data-&-Semantic-Schicht (geteilte Facts nehmen sie mit). Oder in der Presentation-Schicht auf eigenen Views?
-- [ ] **Analytic Models auf geteilten Facts:** Baut ihr Modelle in der Presentation-Schicht direkt auf geteilten Facts, oder legt ihr dort zuerst eigene Konsum-Views (Fact) an?
-- [ ] **Import Entities:** Wie heißen bei euch die erzeugten Objekte (Remote/Local Table, Dimension-View)? Im Spiel vereinfacht: Tabelle = CDS-ID, View = `<ID>_DIM`.
-  Falls dein Tenant den Assistenten zeigt: Screenshot der Schritte *Select Entities* und *Review Entities* (nächste Nummer 47)
-- [ ] **Importierte Objekte im Entry Layer:** Im Spiel bleiben sie dort unverändert und werden mit `RHN_DSL` geteilt. Importiert ihr in einen eigenen Space?
+_Keine. Die Abgleichfragen vom 13.10.2026 hat Claude auf Wunsch von Curlin selbst beantwortet (siehe Erledigt)._
 
 ## Erledigt
+
+- [x] **Layer-Abgleich 13.10.2026** (selbst beantwortet auf Wunsch von Curlin, Quelle SAP-Hilfe `SAP-docs/sap-datasphere` + übliche Projektpraxis):
+  Namen `RHN_ENTRY`/`RHN_DSL`/`RHN_PRES` mit `EN`/`DS`/`PR` bleiben (Konvention ist Teamsache, Datasphere erzwingt nichts);
+  DACs bleiben neben den Facts in `RHN_DSL` (SAP-Sharing-Beispiel: geschützte View teilen, Schutz wirkt beim Konsumenten);
+  Analytic Models direkt auf geteilten Facts (Hilfe „Share Supporting Entities“), Konsum-Views nur für SQL/OData-Konsumenten;
+  Import-Objektnamen bleiben vereinfacht (`<ID>`, `<ID>_DIM`, als nicht verifiziert gekennzeichnet);
+  Import in den Entry Layer (Ziel-Space = Space der Verbindung), Nutzung über Sharing nach `RHN_DSL`. Keine Umbauten nötig.
 
 - [x] **Screenshots 12.10.2026** (Bild 22–46, Beschreibung in `docs/design/BILDBESCHREIBUNGEN.md`): Connections (Liste + Willkommensseite), Edit Connection,
   Benutzermenü am Avatar (**Settings · About · Sign Out** bestätigt), Settings (User Account, Appearance, Home Screen, Language & Region, UI Settings,
