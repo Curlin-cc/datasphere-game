@@ -183,11 +183,21 @@ export function mountSemantics(host: HTMLElement, o: RepoObject, usage: Semantic
     pick.addEventListener('change', () => {
       const def = findObject(t, pick.value)?.deployed?.dac;
       host2.innerHTML = def ? `<p class="muted">Criterion → column of this view</p><div class="form-grid one">${def.criteria.map((c) => `<label>${esc(c)}
-          <select data-map="${esc(c)}">${columns.map((col) => `<option ${col.toUpperCase() === c.toUpperCase() ? 'selected' : ''}>${esc(col)}</option>`).join('')}</select></label>`).join('')}</div>` : '';
+          <select data-map="${esc(c)}" required><option value="">Select a column…</option>${columns.map((col) => `<option ${col.toUpperCase() === c.toUpperCase() ? 'selected' : ''}>${esc(col)}</option>`).join('')}</select></label>`).join('')}</div>` : '';
+      update();
     });
+    // No silent guess: a criterion without a column of the same name stays empty, and Assign waits until every one is mapped.
+    const assign = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
+    const complete = () => !!pick.value && [...form.querySelectorAll<HTMLSelectElement>('[data-map]')].every((sel) => sel.value);
+    const update = () => {
+      assign.disabled = !complete();
+      assign.title = assign.disabled ? 'Choose a control and a column for every criterion' : '';
+    };
+    host2.addEventListener('change', update);
+    update();
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (!pick.value) return;
+      if (!complete()) return;
       const mapping: Record<string, string> = {};
       form.querySelectorAll<HTMLSelectElement>('[data-map]').forEach((sel) => (mapping[sel.dataset.map!] = sel.value));
       dacs = dacs.filter((a) => a.dac !== pick.value).concat({ dac: pick.value, mapping });

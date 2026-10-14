@@ -86,7 +86,10 @@ with sync_playwright() as p:
     pg.click(f'#object-list [data-open="{F_INV}"]'); pg.wait_for_selector('#editor')
     pg.click('#run'); pg.wait_for_selector('#dac-assign')
     pg.click('#dac-assign'); pg.select_option('#dac-pick', 'RHN_DSL.RHN_DS_DAC_REGION'); pg.wait_for_timeout(150)
+    # No silent guess (NODE_ID used to default to the first column, INVOICE_ID): empty, Assign off until chosen.
+    assert pg.input_value('[data-map="NODE_ID"]') == '' and pg.is_disabled('.dialog button[type="submit"]')
     pg.select_option('[data-map="NODE_ID"]', 'GRID_AREA')
+    assert pg.is_enabled('.dialog button[type="submit"]')
     pg.click('.dialog button[type="submit"]'); pg.wait_for_timeout(150)
     deploy()
     print('   MBRANDT (both):', model_as('MBRANDT'))
