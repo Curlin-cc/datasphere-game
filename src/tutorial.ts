@@ -23,6 +23,11 @@ export interface TourAction {
    * next to what the click opened (the grand tour, c00-m00).
    */
   stay?: boolean;
+  /**
+   * Guided mode only: the tour view (see TourHooks.setView) the game opens by itself after a moment, e.g. 'builder' or
+   * 'builder:landing:RHN_DSL'. Never while an editor has unsaved changes; then the target only pulses.
+   */
+  autoOpen?: string;
 }
 
 export interface TourStep {
@@ -50,6 +55,29 @@ export interface TourHooks {
   onFinish: () => void;
 }
 
+/**
+ * Guided mode (chosen at the start, changeable in Settings): steps with a condition always go on by themselves, including
+ * `stay` steps after a reading pause; the target pulses also in passive steps, the page stays clickable; navigation steps
+ * open the app or space by themselves. Every automatic move is labelled as a learning aid of the game.
+ */
+export interface GuidedOptions {
+  guided: () => boolean;
+  /** True when an open editor has unsaved changes: then nothing is opened automatically. */
+  unsaved: () => boolean;
+}
+
+let guidedOpts: GuidedOptions = { guided: () => false, unsaved: () => false };
+export function setGuidedOptions(o: GuidedOptions) {
+  guidedOpts = o;
+}
+
+/** Shown in the card whenever guided mode moves or opens something, so it is not taken for SAP Datasphere behaviour. */
+export const AID_NOTE = 'Learning aid of the game: in the real SAP Datasphere you choose the space and the app yourself, and nothing opens or moves on by itself.';
+
+/** Delay before guided mode opens the app/space of a navigation step, and the reading pause of a done `stay` step. */
+export const GUIDED_OPEN_MS = 900;
+const readingPause = (step: TourStep) => Math.min(12000, Math.max(4000, step.body.replace(/<[^>]+>/g, '').length * 45));
+
 /** Fired by ctx.track for every action, also repeated ones. */
 export const TRACK_EVENT = 'dsg:track';
 
@@ -67,6 +95,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   let lastRect = '';
   /** A docked stay step is done: light up the page that opened instead of the navigation entry. */
   let spotPage = false;
+  let openTimer = 0;
+  let stayTimer = 0;
 
   const root = document.createElement('div');
   root.className = 'tour';
@@ -79,6 +109,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   const stopWaiting = () => {
     clearInterval(timer);
     clearTimeout(doneTimer);
+    clearTimeout(openTimer);
+    clearTimeout(stayTimer);
     timer = 0;
   };
 
@@ -123,12 +155,27 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const step = steps[i];
     root.classList.toggle('acting', !!step.action);
     root.classList.toggle('docked', !!step.dock);
-    if (step.view) hooks.setView(step.view);
+    root.classList.toggle('guided', guidedOpts.guided());
+    // Guided mode never opens a step's page over an editor with unsaved changes (the self-directed mode keeps the old behaviour).
+    const held = !!step.view && guidedOpts.guided() && guidedOpts.unsaved();
+    if (step.view && !held) hooks.setView(step.view);
     const target = step.target ? await waitFor(step.target) : null;
     if (index !== i) return;
     target?.scrollIntoView({ block: 'nearest' });
     render(step);
+    if (held) aid('You have unsaved changes (editor or form), so the game did not open the page of this step. Save or close it first.');
     place();
+    if (step.action?.autoOpen && guidedOpts.guided()) {
+      openTimer = window.setTimeout(() => {
+        if (index !== i || stepDone || conditionHolds(step.action!)) return;
+        if (guidedOpts.unsaved()) {
+          aid(`You have unsaved changes (editor or form), so the game did not open anything. Save or close it, then follow the highlighted step.`);
+          return;
+        }
+        hooks.setView(step.action!.autoOpen!);
+        aid(`Opened for you. ${AID_NOTE}`);
+      }, GUIDED_OPEN_MS);
+    }
     if (step.action) {
       // Already done (for example the right app is open)? Count it, but give the player a moment to read.
       timer = window.setInterval(() => {
@@ -146,6 +193,19 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       /* the page is re-rendering; try again on the next tick */
     }
     return false;
+  }
+
+  /** A small labelled note in the card: what guided mode just did (or did not do). */
+  function aid(text: string) {
+    let el = card.querySelector<HTMLElement>('.tour-aid');
+    if (!el) {
+      el = document.createElement('p');
+      el.className = 'tour-aid';
+      card.querySelector('.tour-actions')?.before(el);
+    }
+    el.textContent = text;
+    lastRect = '';
+    place();
   }
 
   function complete() {
@@ -168,6 +228,22 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
         next.textContent = index === steps.length - 1 ? finishLabel : 'Next';
         next.removeAttribute('title');
       }
+      if (guidedOpts.guided()) {
+        // Guided: the card goes on by itself after a reading pause; Stay here keeps it.
+        stayTimer = window.setTimeout(() => index === at && go(index + 1), readingPause(steps[index]));
+        aid(`Goes on by itself in a moment. ${AID_NOTE}`);
+        const keep = document.createElement('button');
+        keep.type = 'button';
+        keep.className = 'btn link';
+        keep.dataset.act = 'stay';
+        keep.textContent = 'Stay here';
+        keep.addEventListener('click', () => {
+          clearTimeout(stayTimer);
+          keep.remove();
+          card.querySelector('.tour-aid')?.remove();
+        });
+        next?.before(keep);
+      }
       return;
     }
     doneTimer = window.setTimeout(() => index === at && go(index + 1), 750);
@@ -182,7 +258,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
       ${step.action ? `<div class="tour-do" role="status"><span class="tour-arrow">▶</span><span>${step.action.do}</span></div>
-        <p class="tour-wait">${step.action.stay ? 'Then read on here and press Next.' : 'The tutorial goes on by itself when you have done it.'}</p>` : ''}
+        <p class="tour-wait">${step.action.stay ? (guidedOpts.guided() ? 'Then read on here; the tutorial goes on by itself.' : 'Then read on here and press Next.') : 'The tutorial goes on by itself when you have done it.'}</p>` : ''}
       ${step.example ? `<pre class="tour-example"><code></code></pre>
         <button class="btn" type="button" data-act="example">Put this example in the editor</button>` : ''}
       <div class="tour-actions">

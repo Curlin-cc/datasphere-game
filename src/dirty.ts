@@ -1,0 +1,47 @@
+import { ctx } from './ctx';
+import { TRACK_EVENT } from './tutorial';
+
+/**
+ * Dirty tracking for guided mode (review of #13): guided mode must not open anything over unsaved work, but must still
+ * auto-open when an editor is open without changes. Every time a page is drawn into #main (its children are replaced),
+ * a snapshot of its form state is taken; Save and Deploy take a new one. Unsaved = the form state differs from the snapshot.
+ * Covers every editor page, including the Data Builder editors (SQL, table, DAC, model, flows), Business Builder and Security.
+ * Search and filter boxes do not count. An open dialog with a form (e.g. Create User) always counts as unsaved.
+ */
+const IGNORE = 'input[type="search"], [id*="search" i], [id*="filter" i], [data-filter], [name="set-theme"], [name="set-names"]';
+
+function signature(): string {
+  const main = document.querySelector('#main');
+  if (!main) return '';
+  const fields = [...main.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')]
+    .filter((f) => !f.matches(IGNORE))
+    .map((f) => (f instanceof HTMLInputElement && (f.type === 'checkbox' || f.type === 'radio') ? (f.checked ? '1' : '0') : f.value));
+  // Rows, columns, steps and nodes added by buttons change the number of fields; the SQL text lives in CodeMirror.
+  return JSON.stringify([fields, ctx.editor?.getValue() ?? null, main.querySelectorAll('tr, li, [data-node]').length]);
+}
+
+let base = '';
+let timer = 0;
+const snapshot = (delay = 60) => {
+  clearTimeout(timer);
+  timer = window.setTimeout(() => (base = signature()), delay);
+};
+
+export function initDirtyTracking() {
+  const main = document.querySelector('#main');
+  if (!main) return;
+  new MutationObserver(() => snapshot()).observe(main, { childList: true });
+  snapshot();
+}
+
+window.addEventListener(TRACK_EVENT, (e) => {
+  const ev = (e as CustomEvent<string>).detail;
+  if (/^(save|deploy|assign|unassign):/.test(ev)) snapshot(200);
+});
+
+/** True when the page in #main holds changes that were not saved (or a form dialog is open). */
+export function pageUnsaved(): boolean {
+  if (document.querySelector('.guide-overlay form input:not([readonly]), .guide-overlay form select, .guide-overlay form textarea')
+    && !document.querySelector('.settings-dlg')) return true;
+  return base !== '' && signature() !== base;
+}
