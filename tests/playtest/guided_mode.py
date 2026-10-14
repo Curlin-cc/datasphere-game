@@ -32,8 +32,7 @@ def saved(pg):
 def m02(mode):
     s = save_before(0, 'c00-m02', xp=30)
     s['missions'] = {'c00-m00': DONE, 'c00-m01': DONE}
-    if mode:
-        s['guidance'] = mode
+    s['guidance'] = mode
     return s
 
 
@@ -102,7 +101,7 @@ with sync_playwright() as p:
     if pg.locator('#space-picker').count() == 0:
         pg.click('#space-switch')
     pg.click('[data-space="RHN_ENTRY"]'); pg.wait_for_selector('#new-tiles')
-    pg.click('[data-new="sqlview"]'); pg.wait_for_selector('#editor')
+    pg.click('[data-new="sqlview"]'); pg.wait_for_selector('#editor'); pg.wait_for_timeout(300)
     g.sql('SELECT CONTRACT_ID FROM RHN_ENTRY.BILLING_CONTRACTS -- unsaved work')
     pg.click('#tutorial-open')
     for _ in range(12):
@@ -157,6 +156,69 @@ with sync_playwright() as p:
                         " document.documentElement.style.setProperty('--fs', '1.3'); const b = parseFloat(getComputedStyle(e).fontSize);"
                         " document.documentElement.style.removeProperty('--fs'); return [a, b]; }")
     ok(abs(sizes[1] - sizes[0] * 1.3) < 0.3, f'learning-aid note scales with --fs {sizes}')
+    print('ERRORS', g.errors)
+    g.b.close()
+
+    # 7. Self-directed: Next never opens or switches an app or space; the card says where to go and waits.
+    g = Game(p, S); pg = g.pg
+    s = save_before(5, 'c05-m01', TENANT5); s['guidance'] = 'self'
+    g.start(s)
+    g.skip_tutorial()
+    g.space('RHN_ENTRY')
+    pg.click('[data-new="sqlview"]'); pg.wait_for_selector('#editor'); pg.wait_for_timeout(300)
+    g.sql('SELECT CONTRACT_ID FROM RHN_ENTRY.BILLING_CONTRACTS -- self-directed work')
+    pg.click('#tutorial-open')
+    for _ in range(12):
+        if title(pg) == 'Space RHN_DSL':
+            break
+        if title(pg) and pg.locator('.tour-card:not(.acting) [data-act="next"]:not([disabled])').count():
+            pg.click('.tour-card:not(.acting) [data-act="next"]')
+        pg.wait_for_timeout(300)
+    wait_title(pg, 'Space RHN_DSL'); pg.wait_for_timeout(1500)
+    ok(pg.locator('#editor').count() == 1 and 'self-directed work' in pg.inner_text('.cm-content'), 'self-directed: Next leaves the view as it is (editor and SQL stay)')
+    ok('Go to' in (pg.inner_text('.tour-aid') if pg.locator('.tour-aid').count() else ''), 'self-directed: card says where to go')
+    g.shot('gm-self-goto')
+    # The player goes there: the step is done by itself.
+    g.space('RHN_DSL'); pg.wait_for_timeout(1500)
+    ok(title(pg) != 'Space RHN_DSL', 'self-directed: step done once the player is there')
+
+    # 7b. Self-directed from Home: Next through the whole intro, the app never changes.
+    g.skip_tutorial()
+    g.nav('home')
+    pg.evaluate("document.querySelector('#tutorial-open').click()")
+    for _ in range(8):
+        pg.wait_for_timeout(300)
+        if pg.locator('.tour-card:not(.acting) [data-act="next"]:not([disabled])').count():
+            pg.click('.tour-card [data-act="next"]')
+    ok(pg.locator('.nav [data-view="home"][aria-current="page"]').count() == 1, f'self-directed: still on Home after Next ({title(pg)})')
+    g.b.close()
+
+    # 4b. Guided: the unsaved-work note goes away after Save, and the held page opens.
+    g = Game(p, S); pg = g.pg
+    s = save_before(5, 'c05-m01', TENANT5); s['guidance'] = 'guided'
+    g.start(s)
+    g.skip_tutorial()
+    g.space('RHN_ENTRY')
+    pg.click('[data-new="sqlview"]'); pg.wait_for_selector('#editor'); pg.wait_for_timeout(300)
+    g.sql('SELECT CONTRACT_ID FROM RHN_ENTRY.BILLING_CONTRACTS')
+    pg.click('#tutorial-open')
+    for _ in range(12):
+        if title(pg) == 'Space RHN_DSL':
+            break
+        if title(pg) and pg.locator('.tour-card:not(.acting) [data-act="next"]').count():
+            pg.click('.tour-card:not(.acting) [data-act="next"]')
+        pg.wait_for_timeout(300)
+    wait_title(pg, 'Space RHN_DSL'); pg.wait_for_timeout(1500)
+    ok(pg.locator('.tour-aid.unsaved').count() == 1, 'guided: unsaved note shown')
+    pg.fill('#prop-business', 'Playtest View'); pg.fill('#prop-technical', 'PLAYTEST_VIEW')
+    pg.click('#ed-save'); pg.wait_for_timeout(1500)
+    ok(pg.locator('.tour-aid.unsaved').count() == 0, 'guided: unsaved note gone after Save')
+    ok(pg.locator('#new-tiles').count() == 1 or title(pg) != 'Space RHN_DSL', 'guided: held page opens after Save')
+
+    # 8. Loading the sandbox keeps the chosen mode.
+    g.skip_tutorial()
+    g.nav('home'); pg.click('#save-sandbox'); pg.wait_for_timeout(2500)
+    ok(saved(pg).get('guidance') == 'guided', 'sandbox keeps the chosen mode (guided)')
     print('ERRORS', g.errors)
     g.b.close()
 

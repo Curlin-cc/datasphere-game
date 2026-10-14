@@ -422,6 +422,11 @@ function tourHooks(onFinish: () => void) {
         setView('system', true);
       } else setView(view as ViewId);
     },
+    describeView: (v: string) => {
+      const [view, , space] = v.split(':');
+      const name = view === 'glossary' ? 'Glossary' : appById(view as AppId)?.label ?? view;
+      return `${name}${space ? ` › space ${space}` : ''}`;
+    },
     insertExample: (sql: string) => {
       if (ctx.view !== 'builder' || !ctx.editor) {
         builderTo('new-view');
@@ -650,7 +655,10 @@ function renderHome(main: HTMLElement) {
   });
   main.querySelector('#save-import')!.addEventListener('click', async () => {
     try {
+      const mode = ctx.progress.guidance;
       ctx.progress = await importProgress();
+      // An imported save without a mode (older export) keeps the current one.
+      if (!ctx.progress.guidance && mode) ctx.progress.guidance = mode;
       await afterProgressReplaced();
     } catch (err) {
       note.textContent = err instanceof Error ? err.message : String(err);
@@ -658,7 +666,10 @@ function renderHome(main: HTMLElement) {
   });
   main.querySelector('#save-sandbox')!.addEventListener('click', async () => {
     if (!await ask('Load the sandbox? It replaces your progress with a save in which every mission is solved. Export your save first if you want to keep it.')) return;
+    // The sandbox keeps the mode the player chose (Guided / Self-directed); the sandbox file itself has none.
+    const mode = ctx.progress.guidance;
     ctx.progress = sandboxProgress();
+    if (mode) ctx.progress.guidance = mode;
     await afterProgressReplaced();
   });
   main.querySelector('#save-reset')!.addEventListener('click', async () => {

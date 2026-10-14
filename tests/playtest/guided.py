@@ -1,6 +1,10 @@
 """Hands-on tutorials: play the tutorial of several missions by doing each step on the page while the tour is open.
 Checks that clicks reach the page through the tour and that the tour moves on by itself."""
+import os
 import sys
+
+# The tutorials open the pages of their steps only in Guided mode (Self-directed waits for the player).
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before, SPACES
 

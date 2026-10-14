@@ -52,6 +52,8 @@ export interface TourStep {
 export interface TourHooks {
   setView: (view: string) => void;
   insertExample: (sql: string) => void;
+  /** Readable place of a tour view, e.g. 'Data Builder › RHN_DSL', for the self-directed note. */
+  describeView?: (view: string) => string;
   onFinish: () => void;
 }
 
@@ -73,6 +75,9 @@ export function setGuidedOptions(o: GuidedOptions) {
 
 /** Shown in the card whenever guided mode moves or opens something, so it is not taken for SAP Datasphere behaviour. */
 export const AID_NOTE = 'Learning aid of the game: in the real SAP Datasphere you choose the space and the app yourself, and nothing opens or moves on by itself.';
+
+/** Shown while unsaved work keeps the tutorial from opening a page (both modes). */
+const UNSAVED_NOTE = 'You have unsaved changes (editor or form), so the game did not open the next page. Save or close your work; it opens then.';
 
 /** Delay before guided mode opens the app/space of a navigation step, and the reading pause of a done `stay` step. */
 export const GUIDED_OPEN_MS = 900;
@@ -96,6 +101,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   /** A docked stay step is done: light up the page that opened instead of the navigation entry. */
   let spotPage = false;
   let openTimer = 0;
+  let guardTimer = 0;
   let stayTimer = 0;
 
   const root = document.createElement('div');
@@ -111,6 +117,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     clearTimeout(doneTimer);
     clearTimeout(openTimer);
     clearTimeout(stayTimer);
+    clearInterval(guardTimer);
     timer = 0;
   };
 
@@ -156,20 +163,70 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     root.classList.toggle('acting', !!step.action);
     root.classList.toggle('docked', !!step.dock);
     root.classList.toggle('guided', guidedOpts.guided());
-    // Guided mode never opens a step's page over an editor with unsaved changes (the self-directed mode keeps the old behaviour).
-    const held = !!step.view && guidedOpts.guided() && guidedOpts.unsaved();
-    if (step.view && !held) hooks.setView(step.view);
-    const target = step.target ? await waitFor(step.target) : null;
+    // Self-directed (Calin, 14.10.2026): the tutorial never opens or switches an app or space. The card says where to go
+    // and, if the step points at something there, waits (Next disabled) until the player has arrived.
+    // Guided: the step's page opens, but never over unsaved work (editor or form); it opens once the work is saved or closed.
+    const isGuided = guidedOpts.guided();
+    let held = !!step.view && isGuided && guidedOpts.unsaved();
+    if (step.view && isGuided && !held) hooks.setView(step.view);
+    const target = step.target ? await waitFor(step.target, isGuided ? 40 : 4) : null;
     if (index !== i) return;
     target?.scrollIntoView({ block: 'nearest' });
     render(step);
-    if (held) aid('You have unsaved changes (editor or form), so the game did not open the page of this step. Save or close it first.');
+    if (step.view && !isGuided && !target) {
+      const where = hooks.describeView?.(step.view) ?? step.view;
+      aid(`Go to ${where} yourself; the tutorial waits until you are there.`, false, 'goto');
+      const next = !step.action && step.target ? card.querySelector<HTMLButtonElement>('[data-act="next"]') : null;
+      if (next) next.disabled = true;
+      if (step.target) {
+        clearInterval(guardTimer);
+        guardTimer = window.setInterval(() => {
+          if (index !== i) return clearInterval(guardTimer);
+          if (!visible(step.target!)) return;
+          clearInterval(guardTimer);
+          card.querySelector('.tour-aid.goto')?.remove();
+          if (next) {
+            next.disabled = false;
+            next.focus();
+          }
+          lastRect = '';
+          place();
+        }, 300);
+      }
+    }
+    let blockedOpen = false;
+    const guard = () => {
+      clearInterval(guardTimer);
+      guardTimer = window.setInterval(() => {
+        if (index !== i) return clearInterval(guardTimer);
+        if (guidedOpts.unsaved()) return;
+        clearInterval(guardTimer);
+        card.querySelector('.tour-aid.unsaved')?.remove();
+        lastRect = '';
+        if (held) {
+          held = false;
+          hooks.setView(step.view!);
+        }
+        if (blockedOpen && !stepDone && !conditionHolds(step.action!)) {
+          blockedOpen = false;
+          hooks.setView(step.action!.autoOpen!);
+          aid(`Opened for you. ${AID_NOTE}`);
+        }
+        place();
+      }, 300);
+    };
+    if (held) {
+      aid(UNSAVED_NOTE, true);
+      guard();
+    }
     place();
     if (step.action?.autoOpen && guidedOpts.guided()) {
       openTimer = window.setTimeout(() => {
         if (index !== i || stepDone || conditionHolds(step.action!)) return;
         if (guidedOpts.unsaved()) {
-          aid(`You have unsaved changes (editor or form), so the game did not open anything. Save or close it, then follow the highlighted step.`);
+          blockedOpen = true;
+          aid(UNSAVED_NOTE, true);
+          guard();
           return;
         }
         hooks.setView(step.action!.autoOpen!);
@@ -196,7 +253,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   }
 
   /** A small labelled note in the card: what guided mode just did (or did not do). */
-  function aid(text: string) {
+  function aid(text: string, unsaved = false, kind = '') {
     let el = card.querySelector<HTMLElement>('.tour-aid');
     if (!el) {
       el = document.createElement('p');
@@ -204,6 +261,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       card.querySelector('.tour-actions')?.before(el);
     }
     el.textContent = text;
+    el.classList.toggle('unsaved', unsaved);
+    el.classList.toggle('goto', kind === 'goto');
     lastRect = '';
     place();
   }
@@ -388,8 +447,8 @@ const firstVisible = (selector: string): HTMLElement | null => {
 const visible = (selector: string) => firstVisible(selector) !== null;
 
 /** Views render asynchronously; give the target a moment to appear. */
-async function waitFor(selector: string): Promise<HTMLElement | null> {
-  for (let i = 0; i < 40; i++) {
+async function waitFor(selector: string, tries = 40): Promise<HTMLElement | null> {
+  for (let i = 0; i < tries; i++) {
     const el = firstVisible(selector);
     if (el) return el;
     await new Promise((r) => setTimeout(r, 50));
