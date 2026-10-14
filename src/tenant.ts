@@ -6,7 +6,7 @@ import { DEFAULT_TRACING, sanitizeTracing, sanitizeStatements, type Tracing, typ
  * Rules follow SAP Datasphere (checked 2026-10-08, learning.sap.com "Outlining Spaces"):
  *  - Space ID: max 20 characters, A–Z, 0–9 and underscore, cannot be changed after creation
  *  - Space name: max 30 characters, can be changed
- *  - Priority 1 (lowest) to 5 (highest); new spaces get 2 GB disk and 1 GB in-memory
+ *  - Priority 1 (lowest) to 8 (highest), default 5; new spaces get 2 GB disk and 1 GB in-memory
  *  - Objects of a space cannot be used in another space unless they are shared with it
  */
 
@@ -77,11 +77,11 @@ export interface TenantState {
 }
 
 export const CAPACITY = { diskGB: 128, memoryGB: 32 };
-export const NEW_SPACE_DEFAULTS = { diskGB: 2, memoryGB: 1, priority: 3 };
+export const NEW_SPACE_DEFAULTS = { diskGB: 2, memoryGB: 1, priority: 5 };
 
 export function defaultTenant(): TenantState {
   return {
-    spaces: [{ id: 'RHN_ENTRY', name: 'Rheinau Entry', diskGB: 40, memoryGB: 8, priority: 3, system: true }],
+    spaces: [{ id: 'RHN_ENTRY', name: 'Rheinau Entry', diskGB: 40, memoryGB: 8, priority: 5, system: true }],
     shares: [],
     activeSpace: 'RHN_ENTRY',
     roles: [],
@@ -137,7 +137,7 @@ export function storageError(space: Pick<Space, 'id' | 'diskGB' | 'memoryGB' | '
   if (!(diskGB >= 0.1)) return 'Disk storage must be at least 0.1 GB.';
   if (!(memoryGB >= 0.1)) return 'In-memory storage must be at least 0.1 GB.';
   if (memoryGB > diskGB) return 'In-memory storage cannot be larger than disk storage.';
-  if (!Number.isInteger(priority) || priority < 1 || priority > 5) return 'Priority goes from 1 (lowest) to 5 (highest).';
+  if (!Number.isInteger(priority) || priority < 1 || priority > 8) return 'Priority goes from 1 (lowest) to 8 (highest).';
   const used = assigned(tenant, space.id);
   if (used.diskGB + diskGB > CAPACITY.diskGB) return `Only ${round1(CAPACITY.diskGB - used.diskGB)} GB disk are still free in the tenant.`;
   if (used.memoryGB + memoryGB > CAPACITY.memoryGB) return `Only ${round1(CAPACITY.memoryGB - used.memoryGB)} GB in-memory are still free in the tenant.`;
@@ -228,6 +228,6 @@ function pickStorage(s: Partial<Space>) {
     ...(typeof s.usedDiskGB === 'number' && s.usedDiskGB > 0 ? { usedDiskGB: round1(s.usedDiskGB) } : {}),
     diskGB: Math.max(0.1, Number(s.diskGB) || NEW_SPACE_DEFAULTS.diskGB),
     memoryGB: Math.max(0.1, Number(s.memoryGB) || NEW_SPACE_DEFAULTS.memoryGB),
-    priority: Math.min(5, Math.max(1, Math.round(Number(s.priority) || NEW_SPACE_DEFAULTS.priority))),
+    priority: Math.min(8, Math.max(1, Math.round(Number(s.priority) || NEW_SPACE_DEFAULTS.priority))),
   };
 }

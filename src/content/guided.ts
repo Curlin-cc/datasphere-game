@@ -440,7 +440,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Disk, in-memory, priority',
       body: `<p><b>Disk</b> stores data. <b>In-memory</b> keeps data in RAM so it can be read very fast; it is smaller and more expensive.
         A space can never have more in-memory than disk.</p>
-        <p><b>Priority</b> goes from 1 (lowest) to 5 (highest). When the database is busy, statements from spaces with a higher priority are favored.</p>`,
+        <p><b>Priority</b> goes from 1 (lowest) to 8 (highest); new spaces get 5. When the database is busy, statements from spaces with a higher priority are favored.</p>`,
     },
   ],
   'c01-m03': [
@@ -1435,10 +1435,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Storage and priority',
         target: '.dialog',
-        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. The presentation space must get a higher priority later.</p>
+        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 5. The presentation space must get a higher priority later.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
-        // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 5.
-        action: { do: 'Enter disk, in-memory and priority for RHN_DSL, then press <b>Save</b>.', event: '^edit-space-values:RHN_DSL:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-4]$' },
+        // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 8.
+        action: { do: 'Enter disk, in-memory and priority for RHN_DSL, then press <b>Save</b>.', event: '^edit-space-values:RHN_DSL:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-7]$' },
       },
     ],
     [
@@ -1451,10 +1451,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Highest priority',
         target: '.dialog',
-        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>5</b>, higher than every other space.</p>
+        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>8</b>, higher than every other space.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
-        // At least 10 GB disk and 8 GB in-memory, priority 5.
-        action: { do: 'Enter the values for RHN_PRES, then press <b>Save</b>.', event: '^edit-space-values:RHN_PRES:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:5$' },
+        // At least 10 GB disk and 8 GB in-memory, priority 8.
+        action: { do: 'Enter the values for RHN_PRES, then press <b>Save</b>.', event: '^edit-space-values:RHN_PRES:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:8$' },
       },
       {
         title: 'Check the bars',

@@ -131,8 +131,8 @@ function openSpaceDialog(existing?: Space) {
         <input name="disk" type="number" min="0.1" step="0.1" value="${v.diskGB}"></label>
       <label>In-memory (GB) <small>${free('memoryGB')} GB free in the tenant</small>
         <input name="memory" type="number" min="0.1" step="0.1" value="${v.memoryGB}"></label>
-      <label>Priority <small>1 lowest, 5 highest</small>
-        <select name="priority">${[1, 2, 3, 4, 5].map((p) => `<option ${p === v.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+      <label>Priority <small>1 lowest, 8 highest, default 5</small>
+        <select name="priority">${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<option ${p === v.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
     </div>
     <p class="form-error" role="alert"></p>
     <div class="guide-actions">
