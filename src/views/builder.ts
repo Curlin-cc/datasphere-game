@@ -158,6 +158,7 @@ function renderSpacePicker(main: HTMLElement) {
   bindSpaceSearch(main);
   main.querySelectorAll<HTMLButtonElement>('[data-space]').forEach((b) =>
     b.addEventListener('click', () => {
+      if (t.activeSpace !== b.dataset.space) listFilter = '';
       t.activeSpace = b.dataset.space!;
       spaceChosen = true;
       ctx.track(`space:builder:${t.activeSpace}`);
@@ -223,7 +224,9 @@ function renderLanding(main: HTMLElement) {
         <div class="table-scroll"><table class="grid object-table" id="object-list">
           <thead><tr><th class="cb"><input type="checkbox" aria-label="Select all" disabled></th><th>Business Name</th><th>Technical Name</th><th>Type (Semantic Usage)</th>
             <th class="col-opt">Space</th><th>Status</th><th>Changed On</th><th class="fav col-opt">Favorite</th><th></th></tr></thead>
-          <tbody>${shown.length ? shown.map((o) => objectRow(o, canShare)).join('') : `<tr><td colspan="9" class="empty-row">No objects here yet.</td></tr>`}</tbody>
+          <tbody>${shown.length ? shown.map((o) => objectRow(o, canShare)).join('') : `<tr><td colspan="9" class="empty-row">${own.length
+            ? `No objects match ${listFilter.trim() ? `"${esc(listFilter.trim())}"` : 'this tab'}${listTab !== LIST_TABS[0][0] ? ` in ${esc(LIST_TABS.find(([k]) => k === listTab)?.[1] ?? '')}` : ''}. The space has ${own.length} ${own.length === 1 ? 'object' : 'objects'}.`
+            : 'No objects here yet.'}</td></tr>`}</tbody>
         </table></div>
       </div>
       ${shared.length ? `<div class="db-list shared-panel">
