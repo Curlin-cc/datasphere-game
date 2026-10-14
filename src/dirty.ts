@@ -16,8 +16,9 @@ function signature(): string {
   const fields = [...main.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea')]
     .filter((f) => !f.matches(IGNORE) && !f.closest('.results'))
     .map((f) => (f instanceof HTMLInputElement && (f.type === 'checkbox' || f.type === 'radio') ? (f.checked ? '1' : '0') : f.value));
-  // Rows, columns, steps and nodes added by buttons change the number of fields; the SQL text lives in CodeMirror.
-  return JSON.stringify([fields, ctx.editor?.getValue() ?? null, [...main.querySelectorAll('tr, li, [data-node]')].filter((e) => !e.closest('.results')).length]);
+  // Rows and columns added by buttons change the number of fields; the SQL text lives in CodeMirror. Plain table rows and
+  // list items are not counted: pages fill them in after drawing (e.g. the column list of a source table), which is no change.
+  return JSON.stringify([fields, ctx.editor?.getValue() ?? null, main.querySelectorAll('[data-node]').length]);
 }
 
 let base = '';

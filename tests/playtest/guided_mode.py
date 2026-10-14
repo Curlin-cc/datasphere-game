@@ -3,7 +3,7 @@ navigation steps with the learning-aid note, no auto-open over an editor with un
 import json
 import sys
 from playwright.sync_api import sync_playwright
-from common import Game, save_before
+from common import Game, save_before, SPACES
 from chapter5_data import TENANT5
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
@@ -221,6 +221,21 @@ with sync_playwright() as p:
     ok(saved(pg).get('guidance') == 'guided', 'sandbox keeps the chosen mode (guided)')
     print('ERRORS', g.errors)
     g.b.close()
+
+    # 9. Regression (Johnny, 14.10.2026): opening a source table fills its column list after drawing; that is no change, so
+    # guided c04-m01 'Back to the start page' must still open the start page. Several runs, the race was timing-dependent.
+    for n in range(3):
+        g = Game(p, S); pg = g.pg
+        s = save_before(4, 'c04-m01', {"spaces": SPACES, "shares": [], "activeSpace": "RHN_ENTRY"}); s['guidance'] = 'guided'
+        g.start(s)
+        wait_title(pg, 'Chapter 4: Profile the entry data'); pg.click('.tour-card [data-act="next"]')
+        wait_title(pg, 'Where we are'); pg.click('.tour-card [data-act="next"]'); pg.wait_for_timeout(200); pg.click('.tour-card [data-act="next"]')
+        wait_title(pg, 'Look at the contracts first')
+        pg.click('#object-list [data-open="RHN_ENTRY.BILLING_CONTRACTS"]'); pg.wait_for_selector('#run'); pg.click('#run')
+        wait_title(pg, 'Back to the start page'); pg.wait_for_timeout(1200)
+        ok(pg.locator('[data-new="sqlview"]').count() == 1 and pg.locator('.tour-aid.unsaved').count() == 0,
+           f'source table without changes is not unsaved (run {n + 1})')
+        g.b.close()
 
 print('guided_mode:', 'all passed' if not fails else f'FAILED {fails}')
 if not fails:
