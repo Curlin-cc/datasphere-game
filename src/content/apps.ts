@@ -237,7 +237,7 @@ export const NEW_TILES: NewTile[] = [
     icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M16 15.5v8M12.5 20l3.5 3.5 3.5-3.5"/>' },
   { id: 'validate', label: 'Remote Tables', verb: 'Validate', importTile: true, menuLabel: 'Validate Remote Tables', text: 'Compares remote tables with their source: whether columns were added, removed or changed since the import. Run it after a source system upgrade.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
-  { id: 'permissions', label: 'Permissions', verb: 'Import', importTile: true, menuLabel: 'Import Permissions', text: 'Takes over row-level permissions from an SAP BW or S/4HANA source as permissions tables and data access controls, instead of maintaining them twice.',
+  { id: 'permissions', label: 'Permissions', verb: 'Import', importTile: true, menuLabel: 'Import Permissions', text: 'Imports analysis authorizations from SAP BW or SAP BW/4HANA as permissions tables and data access controls, instead of maintaining them twice.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
 ];
 
