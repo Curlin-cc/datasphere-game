@@ -562,7 +562,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     },
     {
       title: 'Release contract C1',
-      body: `<p>Only CDS views SAP released for extraction (release contract <b>C1</b>) come with their data access and follow associations.
+      body: `<p>Only CDS views SAP released for extraction (release contract <b>C1</b>) can be imported with remote access (Remote Tables). Associations are followed only for CDS views delivered by SAP (SAP_BASIS 756 or higher), not for custom ones.
         A custom view without release is imported as an empty local table; you would load it with a data flow.</p>
         <p>Data access: <b>Replication Flow to Local Tables</b> is proposed and recommended by SAP. The tables stay empty until the flow runs.</p>`,
     },
