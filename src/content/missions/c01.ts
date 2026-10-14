@@ -208,7 +208,7 @@ export const CHAPTER_1: Mission[] = [
     ],
     xp: 30,
     realTenant: `In a real tenant: open the space in <b>Space Management</b>. Storage is under <b>Space Storage</b> (disk and in-memory),
-      the priority under <b>Workload Management</b>, where you can also limit threads and memory per space. Changes take effect when you <b>Deploy</b> the space.`,
+      the priority under <b>System &gt; Configuration &gt; Workload Management</b>, where you can also limit threads and memory per space. Click <b>Save</b>; the settings then appear read-only in the space details.`,
     debrief: `<p>Looks good, and we still have a reserve. If a load runs wild at night, the board's dashboards stay responsive.</p>
       <p><i>Calin adds:</i> In-memory is expensive. Give it to the spaces whose data is read often and fast, not to the ones that only store.</p>`,
   },
