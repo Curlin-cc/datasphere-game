@@ -132,7 +132,7 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
               <h2>It looks like you haven’t added any data yet.</h2>
               <p class="muted">To start your replication flow, select a connection and a source object above on the left side.</p></div>`}
             <div class="table-scroll" ${draft.objects.length ? '' : 'hidden'}><table class="grid" id="flow-objects">
-              <thead><tr><th>Source Object</th><th>Target Table</th><th>Load Type</th><th>Truncate</th><th>Projection</th><th></th></tr></thead>
+              <thead><tr><th>Source Object</th><th>Target Table</th><th>Load Type</th><th>Delete All Before Loading</th><th>Projection</th><th></th></tr></thead>
               <tbody>${draft.objects.map((fo, i) => {
                 const so = src?.objects.find((s) => s.name === fo.source);
                 const exists = localTables.includes(fo.target);
@@ -143,14 +143,14 @@ export function renderFlowEditor(main: HTMLElement, o: RepoObject | null, nav: F
                   <td><select data-load="${i}">
                     <option ${fo.loadType === 'Initial Only' ? 'selected' : ''}>Initial Only</option>
                     <option ${fo.loadType === 'Initial and Delta' ? 'selected' : ''} ${so && !so.delta ? 'disabled' : ''}>Initial and Delta</option></select></td>
-                  <td><input type="checkbox" data-truncate="${i}" ${fo.truncate ? 'checked' : ''} aria-label="Truncate ${esc(fo.target)}"></td>
+                  <td><input type="checkbox" data-truncate="${i}" ${fo.truncate ? 'checked' : ''} aria-label="Delete All Before Loading ${esc(fo.target)}"></td>
                   <td><button class="btn small" type="button" data-proj="${i}">${fo.extra.length ? `${fo.extra.length} added column${fo.extra.length > 1 ? 's' : ''}` : 'Edit'}</button></td>
                   <td><button class="btn small link" type="button" data-remove="${i}" aria-label="Remove ${esc(fo.source)}" title="Remove">✕</button></td></tr>`;
               }).join('')}</tbody>
             </table></div>
             <datalist id="flow-tables">${localTables.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
             <p class="muted flow-note"><b>Initial Only</b> loads everything once. <b>Initial and Delta</b> loads everything once, then keeps checking the source
-              for changes and transfers only those; it needs a delta-capable source. <b>Truncate</b> empties the target table before the initial load.</p>
+              for changes and transfers only those; it needs a delta-capable source. <b>Delete All Before Loading</b> empties the target table before the initial load.</p>
           </section>
           <aside class="props flow-props" id="properties" aria-label="Properties">
             ${propsHead('Replication Flow Properties', ICONS.flow, technical || 'New Replication Flow')}

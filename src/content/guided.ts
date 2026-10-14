@@ -9,7 +9,7 @@ import type { TourStep } from '../tutorial';
  * task lists in order, then "Check my solution" (see main.ts).
  *
  * Rule for the amount of help: chapters 0 and 1 give the exact clicks and values. From chapter 2 on, the tutorial
- * still guides every click, but decisions (which role, which load type, Truncate or not) stay passive steps:
+ * still guides every click, but decisions (which role, which load type, Delete All Before Loading or not) stay passive steps:
  * the tour explains the options and the player decides.
  */
 
@@ -530,7 +530,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         only projections (filters, column mapping, extra columns).</p>
         <ul><li><b>Initial Only</b>: everything is loaded once.</li>
         <li><b>Initial and Delta</b>: everything once, then only the changes. Needs a delta-capable source.</li>
-        <li><b>Truncate</b>: empties the target table before the load, completely.</li></ul>`,
+        <li><b>Delete All Before Loading</b>: empties the target table before the load, completely.</li></ul>`,
     },
   ],
   'c03-m05': [
@@ -1882,9 +1882,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
           Which one does Lena's ticket describe? Set it per object.</p>`,
       },
       {
-        title: 'Truncate: your decision',
+        title: 'Delete All Before Loading: your decision',
         target: '#flow-objects',
-        body: `<p>Truncate empties the target table completely before the load, whoever delivered the rows. Remember what else is in these tables.</p>`,
+        body: `<p>Delete All Before Loading empties the target table completely before the load, whoever delivered the rows. Remember what else is in these tables.</p>`,
       },
     ],
     [
@@ -1992,9 +1992,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     ],
     [
       {
-        title: 'Load type and Truncate: your decision',
+        title: 'Load type and Delete All Before Loading: your decision',
         target: '#flow-objects',
-        body: `<p>A file has no delta: Initial Only. Each night's file holds <b>all</b> customers. What happens without Truncate when it runs every night?</p>`,
+        body: `<p>A file has no delta: Initial Only. Each night's file holds <b>all</b> customers. What happens without Delete All Before Loading when it runs every night?</p>`,
       },
       {
         title: 'Names, deploy, run',
