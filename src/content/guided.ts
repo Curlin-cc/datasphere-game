@@ -328,6 +328,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
   'c00-m00': [
     {
       title: 'Welcome to the training tenant',
+      hero: true,
       body: `<p>This game works like <b>SAP Datasphere</b>: the same apps, the same names, the same way of working. You learn where things are
         and what they are for, then you build a small data warehouse for Stadtwerke Rheinau.</p>
         <p>Every mission starts with a tutorial like this one. It shows you each step, and in steps marked <b>Your turn</b>
@@ -335,6 +336,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     },
     {
       title: 'Why a grand tour',
+      hero: true,
       body: `<p>SAP Datasphere has about twenty apps. In a project you use six of them every day and the rest a few times a year,
         but you must know that they exist, or you rebuild by hand what an app already does.</p>
         <p>So before the first real ticket you click through <b>every function</b> once: the shellbar, then every app from the top of the side navigation to the bottom.
@@ -344,6 +346,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     },
     {
       title: 'The project in one picture',
+      hero: true,
       body: `<p>The board wants one trusted view of revenue, consumption and receivables per grid area. You build it in three layers:</p>
         ${layerStack(['en', 'ds', 'pr'])}
         <p>Keep the picture in mind during the tour: most apps either bring data <b>in</b> (bottom), shape it in the <b>middle</b>,
