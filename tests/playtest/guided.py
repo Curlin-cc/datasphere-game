@@ -151,7 +151,7 @@ with sync_playwright() as p:
     expect(pg, 'Data Integration'); pg.click('.sub-nav [data-tab="integration"]')
     expect(pg, 'The Cloud Connector'); g.shot('g-c03-cc'); nexts(pg)
     expect(pg, 'Security'); pg.click('.sub-nav [data-tab="security"]')
-    expect(pg, 'Upload'); pg.click('#cert-upload'); pg.check('[name="file"][value="Rheinau Root CA"]'); pg.click('.dialog [type="submit"]')
+    expect(pg, 'Add Certificate'); pg.click('#cert-upload'); pg.check('[name="file"][value="Rheinau Root CA"]'); pg.click('.dialog [type="submit"]')
     pg.wait_for_timeout(1200)
     print('   Show me finished, tour open:', pg.locator('.tour-card').count())
     g.done()

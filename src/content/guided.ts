@@ -1748,10 +1748,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         action: { do: 'Open <b>Security</b>.', check: () => !!$('.sub-nav [data-tab="security"][aria-current="page"]') },
       },
       {
-        title: 'Upload',
+        title: 'Add Certificate',
         target: '#cert-upload',
         body: `<p>Trust only what a connection needs. The ticket names the file.</p>`,
-        action: { do: 'Press <b>Upload Certificate</b>, pick the right file and upload it.', event: 'upload-cert:' },
+        action: { do: 'Press <b>Add Certificate</b>, pick the right file and upload it.', event: 'upload-cert:' },
       },
     ],
     [

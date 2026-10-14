@@ -295,7 +295,7 @@ function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
   const head = `<p class="sys-lead">${esc(info.text)}</p>`;
   if (id === 'security') {
     return `${head}
-      <div class="table-head"><h4>Trusted certificates</h4><button class="btn small primary" type="button" id="cert-upload">Upload Certificate</button></div>
+      <div class="table-head"><h4>Trusted certificates</h4><button class="btn small primary" type="button" id="cert-upload">Add Certificate</button></div>
       <table class="grid" id="cert-list"><thead><tr><th>Name</th><th>Uploaded</th><th></th></tr></thead>
         <tbody>${t.certificates.length ? t.certificates.map((c) => `<tr><td>${esc(c)}</td><td class="muted">by you</td>
           <td><button class="btn small link" type="button" data-cert-delete="${esc(c)}">Delete</button></td></tr>`).join('')
