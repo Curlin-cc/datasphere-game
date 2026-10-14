@@ -4,7 +4,8 @@ import { TRACK_EVENT } from './tutorial';
 /**
  * Dirty tracking for guided mode (review of #13): guided mode must not open anything over unsaved work, but must still
  * auto-open when an editor is open without changes. Every time a page is drawn into #main (its children are replaced),
- * a snapshot of its form state is taken; Save and Deploy take a new one. Unsaved = the form state differs from the snapshot.
+ * a snapshot of its form state is taken; Save and Deploy take a new one. Unsaved = the form state differs from the snapshot,
+ * or the player typed or picked something in an editor that has since drawn itself again (same page, not saved).
  * Covers every editor page, including the Data Builder editors (SQL, table, DAC, model, flows), Business Builder and Security.
  * Search and filter boxes and the Data Preview area (.results) do not count. An open dialog with a form (e.g. Create User) always counts as unsaved.
  */
@@ -21,13 +22,31 @@ function signature(): string {
   return JSON.stringify([fields, ctx.editor?.getValue() ?? null, main.querySelectorAll('[data-node]').length]);
 }
 
+/**
+ * Which page is drawn: the editor kind and its space for editor pages (the technical name is left out, it changes while a new
+ * object is named), the page class otherwise. Many editors (data flow, table, DAC, task chain, analytic model, flows) draw
+ * #main again on every change; that is the same page, so it must not wipe out a change the player made (review of #13).
+ */
+function pageKey(): string {
+  const first = document.querySelector('#main')?.firstElementChild;
+  if (!first) return '';
+  if (!first.classList.contains('editor-page')) return first.className;
+  const kinds = [...first.classList].filter((c) => c.startsWith('is-')).sort().join(' ');
+  const sub = first.querySelector('.ed-title small')?.textContent ?? '';
+  return `${kinds}|${sub.replace(/\.[^.]*$/, '')}`;
+}
+
 let base = '';
+let baseKey = '';
+/** The player typed or picked something in an editor since the last Save/Deploy; survives the editor drawing itself again. */
+let edited = false;
 /** The SQL editor of the snapshot: a page may mount its editor after the snapshot, which is not a change by the player. */
 let baseEditor: unknown = null;
 let timer = 0;
 let editorWatch = 0;
 const take = () => {
   base = signature();
+  baseKey = pageKey();
   baseEditor = ctx.editor;
 };
 const snapshot = (delay = 60) => {
@@ -35,10 +54,24 @@ const snapshot = (delay = 60) => {
   timer = window.setTimeout(take, delay);
 };
 
+function onEdit(e: Event) {
+  const f = e.target;
+  if (!(f instanceof HTMLInputElement || f instanceof HTMLSelectElement || f instanceof HTMLTextAreaElement)) return;
+  if (f.matches(IGNORE) || f.closest('.results') || !f.closest('.editor-page')) return;
+  if (f instanceof HTMLInputElement && f.readOnly) return;
+  edited = true;
+}
+
 export function initDirtyTracking() {
   const main = document.querySelector('#main');
   if (!main) return;
-  new MutationObserver(() => snapshot()).observe(main, { childList: true });
+  main.addEventListener('input', onEdit, true);
+  main.addEventListener('change', onEdit, true);
+  new MutationObserver(() => {
+    // Another page (another editor, the start page, another app): what was typed on the old page no longer counts.
+    if (pageKey() !== baseKey) edited = false;
+    snapshot();
+  }).observe(main, { childList: true });
   snapshot();
   // A newly mounted SQL editor (pages mount it after drawing) starts a new snapshot right away.
   clearInterval(editorWatch);
@@ -47,12 +80,16 @@ export function initDirtyTracking() {
 
 window.addEventListener(TRACK_EVENT, (e) => {
   const ev = (e as CustomEvent<string>).detail;
-  if (/^(save|deploy|assign|unassign):/.test(ev)) snapshot(200);
+  if (/^(save|deploy|assign|unassign):/.test(ev)) {
+    edited = false;
+    snapshot(200);
+  }
 });
 
 /** True when the page in #main holds changes that were not saved (or a form dialog is open). */
 export function pageUnsaved(): boolean {
   if (document.querySelector('.guide-overlay form input:not([readonly]), .guide-overlay form select, .guide-overlay form textarea')
     && !document.querySelector('.settings-dlg')) return true;
+  if (edited && pageKey() === baseKey) return true;
   return base !== '' && signature() !== base;
 }
