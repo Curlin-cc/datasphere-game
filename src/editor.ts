@@ -1,6 +1,14 @@
-import { EditorView, basicSetup } from 'codemirror';
-import { keymap } from '@codemirror/view';
-import { Compartment, Prec } from '@codemirror/state';
+import { EditorView } from 'codemirror';
+import {
+  keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor,
+  rectangularSelection, crosshairCursor, highlightActiveLine,
+} from '@codemirror/view';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
+import { foldGutter, indentOnInput, defaultHighlightStyle, bracketMatching, foldKeymap } from '@codemirror/language';
+import { history, defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
+import { lintKeymap } from '@codemirror/lint';
 import { sql, StandardSQL } from '@codemirror/lang-sql';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
@@ -39,6 +47,17 @@ const chrome = EditorView.theme({
   '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--accent)', color: 'var(--accent-ink)' },
 });
 
+/**
+ * basicSetup without closeBrackets: an auto-inserted ")" is only overtyped on the same line. After Enter it stays,
+ * so typing a multi-line subquery left a stray ")" and a parser error (tester report, mission 31).
+ */
+const setup = [
+  lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), foldGutter(), drawSelection(), dropCursor(),
+  EditorState.allowMultipleSelections.of(true), indentOnInput(), syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(), autocompletion(), rectangularSelection(), crosshairCursor(), highlightActiveLine(), highlightSelectionMatches(),
+  keymap.of([...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap, ...lintKeymap]),
+];
+
 /** Creates the SQL editor. Ctrl/Cmd+Enter runs the query. */
 export function createSqlEditor(parent: HTMLElement, initial: string, onRun: () => void): SqlEditor {
   const language = new Compartment();
@@ -49,7 +68,7 @@ export function createSqlEditor(parent: HTMLElement, initial: string, onRun: () 
     parent,
     doc: initial,
     extensions: [
-      basicSetup,
+      setup,
       EditorView.lineWrapping,
       language.of(lang({})),
       Prec.highest(syntaxHighlighting(highlight)),
