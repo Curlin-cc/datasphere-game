@@ -1080,6 +1080,8 @@ td.small, .mono.small { font-size: 11.5px; white-space: normal; }
 .sm-counts .bad { color: var(--critical); }
 .sm-toolbar { display: flex; align-items: center; gap: 2px; padding: 4px 18px; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .sm-toolbar .spacer { flex: 1; }
+.sm-toolbar .sm-tools-off { display: flex; align-items: center; gap: 2px; cursor: not-allowed; }
+.sm-tools-off .btn:disabled { pointer-events: none; }
 .sm-lead { margin: 14px 24px 0; font-size: 13.5px; }
 .sm-main .space-tiles { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); padding: 16px 24px 24px; max-width: none; }
 .space-tile { background: var(--surface); border: 1px solid var(--tile-border); border-radius: var(--radius-m); box-shadow: var(--tile-shadow); padding: 16px 0 0; gap: 4px; }

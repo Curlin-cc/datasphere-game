@@ -58,9 +58,11 @@ export async function renderSpaces(main: HTMLElement) {
         <div class="sm-toolbar">
           <button class="btn small link" type="button" id="create-space" ${canCreate ? '' : 'disabled title="Unlocks in chapter 1"'}>${icon(ICONS.plus)} Create</button>
           <span class="spacer"></span>
-          <button class="btn small link" type="button" disabled>Edit</button><button class="btn small link" type="button" disabled>Delete</button>
-          <button class="btn small link" type="button" disabled>Lock</button><button class="btn small link" type="button" disabled>Unlock</button>
-          <button class="btn small link" type="button" disabled>Monitor</button>
+          <span class="sm-tools-off" title="Select a space first. In this game, use the buttons on the space tile.">
+            <button class="btn small link" type="button" disabled>Edit</button><button class="btn small link" type="button" disabled>Delete</button>
+            <button class="btn small link" type="button" disabled>Lock</button><button class="btn small link" type="button" disabled>Unlock</button>
+            <button class="btn small link" type="button" disabled>Monitor</button>
+          </span>
         </div>
         <p class="muted sm-lead">Each space has its own members, storage and priority. Objects in one space are invisible to the others until you share them.</p>
         <div class="space-tiles" id="space-list">
