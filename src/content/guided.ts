@@ -1827,7 +1827,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         title: 'Decide per table',
         target: '#rt-list',
         body: `<p>Read the ticket again: which table must always be current, and which may be a copy refreshed regularly?</p>
-          <p>Select a row with its radio button. <b>Load New Snapshot</b> makes a copy, <b>Remove Replicated Data</b> goes back to live,
+          <p>Select a row with its radio button. <b>Start Data Replication</b> (menu Data Replication) makes a copy, <b>Remove Replicated Data</b> goes back to live,
           <b>Schedule</b> refreshes a copy regularly.</p>`,
       },
       {

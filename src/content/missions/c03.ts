@@ -220,7 +220,7 @@ export const CHAPTER_3: Mission[] = [
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Import Remote Tables is in the Import menu of the object list on the Data Builder start page (the icon next to +). Data access and schedules are set in the Data Integration Monitor, not in the editor.' },
       { label: 'Hint 2: the concept', cost: 10, text: 'Remote reads the source on every query: always current, but every query loads the source. A snapshot is a copy: fast and independent, but only as fresh as the last load. A schedule refreshes it, and schedules need your consent.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Import TARIFFS and GRID_AREAS as RHN_EN_RT_… · Tariffs stay Remote · Grid areas: Load New Snapshot, then Schedule → Weekly (give consent first).' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Import TARIFFS and GRID_AREAS as RHN_EN_RT_… · Tariffs stay Remote · Grid areas: Start Data Replication, then Schedule → Weekly (give consent first).' },
     ],
     checks: [
       {
@@ -250,7 +250,7 @@ export const CHAPTER_3: Mission[] = [
         test: ({ tenant }) => {
           const o = remoteFor(tenant, 'GRID_AREAS')[0];
           if (!o) return 'Import the grid areas first.';
-          if (o.remote!.access !== 'Replicated (Snapshot)') return `${o.name} still reads S/4 on every query. Load a snapshot in the Data Integration Monitor.`;
+          if (o.remote!.access !== 'Replicated (Snapshot)') return `${o.name} still reads S/4 on every query. Start Data Replication in the Data Integration Monitor.`;
           if (o.remote!.schedule !== 'Weekly') return o.remote!.schedule ? `The schedule is ${o.remote!.schedule.toLowerCase()}; the ticket says weekly.` : `${o.name} has a snapshot, but nothing refreshes it. Add a weekly schedule.`;
           return null;
         },
@@ -286,7 +286,7 @@ export const CHAPTER_3: Mission[] = [
     ],
     xp: 40,
     realTenant: `Data Builder → <b>Import Remote Tables</b> (or drag a source object from the source browser into a view). The data access is
-      changed in the <b>Data Integration Monitor › Remote Tables</b>: load a new snapshot, remove the replicated data, schedule
+      changed in the <b>Data Integration Monitor › Remote Tables</b>: <i>Data Replication › Start Data Replication</i>, remove the replicated data, schedule
       (simple schedule or cron expression), and, for suitable sources, real-time replication. Recurring tasks need your consent to job scheduling.
       If a connection offers both remote tables and replication flows, SAP recommends restricting it to remote access and replicating with flows only.`,
     debrief: `<p>Now you have felt the trade-off: live means always current but every query costs the source; a copy is fast but ages.</p>
