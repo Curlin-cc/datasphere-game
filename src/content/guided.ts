@@ -1733,13 +1733,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Data Integration',
         target: '.sub-nav [data-tab="integration"]',
-        body: `<p>Cloud Connectors and agents connected to this tenant.</p>`,
+        body: `<p>Cloud Connectors and agents connected to this tenant. In a real tenant the Cloud Connector location IDs are under <b>System › Administration › Data Source Configuration</b>; Configuration › Data Integration lists the On-Premise Agents.</p>`,
         action: { do: 'Open <b>Data Integration</b>.', check: () => !!$('.sub-nav [data-tab="integration"][aria-current="page"]') },
       },
       {
         title: 'The Cloud Connector',
         target: '#cc-list',
-        body: `<p>Its location ID is what the connection needs. Compare it with what you typed.</p>`,
+        body: `<p>Its location ID is what the connection needs (real tenant: System › Administration › Data Source Configuration). Compare it with what you typed.</p>`,
       },
       {
         title: 'Security',
