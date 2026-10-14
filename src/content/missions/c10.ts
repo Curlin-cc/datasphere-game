@@ -146,7 +146,7 @@ export const CHAPTER_10: Mission[] = [
     ],
     xp: 50,
     realTenant: `In a real tenant: <b>Data Builder › New Task Chain</b>, drag objects from the repository onto the canvas, deploy, then
-      <b>Run</b> or <b>Schedule</b>. Replication flows in a chain usually have load type Initial Only. Since 2024 task chains can be
+      <b>Run</b> or <b>Schedule</b>. A task chain can only contain replication flows with load type Initial Only; flows with delta cannot be added. Since 2024 task chains can be
       shared with other spaces and nested there ("global" task chains).`,
     debrief: `<p>The entry part of the night is one object now. Next: the chain in RHN_DSL that calls it and then persists.</p>`,
   },
