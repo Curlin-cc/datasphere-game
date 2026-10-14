@@ -416,8 +416,8 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Business Builder',
     chapter: 12,
-    text: 'The older business layer: business entities (dimension or fact) on Data Builder objects, fact models, consumption models with perspectives for SAP Analytics Cloud. Current tenants label it Deprecated; new models are analytic models.',
-    realTenant: 'Side navigation > Business Builder (Deprecated).',
+    text: 'The older business layer: business entities (dimension or fact) on Data Builder objects, fact models, consumption models with perspectives for SAP Analytics Cloud. SAP has deprecated the Business Builder; use analytic models instead.',
+    realTenant: 'Side navigation > Business Builder.',
   },
   {
     term: 'View persistence',
