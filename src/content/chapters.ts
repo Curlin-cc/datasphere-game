@@ -93,7 +93,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Space priority',
     chapter: 1,
     text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 8 (highest); new spaces get 5. The presentation space usually ranks above loading.',
-    realTenant: 'Space Management > your space > Workload Management.',
+    realTenant: 'System > Configuration > Workload Management.',
   },
   {
     term: 'Sharing',
