@@ -1,3 +1,5 @@
+import { MSC_LOGO } from './brand';
+
 /**
  * Step-by-step tutorial ("tour") that walks the player through a mission.
  * Each step can switch the view, spotlight one element and explain it.
@@ -42,6 +44,8 @@ export interface TourStep {
    * readable (grand tour, c00-m00). Once a `stay` action is done, the spotlight moves to the page that opened.
    */
   dock?: boolean;
+  /** Intro window: a large centred card with the MSC logo on top (first steps of the game, c00-m00). Needs no target. */
+  hero?: boolean;
 }
 
 export interface TourHooks {
@@ -177,7 +181,9 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const last = index === steps.length - 1;
     card.classList.remove('done');
     card.classList.toggle('acting', !!step.action);
-    card.innerHTML = `
+    card.classList.toggle('hero', !!step.hero);
+    root.classList.toggle('hero', !!step.hero);
+    card.innerHTML = `${step.hero ? `<div class="tour-hero-logo">${MSC_LOGO}</div>` : ''}
       <div class="tour-count">Step ${index + 1} of ${steps.length}${step.action ? ' · <span class="your-turn">Your turn</span>' : ''}</div>
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
