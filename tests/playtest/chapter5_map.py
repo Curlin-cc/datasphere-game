@@ -29,13 +29,15 @@ with sync_playwright() as p:
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'LEGACY_CODE'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.check('[data-col-key="1"]'); pg.wait_for_timeout(100)
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="2"]', 'S4_CODE'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
+    pg.fill('#prop-business', 'Code mapping'); pg.fill('#prop-technical', 'RHN_DS_T_CODE_MAP')
+    pg.click('#ed-deploy'); pg.wait_for_timeout(600)
+    print('   table deploy:', g.toast())
     for i, row in enumerate(ROWS):
         pg.click('#tbl-add-row')
         for j, v in enumerate(row):
             pg.fill(f'[data-cell="{i}:{j}"]', v)
-    pg.fill('#prop-business', 'Code mapping'); pg.fill('#prop-technical', 'RHN_DS_T_CODE_MAP')
-    pg.click('#ed-deploy'); pg.wait_for_timeout(600)
-    print('   table deploy:', g.toast())
+    pg.click('#ed-save'); pg.wait_for_timeout(600)
+    print('   table rows saved:', g.toast())
     g.shot('c5-map-table')
     pg.click('#ed-back'); pg.wait_for_selector('#new-tiles')
 

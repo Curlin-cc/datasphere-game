@@ -310,12 +310,14 @@ with sync_playwright() as p:
     pg.fill('[data-col-name="0"]', 'USER_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'GRID_AREA'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.check('[data-col-key="1"]')
+    expect(pg, 'Names'); pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_DS_T_PERMISSIONS')
+    expect(pg, 'Deploy'); pg.click('#ed-deploy')
     expect(pg, 'Data Editor')
     for i, (u, a) in enumerate([('PLINDNER', 'NORTH'), ('PLINDNER', 'EAST'), ('PLINDNER', 'SOUTH'), ('PLINDNER', 'WEST'),
                                 ('MBRANDT', 'NORTH'), ('MBRANDT', 'EAST'), ('ADEMIR', 'SOUTH'), ('ADEMIR', 'WEST')]):
         pg.click('#tbl-add-row'); pg.fill(f'[data-cell="{i}:0"]', u); pg.fill(f'[data-cell="{i}:1"]', a)
-    expect(pg, 'Names'); g.shot('g-c08-table'); pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_DS_T_PERMISSIONS')
-    expect(pg, 'Deploy'); pg.click('#ed-deploy')
+    g.shot('g-c08-table')
+    expect(pg, 'Save the rows'); pg.click('#ed-save')
     expect(pg, 'Your answers'); g.answer('why-area', 1); g.answer('who', 1)
     expect(pg, 'Check your work'); pg.click('#check'); pg.wait_for_timeout(1500)
     print('   gain:', pg.locator('.success .gain').all_inner_texts())

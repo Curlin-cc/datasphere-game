@@ -63,7 +63,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Local table',
     chapter: 0,
     text: 'A table whose data is stored inside Datasphere, filled by upload, replication flow, data flow, or typed in its Data Editor (good for small mapping and permission tables).',
-    realTenant: 'Data Builder > New Table (Data Editor for the rows), or created by a replication flow.',
+    realTenant: 'Data Builder > New Table, deploy, then Data Editor for the rows (Save), or created by a replication flow.',
   },
   {
     term: 'Entry layer',

@@ -39,6 +39,8 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
   const chapter = ctx.currentChapter();
   /** Delta Capture is chosen before the first deployment and fixed afterwards (SAP Help, Create a Local Table). */
   const lockedDelta = !!o?.deployed?.table;
+  /** As in the tenant, the Data Editor only works on a deployed table; row changes are written with Save (SAP Help, Maintain Table Data). */
+  const editable = !!o?.deployed?.table;
   const keep = () => {
     if (!o && fresh) Object.assign(fresh, { def, business, technical, touched: techTouched });
   };
@@ -63,16 +65,19 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
             </div>`;
     const dataHtml = `<div class="tbl-section">
               <div class="tbl-head"><h3>${def.rows.length} ${def.rows.length === 1 ? 'row' : 'rows'}</h3>
-                <button class="btn small" type="button" id="tbl-add-row">${icon(ICONS.plus)} Add Row</button></div>
+                ${editable ? `<button class="btn small" type="button" id="tbl-add-row">${icon(ICONS.plus)} Add Row</button>` : ''}</div>
+              ${editable ? '' : `<p class="muted" id="tbl-not-deployed">The table is not deployed, so it holds no data yet and the Data Editor is read-only. Deploy it first; then add or change rows here and press Save.${def.rows.length
+                ? ` The ${def.rows.length} prepared ${def.rows.length === 1 ? 'row is' : 'rows are'} written at the first deploy.` : ''}</p>`}
               <div class="table-scroll"><table class="grid compact" id="tbl-data">
                 <thead><tr>${def.columns.map((c) => `<th>${esc(c.name)}${c.key ? ' <span class="key-mark" title="Key">●</span>' : ''}<small>${c.type}</small></th>`).join('')}<th></th></tr></thead>
                 <tbody>${def.rows.length ? def.rows.map((r, ri) => `<tr>${def.columns.map((c, ci) => `<td><input data-cell="${ri}:${ci}" value="${esc(r[ci] ?? '')}"
-                    ${c.type === 'Date' ? 'placeholder="YYYY-MM-DD"' : ''} spellcheck="false" aria-label="Row ${ri + 1}, ${esc(c.name)}"></td>`).join('')}
-                    <td><button class="btn small link" type="button" data-del-row="${ri}" aria-label="Delete row ${ri + 1}">Delete</button></td></tr>`).join('')
-                  : `<tr><td colspan="${def.columns.length + 1}" class="empty-row">No rows yet. Press Add Row.</td></tr>`}</tbody>
+                    ${c.type === 'Date' ? 'placeholder="YYYY-MM-DD"' : ''} spellcheck="false" ${editable ? '' : 'disabled'} aria-label="Row ${ri + 1}, ${esc(c.name)}"></td>`).join('')}
+                    <td>${editable ? `<button class="btn small link" type="button" data-del-row="${ri}" aria-label="Delete row ${ri + 1}">Delete</button>` : ''}</td></tr>`).join('')
+                  : `<tr><td colspan="${def.columns.length + 1}" class="empty-row">${editable ? 'No rows yet. Press Add Row.' : 'No rows yet. Deploy the table first; then add rows here and press Save.'}</td></tr>`}</tbody>
               </table></div>
-              <p class="muted tbl-note">In the tenant the Data Editor opens from the toolbar (Tools). Rows are part of the design: Save keeps them, Deploy writes them into the table.${o?.deployed?.table?.deltaCapture
-                ? ' Delta Capture records what each deployment changed.' : ''}</p>
+              <p class="muted tbl-note">In the tenant the Data Editor opens from the toolbar (Tools). ${editable
+                ? 'It works on the deployed table: Save writes your row changes into it.' : 'It only works on a deployed table: deploy first, then change rows and press Save.'}${o?.deployed?.table?.deltaCapture
+                ? ' Delta Capture records what each save changed.' : ''}</p>
             </div>
             ${o?.deployed?.table?.deltaCapture ? deltaHtml(o) : ''}`;
     const general = `<div class="obj-form" id="properties">
@@ -174,7 +179,7 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
       def.rows.forEach((r) => r.push(''));
       draw();
     });
-    main.querySelector('#tbl-add-row')!.addEventListener('click', () => {
+    main.querySelector('#tbl-add-row')?.addEventListener('click', () => {
       readInputs();
       def.rows.push(def.columns.map(() => ''));
       ctx.track(`table-row:${o ? objectKey(o) : 'draft'}`);
@@ -193,9 +198,30 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
       def.rows.splice(+b.dataset.delRow!, 1);
       draw();
     }));
-    main.querySelector('#ed-save')!.addEventListener('click', () => {
+    main.querySelector('#ed-save')!.addEventListener('click', async () => {
       readInputs();
-      if (save()) ctx.renderView();
+      // Data Editor: on a deployed table whose structure is unchanged, Save writes the rows (no deploy needed).
+      const dep = o?.deployed?.table;
+      const rowsOnly = !!dep && sameStructure(dep, def) && JSON.stringify(dep.rows) !== JSON.stringify(def.rows);
+      if (!rowsOnly) {
+        if (save()) ctx.renderView();
+        return;
+      }
+      const err = tableError(def, dep);
+      if (err) return toast(err, 'error');
+      const saved = save(true);
+      if (!saved) return;
+      const locked = lockError(t, saved.space);
+      if (locked) return toast(`Saving the data failed. ${locked}`, 'error');
+      const failed = await deploy(saved);
+      ctx.save();
+      if (failed) toast(failed, 'error');
+      else {
+        // A data save is not a deployment: only table-data is tracked, so missions waiting for a deploy stay open.
+        ctx.track(`table-data:${objectKey(saved)}`);
+        toast(`Saved. ${def.rows.length} ${def.rows.length === 1 ? 'row' : 'rows'} in ${saved.name}`);
+      }
+      ctx.renderView();
     });
     main.querySelector('#ed-deploy')!.addEventListener('click', async () => {
       readInputs();
@@ -268,6 +294,12 @@ export function renderTableEditor(main: HTMLElement, o: RepoObject | null, nav: 
   draw();
 }
 
+/** Same structure (columns with name, type and key, in order; Delta Capture), independent of the key order inside each column object. */
+export function sameStructure(a: TableDef, b: TableDef): boolean {
+  const cols = (d: TableDef) => d.columns.map((c) => [c.name, c.type, !!c.key]);
+  return JSON.stringify(cols(a)) === JSON.stringify(cols(b)) && !!a.deltaCapture === !!b.deltaCapture;
+}
+
 /** The delta table of a table with Delta Capture: change records, newest first (Handbuch 6.4.2). */
 function deltaHtml(o: RepoObject): string {
   const def = o.deployed!.table!;
@@ -279,7 +311,7 @@ function deltaHtml(o: RepoObject): string {
       ${shown.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th>#</th><th>Change_Type</th><th>Change_Date</th>${keys.map((i) => `<th>${esc(def.columns[i].name)}</th>`).join('')}<th>Row</th></tr></thead>
         <tbody>${shown.map((r) => `<tr><td class="num">${r.seq}</td><td><span class="delta-type" data-type="${r.type}">${r.type}</span></td><td>${esc(fmtStampShort(r.at))}</td>
           ${keys.map((i) => `<td class="mono">${esc(r.row[i] ?? '')}</td>`).join('')}<td class="muted">${esc(r.row.filter((_, i) => !keys.includes(i)).join(' · '))}</td></tr>`).join('')}</tbody></table></div>`
-        : '<p class="muted">No changes recorded yet. Change rows in the Data Editor and deploy: every insert, update and delete lands here.</p>'}
+        : '<p class="muted">No changes recorded yet. Change rows in the Data Editor and save: every insert, update and delete lands here.</p>'}
       <p class="muted tbl-note">I = insert, U = update, D = delete. Transformation flows with Initial and Delta read these records; a SQL view cannot query the delta table.</p>
     </div>`;
 }

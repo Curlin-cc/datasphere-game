@@ -5,11 +5,11 @@ SQL = ("SELECT p.PAYMENT_ID, p.INVOICE_ID, i.CONTRACT_ID, p.PAID_ON, p.AMOUNT\n"
        "FROM RHN_ENTRY.RHN_EN_T_PAYMENTS p\nJOIN RHN_DSL.RHN_DS_V_INVOICES i ON p.INVOICE_ID = i.INVOICE_ID")
 
 
-def bank_message(pg, deploy=True):
-    """Today's bank message in the Data Editor of the payments table (must be open)."""
+def bank_message(pg):
+    """Today's bank message in the Data Editor of the payments table (must be open and deployed); Save writes it."""
     pg.fill('[data-cell="11:3"]', '286.38')
     pg.click('#tbl-add-row'); pg.wait_for_timeout(200)
     for c, v in enumerate(['PAY-0096', 'INV-4000080', '2026-07-15', '874.39']):
         pg.fill(f'[data-cell="95:{c}"]', v)
     pg.click('[data-del-row="6"]'); pg.wait_for_timeout(200)
-    pg.click('#ed-deploy' if deploy else '#ed-save'); pg.wait_for_timeout(700)
+    pg.click('#ed-save'); pg.wait_for_timeout(700)
