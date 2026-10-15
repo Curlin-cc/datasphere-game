@@ -9,7 +9,7 @@ import type { TourStep } from '../tutorial';
  * task lists in order, then "Check my solution" (see main.ts).
  *
  * Rule for the amount of help: chapters 0 and 1 give the exact clicks and values. From chapter 2 on, the tutorial
- * still guides every click, but decisions (which role, which load type, Truncate or not) stay passive steps:
+ * still guides every click, but decisions (which role, which load type, Delete All Before Loading or not) stay passive steps:
  * the tour explains the options and the player decides.
  */
 
@@ -440,7 +440,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
       title: 'Disk, in-memory, priority',
       body: `<p><b>Disk</b> stores data. <b>In-memory</b> keeps data in RAM so it can be read very fast; it is smaller and more expensive.
         A space can never have more in-memory than disk.</p>
-        <p><b>Priority</b> goes from 1 (lowest) to 5 (highest). When the database is busy, statements from spaces with a higher priority are favored.</p>`,
+        <p><b>Priority</b> goes from 1 (lowest) to 8 (highest); new spaces get 5. When the database is busy, statements from spaces with a higher priority are favored.</p>`,
     },
   ],
   'c01-m03': [
@@ -530,7 +530,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
         only projections (filters, column mapping, extra columns).</p>
         <ul><li><b>Initial Only</b>: everything is loaded once.</li>
         <li><b>Initial and Delta</b>: everything once, then only the changes. Needs a delta-capable source.</li>
-        <li><b>Truncate</b>: empties the target table before the load, completely.</li></ul>`,
+        <li><b>Delete All Before Loading</b>: empties the target table before the load, completely.</li></ul>`,
     },
   ],
   'c03-m05': [
@@ -562,7 +562,7 @@ export const GUIDED_INTROS: Record<string, TourStep[]> = {
     },
     {
       title: 'Release contract C1',
-      body: `<p>Only CDS views SAP released for extraction (release contract <b>C1</b>) come with their data access and follow associations.
+      body: `<p>Only CDS views SAP released for extraction (release contract <b>C1</b>) can be imported with remote access (Remote Tables). Associations are followed only for CDS views delivered by SAP (SAP_BASIS 756 or higher), not for custom ones.
         A custom view without release is imported as an empty local table; you would load it with a data flow.</p>
         <p>Data access: <b>Replication Flow to Local Tables</b> is proposed and recommended by SAP. The tables stay empty until the flow runs.</p>`,
     },
@@ -1211,8 +1211,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         an <b>Authorization Overview</b>, and <b>Activities</b>, the log of who changed what.`,
         'least privilege: a planner reads, an integrator loads, an administrator administers, and nobody gets more by accident.',
         'chapter 2: you give eight colleagues exactly the access they need.'),
-      visit('system', 'System', `The tenant itself. <b>Configuration</b>: capacity, workload, monitoring, certificates, Cloud Connector.
-        <b>Administration</b>: identity provider, IP allowlist, OAuth clients for other apps.`,
+      visit('system', 'System', `The tenant itself. <b>Configuration</b>: capacity, workload, monitoring, certificates, IP allowlist.
+        <b>Administration</b>: identity provider, Cloud Connector setup (Data Source Configuration), OAuth clients for other apps.`,
         'some things exist once per tenant, not per space. Only administrators come here.',
         'chapter 3 (certificate and Cloud Connector for the on-premise database), chapter 9 (statement tracing), chapter 12 (OAuth for OData).'),
       look('That was everything', '.nav', `<p>Twenty apps. You will use the Data Builder, the Data Integration Monitor, Connections, Space Management,
@@ -1435,10 +1435,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Storage and priority',
         target: '.dialog',
-        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 3. The presentation space must get a higher priority later.</p>
+        body: `<p>For example 36 GB disk, 8 GB in-memory, priority 5. The presentation space must get a higher priority later.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
-        // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 5.
-        action: { do: 'Enter disk, in-memory and priority for RHN_DSL, then press <b>Save</b>.', event: '^edit-space-values:RHN_DSL:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-4]$' },
+        // Waits for a sizing that fits the ticket: at least 30 GB disk and 6 GB in-memory, priority below 8.
+        action: { do: 'Enter disk, in-memory and priority for RHN_DSL, then press <b>Save</b>.', event: '^edit-space-values:RHN_DSL:([3-9]\\d|\\d{3,})(\\.\\d+)?:([6-9]|\\d{2,})(\\.\\d+)?:[1-7]$' },
       },
     ],
     [
@@ -1451,10 +1451,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Highest priority',
         target: '.dialog',
-        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>5</b>, higher than every other space.</p>
+        body: `<p>For example 20 GB disk, 10 GB in-memory, and priority <b>8</b>, higher than every other space.</p>
           <p>The tutorial goes on once the values meet the ticket's minimums. If not, press <b>Edit</b> again.</p>`,
-        // At least 10 GB disk and 8 GB in-memory, priority 5.
-        action: { do: 'Enter the values for RHN_PRES, then press <b>Save</b>.', event: '^edit-space-values:RHN_PRES:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:5$' },
+        // At least 10 GB disk and 8 GB in-memory, priority 8.
+        action: { do: 'Enter the values for RHN_PRES, then press <b>Save</b>.', event: '^edit-space-values:RHN_PRES:\\d{2,}(\\.\\d+)?:([89]|\\d{2,})(\\.\\d+)?:8$' },
       },
       {
         title: 'Check the bars',
@@ -1733,13 +1733,13 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Data Integration',
         target: '.sub-nav [data-tab="integration"]',
-        body: `<p>Cloud Connectors and agents connected to this tenant.</p>`,
+        body: `<p>Cloud Connectors and agents connected to this tenant. In a real tenant the Cloud Connector location IDs are under <b>System › Administration › Data Source Configuration</b>; Configuration › Data Integration lists the On-Premise Agents.</p>`,
         action: { do: 'Open <b>Data Integration</b>.', check: () => !!$('.sub-nav [data-tab="integration"][aria-current="page"]') },
       },
       {
         title: 'The Cloud Connector',
         target: '#cc-list',
-        body: `<p>Its location ID is what the connection needs. Compare it with what you typed.</p>`,
+        body: `<p>Its location ID is what the connection needs (real tenant: System › Administration › Data Source Configuration). Compare it with what you typed.</p>`,
       },
       {
         title: 'Security',
@@ -1748,10 +1748,10 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         action: { do: 'Open <b>Security</b>.', check: () => !!$('.sub-nav [data-tab="security"][aria-current="page"]') },
       },
       {
-        title: 'Upload',
+        title: 'Add Certificate',
         target: '#cert-upload',
         body: `<p>Trust only what a connection needs. The ticket names the file.</p>`,
-        action: { do: 'Press <b>Upload Certificate</b>, pick the right file and upload it.', event: 'upload-cert:' },
+        action: { do: 'Press <b>Add Certificate</b>, pick the right file and upload it.', event: 'upload-cert:' },
       },
     ],
     [
@@ -1882,9 +1882,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
           Which one does Lena's ticket describe? Set it per object.</p>`,
       },
       {
-        title: 'Truncate: your decision',
+        title: 'Delete All Before Loading: your decision',
         target: '#flow-objects',
-        body: `<p>Truncate empties the target table completely before the load, whoever delivered the rows. Remember what else is in these tables.</p>`,
+        body: `<p>Delete All Before Loading empties the target table completely before the load, whoever delivered the rows. Remember what else is in these tables.</p>`,
       },
     ],
     [
@@ -1992,9 +1992,9 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
     ],
     [
       {
-        title: 'Load type and Truncate: your decision',
+        title: 'Load type and Delete All Before Loading: your decision',
         target: '#flow-objects',
-        body: `<p>A file has no delta: Initial Only. Each night's file holds <b>all</b> customers. What happens without Truncate when it runs every night?</p>`,
+        body: `<p>A file has no delta: Initial Only. Each night's file holds <b>all</b> customers. What happens without Delete All Before Loading when it runs every night?</p>`,
       },
       {
         title: 'Names, deploy, run',

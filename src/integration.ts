@@ -11,7 +11,7 @@
  *    uploaded under System > Configuration > Security.
  *  - Remote tables: data access Remote (federation) or Replicated (Snapshot). Real-time is not simulated.
  *  - Replication flows: load type Initial Only or Initial and Delta (only for delta-capable sources),
- *    Truncate empties the target first, projections can add columns.
+ *    Delete All Before Loading empties the target first, projections can add columns.
  *  - A space that exceeds its disk storage is locked until it gets more storage and is unlocked.
  */
 
@@ -396,7 +396,7 @@ export async function runFlow(t: TenantState, flowObj: RepoObject): Promise<Run>
       messages.push(`New local table ${fo.target} created.`);
     } else {
       for (const e of fo.extra) await applyColumn(t, { space: flowObj.space, table: fo.target, column: e.name, value: e.value });
-      if (fo.truncate) messages.push(`${fo.target} truncated before the load.`);
+      if (fo.truncate) messages.push(`${fo.target} emptied before the load (Delete All Before Loading).`);
     }
     if (fo.extra.length) messages.push(`Projection: ${fo.extra.map((e) => `${e.name} = '${e.value}'`).join(', ')} added to every record.`);
     messages.push(`${fo.target}: initial load completed, ${fmt(count)} records written.`);
@@ -519,7 +519,7 @@ export function sanitizeRemote(r: unknown): RemoteInfo | undefined {
 }
 
 /**
- * Lena's safety net: Truncate on a target that also holds rows another source delivered (SRC_SYS_ID) would
+ * Lena's safety net: Delete All Before Loading on a target that also holds rows another source delivered (SRC_SYS_ID) would
  * delete those rows for good. Returns her message, or null if the run is safe.
  */
 export async function truncateRisk(t: TenantState, flowObj: RepoObject): Promise<string | null> {
@@ -534,8 +534,8 @@ export async function truncateRisk(t: TenantState, flowObj: RepoObject): Promise
       const r = await runSql(`SELECT SRC_SYS_ID, COUNT(*) FROM "${flowObj.space}"."${fo.target}" WHERE SRC_SYS_ID <> '${src.srcSysId}' GROUP BY 1 ORDER BY 1`);
       if (r.rows.length) {
         const other = r.rows.map(([s, n]) => `${fmt(Number(n))} rows from ${s}`).join(' and ');
-        return `Lena stopped the run: Truncate empties ${fo.target} completely before the load, including ${other}. `
-          + `${conn.name} does not deliver those rows, so they would be gone for good. Switch Truncate off for ${fo.target}, deploy, and run again.`;
+        return `Lena stopped the run: Delete All Before Loading empties ${fo.target} completely before the load, including ${other}. `
+          + `${conn.name} does not deliver those rows, so they would be gone for good. Switch Delete All Before Loading off for ${fo.target}, deploy, and run again.`;
       }
     } catch {
       /* target without SRC_SYS_ID: nothing to protect */

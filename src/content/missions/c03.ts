@@ -308,14 +308,14 @@ export const CHAPTER_3: Mission[] = [
     tasks: [
       'In the <b>Data Builder</b> of <code>RHN_ENTRY</code>, create a <b>New Replication Flow</b> with the source connection <code>RHN_S4U</code>.',
       'Add the two source objects and point each to its existing table.',
-      'Choose the load type and the Truncate option for each object.',
+      'Choose the load type and the Delete All Before Loading option for each object.',
       'Save, deploy and run the flow. Look at the run in the <b>Data Integration Monitor</b> › Flows.',
       'Answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'New Replication Flow is in the Integrate group. The source connection is on the left, the replication objects in the middle.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'Initial and Delta: one full load, then only changes, for delta-capable sources. Truncate empties the target before the load, all of it, whoever delivered it.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Source RHN_S4U · BILLING_CONTRACTS → BILLING_CONTRACTS, BILLING_INVOICES → BILLING_INVOICES · Initial and Delta · Truncate off · Save · Deploy · Run.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'Initial and Delta: one full load, then only changes, for delta-capable sources. Delete All Before Loading empties the target before the load, all of it, whoever delivered it.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Source RHN_S4U · BILLING_CONTRACTS → BILLING_CONTRACTS, BILLING_INVOICES → BILLING_INVOICES · Initial and Delta · Delete All Before Loading off · Save · Deploy · Run.' },
     ],
     checks: [
       {
@@ -347,11 +347,11 @@ export const CHAPTER_3: Mission[] = [
         },
       },
       {
-        type: 'rule', label: 'Legacy rows kept', ok: 'Truncate is off; the LEGACY rows stay.',
+        type: 'rule', label: 'Legacy rows kept', ok: 'Delete All Before Loading is off; the LEGACY rows stay.',
         test: ({ tenant }) => {
           const objs = flowIn(tenant, 'RHN_EN_RF_S4U')?.deployed?.flow?.objects ?? [];
           const t = objs.filter((o) => o.truncate);
-          return t.length ? `Truncate is on for ${t.map((o) => o.target).join(' and ')}. It would empty the table, including the LEGACY rows nobody can load again.` : null;
+          return t.length ? `Delete All Before Loading is on for ${t.map((o) => o.target).join(' and ')}. It would empty the table, including the LEGACY rows nobody can load again.` : null;
         },
       },
       {
@@ -377,11 +377,11 @@ export const CHAPTER_3: Mission[] = [
     ],
     xp: 45,
     realTenant: `Data Builder → <b>New Replication Flow</b> → source connection and source container → add source objects → target connection
-      (SAP Datasphere, or other targets) → per object the projection (filters, mapping, extra columns), the load type and Truncate →
+      (SAP Datasphere, or other targets) → per object the projection (filters, mapping, extra columns), the load type and Delete All Before Loading →
       Save → Deploy → <b>Run</b>. You watch it in the <b>Data Integration Monitor › Flows</b>, where you can also pause, resume, stop and schedule runs,
       and set up email notifications for failures. <i>Initial and Delta</i> needs a delta-capable source; CDS views without delta only offer <i>Initial Only</i>.`,
     debrief: `<p>Contracts and invoices now flow in by themselves, and the 91 legacy contracts are still there.</p>
-      <p>That truncate trap catches real teams. Truncate is right when one source owns the whole table, and wrong when a table collects rows from several.</p>`,
+      <p>That delete-all trap catches real teams. Delete All Before Loading is right when one source owns the whole table, and wrong when a table collects rows from several.</p>`,
   },
   {
     id: 'c03-m05',
@@ -401,13 +401,13 @@ export const CHAPTER_3: Mission[] = [
       'Create and validate the connection to the bucket.',
       'Create the replication flow: the export file into <code>CRM_CUSTOMERS</code>.',
       'Use the <b>projection</b> of the object to add the source system column.',
-      'Set load type and Truncate, deploy, run, and schedule it daily in the <b>Data Integration Monitor</b>.',
+      'Set load type and Delete All Before Loading, deploy, run, and schedule it daily in the <b>Data Integration Monitor</b>.',
       'Preview <code>CRM_CUSTOMERS</code> and answer the question below.',
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'The connection type is Amazon Simple Storage Service; the bucket name goes where the form asks for it. Projection is a button per object in the flow editor.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'A full export each night: without Truncate every run would append all customers again. A file has no delta, so Initial Only plus a schedule.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_CRM (Amazon S3, bucket rheinau-crm-export) · Flow RHN_EN_RF_CRM: customers/CRM_CUSTOMERS.csv → CRM_CUSTOMERS, Initial Only, Truncate ✓, Projection SRC_SYS_ID = CRM · Deploy · Run · Monitor › Flows › Schedule › Daily.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'A full export each night: without Delete All Before Loading every run would append all customers again. A file has no delta, so Initial Only plus a schedule.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'RHN_CRM (Amazon S3, bucket rheinau-crm-export) · Flow RHN_EN_RF_CRM: customers/CRM_CUSTOMERS.csv → CRM_CUSTOMERS, Initial Only, Delete All Before Loading ✓, Projection SRC_SYS_ID = CRM · Deploy · Run · Monitor › Flows › Schedule › Daily.' },
     ],
     checks: [
       { type: 'rule', label: 'Connection to the bucket', ok: 'RHN_CRM reaches the export bucket.', test: (ctx) => connectionRule(ctx, 'RHN_CRM', CRM_BUCKET, 'S3', 'Amazon Simple Storage Service') },
@@ -434,10 +434,10 @@ export const CHAPTER_3: Mission[] = [
         },
       },
       {
-        type: 'rule', label: 'Replace, do not append', ok: 'Truncate on: each run replaces the table.',
+        type: 'rule', label: 'Replace, do not append', ok: 'Delete All Before Loading on: each run replaces the table.',
         test: ({ tenant }) => {
           const o = flowIn(tenant, 'RHN_EN_RF_CRM')?.deployed?.flow?.objects[0];
-          return !o || o.truncate ? null : 'Truncate is off. Each file holds all customers; without Truncate every night adds them all again, and the table fills with duplicates.';
+          return !o || o.truncate ? null : 'Delete All Before Loading is off. Each file holds all customers; without Delete All Before Loading every night adds them all again, and the table fills with duplicates.';
         },
       },
       {
@@ -671,7 +671,7 @@ export const CHAPTER_3: Mission[] = [
     realTenant: `Same wizard in a real tenant, from Semantic Onboarding, the Repository Explorer or the Data Builder (Import › Import Entities):
       connection and target space, data access (Replication Flow to Local Tables by default, or Remote Tables), Select Entities with the
       filters Application Component, Modeling Pattern and Release Contract, Review Entities with the tabs Business Builder and Data Builder,
-      Import and Deploy. Two notifications follow: the imported objects and the import log. Only released (C1) CDS views follow associations.
+      Import and Deploy. Two notifications follow: the imported objects and the import log. The release contract C1 (extraction-enabled) only decides whether a CDS view can be imported with remote access (Remote Tables); associations are followed only for SAP-delivered CDS views (SAP S/4HANA, SAP_BASIS 756 or higher), not for custom views.
       Simplified in the game: entity names and data are invented, the Business Builder objects are not created, and the object names are shortened.`,
     debrief: `<p>A dimension with texts in two languages, and you wrote no SQL for it. The same import works for hundreds of S/4HANA entities.</p>
       <p><i>Calin adds:</i> Notice where it landed: everything that comes from a source enters through <code>RHN_ENTRY</code>, even when it brings
