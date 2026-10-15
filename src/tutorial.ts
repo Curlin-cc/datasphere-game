@@ -121,6 +121,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   let openTimer = 0;
   let guardTimer = 0;
   let stayTimer = 0;
+  /** Ends the click-through while the card slides to a new place (CSS transition .2s). */
+  let moveTimer = 0;
 
   const root = document.createElement('div');
   root.className = 'tour';
@@ -398,8 +400,17 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (dialog && (!target || !dialog.contains(target))) target = dialog;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    // Measure the card at its natural size, wherever it stands now: a fixed card near the right edge shrinks to the room left
+    // there, and placing it by that smaller width let it grow back over its own target on the next tick (it flipped every
+    // 250 ms and swallowed clicks on buttons such as View Analyzer).
+    const prevLeft = card.style.left;
+    const prevWidth = card.style.width;
+    card.style.left = '0px';
+    card.style.width = '';
     const cw = card.offsetWidth;
     const ch = card.offsetHeight;
+    card.style.left = prevLeft;
+    card.style.width = prevWidth;
     const gap = 14;
 
     if (!target && dockEl) {
@@ -461,6 +472,11 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       // The target fills the screen: park the card top left, away from the buttons of a dialog.
       left = 16;
       top = 16;
+    }
+    if (card.style.left !== `${left}px` || card.style.top !== `${top}px`) {
+      card.classList.add('moving');
+      clearTimeout(moveTimer);
+      moveTimer = window.setTimeout(() => card.classList.remove('moving'), 260);
     }
     card.style.left = `${left}px`;
     card.style.top = `${top}px`;
