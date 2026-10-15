@@ -2820,7 +2820,7 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
       {
         title: 'Enable tracing',
         target: '#tracing-form',
-        body: `<p>Tick <b>Enable Expensive Statement Tracing</b>, keep the threshold at 1,000 ms and save. The controllers then open their
+        body: `<p>Tick <b>Enable Expensive Statement Tracing</b>, set the duration threshold to 1,000 ms (default: 50 ms) and save. The controllers then open their
           month-end stories.</p>`,
         action: { do: 'Enable tracing with 1,000 ms and press <b>Save</b>.', event: '^tracing:on:1000' },
       },
