@@ -671,7 +671,7 @@ export const CHAPTER_3: Mission[] = [
     realTenant: `Same wizard in a real tenant, from Semantic Onboarding, the Repository Explorer or the Data Builder (Import › Import Entities):
       connection and target space, data access (Replication Flow to Local Tables by default, or Remote Tables), Select Entities with the
       filters Application Component, Modeling Pattern and Release Contract, Review Entities with the tabs Business Builder and Data Builder,
-      Import and Deploy. Two notifications follow: the imported objects and the import log. Only released (C1) CDS views follow associations.
+      Import and Deploy. Two notifications follow: the imported objects and the import log. The release contract C1 (extraction-enabled) only decides whether a CDS view can be imported with remote access (Remote Tables); associations are followed only for SAP-delivered CDS views (SAP S/4HANA, SAP_BASIS 756 or higher), not for custom views.
       Simplified in the game: entity names and data are invented, the Business Builder objects are not created, and the object names are shortened.`,
     debrief: `<p>A dimension with texts in two languages, and you wrote no SQL for it. The same import works for hundreds of S/4HANA entities.</p>
       <p><i>Calin adds:</i> Notice where it landed: everything that comes from a source enters through <code>RHN_ENTRY</code>, even when it brings
