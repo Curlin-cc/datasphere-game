@@ -1211,8 +1211,8 @@ export const GUIDED_TOURS: Record<string, TourStep[][]> = {
         an <b>Authorization Overview</b>, and <b>Activities</b>, the log of who changed what.`,
         'least privilege: a planner reads, an integrator loads, an administrator administers, and nobody gets more by accident.',
         'chapter 2: you give eight colleagues exactly the access they need.'),
-      visit('system', 'System', `The tenant itself. <b>Configuration</b>: capacity, workload, monitoring, certificates, Cloud Connector.
-        <b>Administration</b>: identity provider, IP allowlist, OAuth clients for other apps.`,
+      visit('system', 'System', `The tenant itself. <b>Configuration</b>: capacity, workload, monitoring, certificates, IP allowlist.
+        <b>Administration</b>: identity provider, Cloud Connector setup (Data Source Configuration), OAuth clients for other apps.`,
         'some things exist once per tenant, not per space. Only administrators come here.',
         'chapter 3 (certificate and Cloud Connector for the on-premise database), chapter 9 (statement tracing), chapter 12 (OAuth for OData).'),
       look('That was everything', '.nav', `<p>Twenty apps. You will use the Data Builder, the Data Integration Monitor, Connections, Space Management,
