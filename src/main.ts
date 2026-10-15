@@ -560,7 +560,7 @@ function renderHome(main: HTMLElement) {
       <div class="home-cards">
         <section class="home-card wide" aria-label="Welcome">
           <div class="hc-hero">${MSC_LOGO}<p>Learn SAP Datasphere by building it.</p></div>
-          <div class="hc-body"><h3 class="view-title" style="font-size:20px;margin-top:16px">Welcome to Stadtwerke Rheinau</h3>
+          <div class="hc-body"><h3 class="view-title" style="font-size:calc(20px * var(--fs));margin-top:16px">Welcome to Stadtwerke Rheinau</h3>
             <p class="muted">The board wants one trusted view of revenue, consumption and receivables per grid area.
               You are the new data architect. Build the Datasphere landscape that delivers it, one ticket at a time.</p></div>
         </section>
