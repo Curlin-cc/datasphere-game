@@ -130,7 +130,7 @@ export const APPS: AppInfo[] = [
     id: 'system', label: 'System', section: 'bottom', interactive: 3, chapter: 3,
     icon: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6L5 5M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4"/>',
     summary: 'Tenant configuration, administration and version.',
-    does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: Cloud Connectors and Data Provisioning Agents', 'IP allowlist, OAuth clients, About: version and URL'],
+    does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: On-Premise Agents (Data Provisioning Agents)', 'Administration › Data Source Configuration: Cloud Connector location IDs', 'IP allowlist, OAuth clients, About: version and URL'],
     who: 'Administrators',
   },
   // ---- apps that complete the real navigation (docs/design/README.md, section 1); interactive since 2026-10-12 (src/views/sysmon.ts, exchange.ts)
