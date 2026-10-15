@@ -1,4 +1,5 @@
-"""Chapter 12, transformation flow with delta (c12-m11): the handed-over table deployed without Delta Capture (switch locked
+"""Chapter 12, transformation flow with delta (c12-m11): the returns table deployed without Delta Capture first (locked, check explains,
+delete, handed over again, switched on, deployed); the handed-over table deployed without Delta Capture (switch locked
 afterwards, check explains), Initial and Delta without Delta Capture (deploy refused), Initial Only (full load each run), table deleted
 and handed over again, Delta Capture on before the first deploy, initial load, bank message only saved (not deployed), then deployed and the delta run.
 Reload keeps the delta table and the target; monitor and task logs list the flow. Second pass: the hands-on tutorial.
@@ -10,7 +11,7 @@ from common import Game, save_before
 from chapter12_data import TENANT12
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
-from chapter12_tf_data import F, P, SQL, bank_message
+from chapter12_tf_data import F, P, R, SQL, bank_message, returns_with_delta
 save = save_before(12, 'c12-m11', TENANT12)
 for m in ['c12-m01', 'c12-m02', 'c12-m03', 'c12-m04', 'c12-m05', 'c12-m06', 'c12-m07', 'c12-m08', 'c12-m09', 'c12-m10']:
     save["missions"][m] = {"hintsOpen": 0, "answers": {}, "attempts": 1, "done": True, "xpEarned": 40, "events": []}
@@ -47,6 +48,19 @@ with sync_playwright() as p:
     print('   rows:', pg.locator('[data-del-row]').count(), '| delta on:', pg.is_checked('#prop-delta'), '| locked:', pg.is_disabled('#prop-delta'))
     assert pg.is_checked('#prop-delta') and pg.is_disabled('#prop-delta'), 'RHN_EN_T_PAYMENTS must start deployed with Delta Capture'
     assert pg.locator('#tbl-add-row').count() == 1 and pg.locator('[data-del-row]').count() == 95, 'Data Editor must be editable from the start'
+
+    # The returns table (Calin, 15.10.2026): handed over saved, not deployed, switch free. Deployed without Delta Capture first:
+    # the switch locks, the check explains the repair; delete, handed over again, switch on, first deploy.
+    open_obj('RHN_ENTRY', R)
+    assert not pg.is_checked('#prop-delta') and not pg.is_disabled('#prop-delta'), 'RHN_EN_T_DD_RETURNS must start not deployed, switch free'
+    deploy()
+    assert pg.is_disabled('#prop-delta') and not pg.is_checked('#prop-delta'), 'switch must lock after the first deploy'
+    g.check('m11 returns deployed without delta')
+    g.space('RHN_ENTRY')
+    pg.click(f'#object-list [data-delete="{R}"]'); pg.wait_for_timeout(1500)
+    print('   returns handed over again:', g.toast())
+    returns_with_delta(g)
+    assert pg.is_checked('#prop-delta') and pg.is_disabled('#prop-delta'), 'returns must be deployed with Delta Capture'
 
     # The flow, with delta but without Delta Capture on the source
     g.space('RHN_DSL')
@@ -150,6 +164,9 @@ with sync_playwright() as p:
     tour(pg, 'Loading only what changed'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'Open the payments'); pg.click(f'#object-list [data-open="{P}"]')
     tour(pg, 'Delta Capture'); assert pg.is_disabled('#prop-delta'); pg.click('.tour-card [data-act="next"]')
+    tour(pg, 'Your turn: the returns'); pg.click(f'#object-list [data-open="{R}"]')
+    tour(pg, 'Switch it on'); pg.check('#prop-delta')
+    tour(pg, 'The first deploy'); pg.click('#ed-deploy')
     tour(pg, 'New Transformation Flow'); pg.click('[data-new="transformation"]')
     tour(pg, 'The view transform'); g.sql(SQL); pg.click('#tf-preview')
     tour(pg, 'Target table'); pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_DS_T_PAYMENTS'); pg.keyboard.press('Tab')

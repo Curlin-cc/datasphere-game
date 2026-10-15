@@ -3422,6 +3422,25 @@ SELECT TARIFF, 'C_' || COMMODITY FROM RHN_DSL.RHN_DS_V_TARIFFS`,
         body: `<p>In the properties on the right: <b>on</b>, and greyed out. Jonas chose it before the first deploy; afterwards the switch is fixed.
           The table records every change in its delta table <code>RHN_EN_T_PAYMENTS_Delta</code>.</p>`,
       },
+      {
+        title: 'Your turn: the returns',
+        view: 'builder:landing:RHN_ENTRY',
+        target: '#object-list',
+        body: `<p>Jonas's second table, for the returned direct debits: saved, but <b>not deployed</b> yet. Here you still choose.</p>`,
+        action: { do: 'Open <b>RHN_EN_T_DD_RETURNS</b>.', check: () => editorOf('RHN_ENTRY.RHN_EN_T_DD_RETURNS') },
+      },
+      {
+        title: 'Switch it on',
+        target: '#prop-delta',
+        body: `<p>Not deployed, so the switch is free. It needs a key: <code>RETURN_ID</code>. After the first deploy it is fixed, on or off.</p>`,
+        action: { do: 'Switch on <b>Delta Capture</b>.', event: '^table-delta:RHN_ENTRY\\.RHN_EN_T_DD_RETURNS:on$' },
+      },
+      {
+        title: 'The first deploy',
+        target: '#ed-deploy',
+        body: `<p>Deploy fixes the choice. From now on every saved change of a row lands in <code>RHN_EN_T_DD_RETURNS_Delta</code>.</p>`,
+        action: { do: 'Press <b>Deploy</b>.', event: '^deploy:RHN_ENTRY\\.RHN_EN_T_DD_RETURNS$' },
+      },
     ],
     [
       {
