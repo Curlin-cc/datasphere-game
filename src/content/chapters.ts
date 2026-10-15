@@ -198,10 +198,10 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Load type of each replication object in a replication flow.',
   },
   {
-    term: 'Truncate',
+    term: 'Delete All Before Loading',
     chapter: 3,
-    text: 'Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
-    realTenant: 'Option per replication object in a replication flow.',
+    text: 'Formerly called Truncate. Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
+    realTenant: 'Setting per replication object in a replication flow. Not the same as the Data Flow target mode Truncate.',
   },
   {
     term: 'Data Integration Monitor',
