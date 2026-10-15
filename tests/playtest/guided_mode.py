@@ -92,6 +92,24 @@ with sync_playwright() as p:
     g.shot('gm-auto-open')
     g.b.close()
 
+    # 3b. Regression (15.10.2026): guided mode does not open a page while the player is clicking on it (the redraw swallowed a click
+    # in progress, e.g. in an open space picker). Busy on the page: nothing opens; idle: it opens and the tour moves on.
+    g = Game(p, S); pg = g.pg
+    g.start(m02('guided'))
+    wait_title(pg, 'Spaces first'); pg.click('.tour-card [data-act="next"]')
+    wait_title(pg, 'Open Data Builder')
+    for _ in range(8):
+        pg.mouse.click(700, 140); pg.wait_for_timeout(300)  # the page header: clicks that change nothing
+    ok(title(pg) == 'Open Data Builder' and pg.locator('.nav [data-view="builder"][aria-current="page"]').count() == 0,
+       'guided: nothing opens while the player clicks on the page')
+    wait_title(pg, 'Select RHN_ENTRY', timeout=6000)
+    ok(pg.locator('.nav [data-view="builder"][aria-current="page"]').count() == 1, 'guided: opens once the player pauses')
+    # A late Next on a card the tour already left does not skip a step.
+    pg.evaluate("""() => { const b = document.querySelector('.tour-card [data-act="back"]'); b.click(); b.click(); }""")
+    pg.wait_for_timeout(400)
+    ok(title(pg) == 'Open Data Builder', f'guided: a double Back moves one step, not two ({title(pg)})')
+    g.b.close()
+
     # 4. Guided, editor with unsaved changes: the game opens nothing over it, the text stays, the step waits.
     g = Game(p, S); pg = g.pg
     s = save_before(5, 'c05-m01', TENANT5); s['guidance'] = 'guided'

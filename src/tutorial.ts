@@ -85,6 +85,15 @@ const UNSAVED_NOTE = 'You have unsaved changes (editor or form), so the game did
 
 /** Delay before guided mode opens the app/space of a navigation step, and the reading pause of a done `stay` step. */
 export const GUIDED_OPEN_MS = 900;
+/**
+ * When the player last clicked or typed on the page (not on the tutorial card). Guided mode does not open a page while the player
+ * is busy there: the redraw would swallow a click in progress (an open space picker, a button about to be pressed).
+ */
+let lastPageInput = -Infinity;
+const notePageInput = (e: Event) => {
+  if (!(e.target instanceof Element) || !e.target.closest('.tour-card')) lastPageInput = performance.now();
+};
+const playerBusy = () => performance.now() - lastPageInput < GUIDED_OPEN_MS;
 const readingPause = (step: TourStep) => Math.min(12000, Math.max(4000, step.body.replace(/<[^>]+>/g, '').length * 45));
 
 /** Fired by ctx.track for every action, also repeated ones. */
@@ -137,6 +146,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     window.removeEventListener('resize', place);
     window.removeEventListener(TRACK_EVENT, onTrack);
     document.removeEventListener('keydown', onKey);
+    document.removeEventListener('pointerdown', notePageInput, true);
+    document.removeEventListener('keydown', notePageInput, true);
     active = null;
     if (finished) hooks.onFinish();
   };
@@ -158,6 +169,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (hit) complete();
   };
   document.addEventListener('keydown', onKey);
+  document.addEventListener('pointerdown', notePageInput, true);
+  document.addEventListener('keydown', notePageInput, true);
   window.addEventListener('resize', place);
   window.addEventListener(TRACK_EVENT, onTrack);
 
@@ -232,8 +245,13 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     }
     place();
     if (step.action?.autoOpen && guidedOpts.guided()) {
-      openTimer = window.setTimeout(() => {
+      const autoOpen = () => {
         if (index !== i || stepDone || conditionHolds(step.action!)) return;
+        // The player is clicking on the page right now (for example the space picker is open): wait, try again shortly.
+        if (playerBusy()) {
+          openTimer = window.setTimeout(autoOpen, GUIDED_OPEN_MS);
+          return;
+        }
         if (guidedOpts.unsaved()) {
           blockedOpen = true;
           aid(UNSAVED_NOTE, true);
@@ -242,7 +260,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
         }
         hooks.setView(step.action!.autoOpen!);
         aid(`Opened for you. ${AID_NOTE}`);
-      }, GUIDED_OPEN_MS);
+      };
+      openTimer = window.setTimeout(autoOpen, GUIDED_OPEN_MS);
     }
     if (step.action) {
       // Already done (for example the right app is open)? Count it, but give the player a moment to read.
@@ -343,8 +362,10 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       </div>`;
     if (step.example) card.querySelector('.tour-example code')!.textContent = step.example;
     card.querySelector('[data-act="skip"]')!.addEventListener('click', () => close(true));
-    card.querySelector('[data-act="back"]')!.addEventListener('click', () => go(index - 1));
-    card.querySelector('[data-act="next"]')!.addEventListener('click', () => go(index + 1));
+    // Back/Next belong to the step this card shows: if the tour already moved on (auto-advance), a late click must not skip a step.
+    const shown = index;
+    card.querySelector('[data-act="back"]')!.addEventListener('click', () => index === shown && go(shown - 1));
+    card.querySelector('[data-act="next"]')!.addEventListener('click', () => index === shown && go(shown + 1));
     card.querySelector('[data-act="example"]')?.addEventListener('click', (e) => {
       hooks.insertExample(step.example!);
       (e.currentTarget as HTMLButtonElement).textContent = 'Added. Press Run after the tutorial';
