@@ -92,10 +92,10 @@ export const CHAPTER_8: Mission[] = [
         <li><b>Petra Lindner</b> (PLINDNER), CFO: all four grid areas</li></ul>
       <p><i>Calin adds:</i> Row-level security starts with a <b>permissions table</b>: one row per user and grid area. Create the local table
       <code>RHN_DS_T_PERMISSIONS</code> in <code>RHN_DSL</code>, next to the facts it will protect, with the columns <code>USER_ID</code> and <code>GRID_AREA</code> (both String, both key)
-      and type the rows in its Data Editor. The user IDs are in Security › Users.</p>`,
+      deploy it, then type the rows in its Data Editor and save. The user IDs are in Security › Users.</p>`,
     tasks: [
       'In <code>RHN_DSL</code>, create a <b>New Table</b> <code>RHN_DS_T_PERMISSIONS</code> with the columns <code>USER_ID</code> and <code>GRID_AREA</code>.',
-      'Add one row per user and grid area in the <b>Data Editor</b>. Save and deploy.',
+      'Deploy the table, then add one row per user and grid area in its <b>Data Editor</b> and press <b>Save</b>.',
       'Answer the questions below.',
     ],
     hints: [
@@ -139,7 +139,7 @@ export const CHAPTER_8: Mission[] = [
       },
     ],
     xp: 45,
-    realTenant: `In a real tenant: <b>Data Builder › New Table</b>, define the columns, then edit the rows in the table's <b>Data Editor</b>,
+    realTenant: `In a real tenant: <b>Data Builder › New Table</b>, define the columns and deploy, then edit the rows in the table's <b>Data Editor</b> and <b>Save</b> (it only works on deployed tables),
       or upload a CSV file. SAP describes the split: business users maintain the permissions entity in their own space and share it;
       the modeling space builds the data access controls on it.`,
     debrief: `<p>Thank you. Eight rows, and anyone can read who may see what. That is what I want to show in the next audit.</p>

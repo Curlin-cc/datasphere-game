@@ -63,7 +63,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Local table',
     chapter: 0,
     text: 'A table whose data is stored inside Datasphere, filled by upload, replication flow, data flow, or typed in its Data Editor (good for small mapping and permission tables).',
-    realTenant: 'Data Builder > New Table (Data Editor for the rows), or created by a replication flow.',
+    realTenant: 'Data Builder > New Table, deploy, then Data Editor for the rows (Save), or created by a replication flow.',
   },
   {
     term: 'Entry layer',
@@ -92,8 +92,8 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Space priority',
     chapter: 1,
-    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 5 (highest). The presentation space usually ranks above loading.',
-    realTenant: 'Space Management > your space > Workload Management.',
+    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 8 (highest); new spaces get 5. The presentation space usually ranks above loading.',
+    realTenant: 'System > Configuration > Workload Management.',
   },
   {
     term: 'Sharing',
@@ -182,14 +182,14 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Remote table',
     chapter: 3,
-    text: 'An object of a connection, made available in a space. Data access Remote reads the source live on each query; Replicated (Snapshot) stores a copy that is refreshed by a new snapshot or a schedule.',
-    realTenant: 'Data Builder > Import menu > Import Remote Tables; data access in the Data Integration Monitor > Remote Tables.',
+    text: 'An object of a connection, made available in a space. Data access Remote reads the source live on each query; Replicated (Snapshot) stores a copy that is refreshed when you start data replication or by a schedule.',
+    realTenant: 'Data Builder > Import menu > Import Remote Tables; data access in Monitoring > Data Integration > Remote Tables.',
   },
   {
     term: 'Replication flow',
     chapter: 3,
     text: 'Copies objects from one source connection into local tables, with projections (filters, mapping, extra columns) but no complex logic. Load type Initial Only or Initial and Delta.',
-    realTenant: 'Data Builder > New Replication Flow; runs in the Data Integration Monitor > Flows.',
+    realTenant: 'Data Builder > New Replication Flow; runs in Monitoring > Data Integration > Flows.',
   },
   {
     term: 'Initial and Delta',
@@ -198,16 +198,16 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Load type of each replication object in a replication flow.',
   },
   {
-    term: 'Truncate',
+    term: 'Delete All Before Loading',
     chapter: 3,
-    text: 'Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
-    realTenant: 'Option per replication object in a replication flow.',
+    text: 'Formerly called Truncate. Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
+    realTenant: 'Setting per replication object in a replication flow. Not the same as the Data Flow target mode Truncate.',
   },
   {
     term: 'Data Integration Monitor',
     chapter: 3,
     text: 'Runs, schedules and logs of everything that moves data into one space: remote tables, local tables, views, flows, remote queries, task chains.',
-    realTenant: 'Side navigation > Data Integration Monitor, select the space.',
+    realTenant: 'Side navigation > Monitoring > Data Integration (app name: Data Integration Monitor), select the space.',
   },
   {
     term: 'Consent for scheduling',
@@ -315,7 +315,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Data flow',
     chapter: 12,
     text: 'An ETL process: reads sources, transforms rows with operators (join, projection, aggregation, union, Python script) and writes one target table with mode Append (add), Truncate (replace) or Delete (remove by key). Stored result, as fresh as the last run.',
-    realTenant: 'Data Builder > New Data Flow; runs in the Data Integration Monitor › Flows (Handbuch 6.7.1).',
+    realTenant: 'Data Builder > New Data Flow; runs in Monitoring > Data Integration > Flows (Handbuch 6.7.1).',
   },
   {
     term: 'Delta capture',
@@ -327,7 +327,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Transformation flow',
     chapter: 12,
     text: 'Loads the result of a view transform (graphical or SQL) into one target table. Initial Only processes all source rows each run; Initial and Delta loads everything once, then only the changes of a source with delta capture, applied to the target by key.',
-    realTenant: 'Data Builder > New Transformation Flow; runs in the Data Integration Monitor › Flows (Handbuch 6.7.3, 6.12.4).',
+    realTenant: 'Data Builder > New Transformation Flow; runs in Monitoring > Data Integration > Flows (Handbuch 6.7.3, 6.12.4).',
   },
   {
     term: 'Content Network',
@@ -416,20 +416,20 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Business Builder',
     chapter: 12,
-    text: 'The older business layer: business entities (dimension or fact) on Data Builder objects, fact models, consumption models with perspectives for SAP Analytics Cloud. Current tenants label it Deprecated; new models are analytic models.',
-    realTenant: 'Side navigation > Business Builder (Deprecated).',
+    text: 'The older business layer: business entities (dimension or fact) on Data Builder objects, fact models, consumption models with perspectives for SAP Analytics Cloud. SAP has deprecated the Business Builder; use analytic models instead.',
+    realTenant: 'Side navigation > Business Builder.',
   },
   {
     term: 'View persistence',
     chapter: 9,
     text: 'A deployed view stores its result as a snapshot. Reads get fast, but the data is only as fresh as the last run, and it costs memory. Not possible for a view that reads data protected by a data access control.',
-    realTenant: 'Data Integration Monitor > Views > Start Data Persistence, Schedule, Remove Persisted Data.',
+    realTenant: 'Monitoring > Data Integration > Views > Start Data Persistence, Schedule, Remove Persisted Data.',
   },
   {
     term: 'View Analyzer',
     chapter: 9,
     text: 'Shows a view with everything below it and what each level costs, so you persist where the expensive work happens.',
-    realTenant: 'Data Integration Monitor > Views > View Analyzer.',
+    realTenant: 'Monitoring > Data Integration > Views > View Analyzer.',
   },
   {
     term: 'Expensive statement tracing',
@@ -441,7 +441,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Task chain',
     chapter: 10,
     text: 'Runs several tasks as one unit in a fixed order: replication flows (Initial Only), view persistence, snapshots, other chains. One schedule, an email when it fails; a failed step stops the chain.',
-    realTenant: 'Data Builder > New Task Chain; runs in Data Integration Monitor > Task Chains.',
+    realTenant: 'Data Builder > New Task Chain; runs in Monitoring > Data Integration > Task Chains.',
   },
   {
     term: 'Task logs',
