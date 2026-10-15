@@ -27,7 +27,7 @@ export function newChainDraft() {
 const TYPE_TEXT: Record<StepType, string> = {
   'Replication Flow': 'Runs the replication flow once',
   'View Persistence': 'Persists the view: runs it and stores the result',
-  'Remote Table Replication': 'Loads a new snapshot of the remote table',
+  'Remote Table Replication': 'Starts data replication of the remote table',
   'Data Flow': 'Runs the data flow and writes its target table',
   'Transformation Flow': 'Runs the transformation flow: the full load, or only the changes by delta',
   'Task Chain': 'Runs another task chain with all its steps',

@@ -60,13 +60,14 @@ with sync_playwright() as p:
     pg.fill('[data-col-name="0"]', 'USER_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'NODE_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.check('[data-col-key="1"]'); pg.wait_for_timeout(100)
-    for i, (u, n) in enumerate([('PLINDNER', 'RHEINAU'), ('MBRANDT', 'NORTH'), ('ADEMIR', 'SOUTH')]):
-        pg.click('#tbl-add-row'); pg.fill(f'[data-cell="{i}:0"]', u); pg.fill(f'[data-cell="{i}:1"]', n)
     pg.fill('#prop-business', 'Permission Nodes'); pg.fill('#prop-technical', 'RHN_DS_T_PERMISSION_NODES')
     deploy()
+    for i, (u, n) in enumerate([('PLINDNER', 'RHEINAU'), ('MBRANDT', 'NORTH'), ('ADEMIR', 'SOUTH')]):
+        pg.click('#tbl-add-row'); pg.fill(f'[data-cell="{i}:0"]', u); pg.fill(f'[data-cell="{i}:1"]', n)
+    pg.click('#ed-save'); pg.wait_for_timeout(600)
     g.answer('new-area', 1)
     g.check('m06 grid area nodes, no control')
-    pg.fill('[data-cell="1:1"]', 'R_NORTH'); pg.fill('[data-cell="2:1"]', 'R_SOUTH'); deploy()
+    pg.fill('[data-cell="1:1"]', 'R_NORTH'); pg.fill('[data-cell="2:1"]', 'R_SOUTH'); pg.click('#ed-save'); pg.wait_for_timeout(600)
     # control: Single Values first
     g.space('RHN_DSL')
     pg.click('[data-new="dac"]'); pg.wait_for_selector('#dac-entity')
