@@ -1,7 +1,11 @@
 """Chapter 12, OData and OAuth (c12-m08): an API Access client (401), an Interactive Usage client with a wrong redirect URI (400),
 the right client while the consumption view does not exist (404), then built in RHN_PRES, exposed and deployed (200). Reload keeps the clients.
 Second run: the hands-on tutorial. Start state: chapter12_data.py with c12-m01..m07 solved."""
+import os
 import sys
+
+# Plays a hands-on tutorial whose steps open their pages, which happens only in Guided mode.
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter12_data import TENANT12

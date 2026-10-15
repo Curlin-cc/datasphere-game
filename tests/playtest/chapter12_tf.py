@@ -5,7 +5,11 @@ and handed over again, Delta Capture on before the first deploy, initial load, b
 Reload keeps the delta table and the target; monitor and task logs list the flow. Second pass: the hands-on tutorial.
 Start state: chapter12_data.py with c12-m01..m10 solved."""
 import json
+import os
 import sys
+
+# Plays a hands-on tutorial whose steps open their pages, which happens only in Guided mode.
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter12_data import TENANT12

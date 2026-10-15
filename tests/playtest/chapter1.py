@@ -49,10 +49,10 @@ with sync_playwright() as p:
     g.shot('c1-spaces')
     g.next_mission()
 
-    edit('RHN_DSL', 40, 10, 5); edit('RHN_PRES', 40, 10, 5)
+    edit('RHN_DSL', 40, 10, 8); edit('RHN_PRES', 40, 10, 8)
     g.answer('priority', 2)
     g.check('m02 too much, priority tie')
-    edit('RHN_DSL', 36, 8, 3); edit('RHN_PRES', 20, 10, 5)
+    edit('RHN_DSL', 36, 8, 5); edit('RHN_PRES', 20, 10, 8)
     g.check('m02 solved')
     g.next_mission()
 

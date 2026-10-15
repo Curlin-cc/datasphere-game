@@ -1,5 +1,6 @@
 import { ctx } from '../ctx';
 import { CAPACITY } from '../tenant';
+import { GUIDANCE_AID, GUIDANCE_TEXT, setGuidance } from './guidance';
 import { esc, icon, openDialog, readUiPref, writeUiPref } from '../ui';
 
 /**
@@ -10,7 +11,7 @@ import { esc, icon, openDialog, readUiPref, writeUiPref } from '../ui';
  * In the game, Appearance (light/dark theme) and UI Settings (business or technical names) work; the rest explains.
  */
 
-type Section = 'account' | 'appearance' | 'home' | 'language' | 'notifications' | 'ui' | 'privacy' | 'consent';
+type Section = 'account' | 'appearance' | 'home' | 'language' | 'notifications' | 'ui' | 'privacy' | 'consent' | 'guidance';
 let section: Section = 'account';
 
 export type ThemeChoice = 'light' | 'dark' | 'system';
@@ -31,6 +32,27 @@ function applyTheme(choice: ThemeChoice) {
   writeUiPref('dsg-theme', choice === 'system' ? '' : choice);
 }
 
+/** Font size (Curlin, 14.10.2026): a game addition in Appearance; scales every text via --fs in styles.css. */
+export type FontChoice = 'small' | 'normal' | 'large' | 'xlarge';
+export const FONTS: { id: FontChoice; label: string }[] = [
+  { id: 'small', label: 'Small' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'large', label: 'Large' },
+  { id: 'xlarge', label: 'Extra Large' },
+];
+export function fontChoice(): FontChoice {
+  const f = readUiPref('dsg-font');
+  return FONTS.some((x) => x.id === f) ? (f as FontChoice) : 'normal';
+}
+export function applyFont(choice: FontChoice) {
+  const root = document.documentElement;
+  if (choice === 'normal') delete root.dataset.font;
+  else root.dataset.font = choice;
+  writeUiPref('dsg-font', choice === 'normal' ? '' : choice);
+}
+// Also on start, in case the page was loaded without the inline script of index.html (artifact).
+applyFont(fontChoice());
+
 const ICON = {
   account: '<circle cx="6.5" cy="5" r="2.5"/><path d="M2 13.5a4.5 4.5 0 019 0M11 9h3.5M11 11.5h3.5"/>',
   appearance: '<path d="M8 2a6 6 0 100 12c1 0 1.3-.8 1-1.6-.4-.9.2-1.9 1.2-1.9H12a2 2 0 002-2A6 6 0 008 2z"/><circle cx="5" cy="7" r=".8"/><circle cx="8" cy="5" r=".8"/><circle cx="11" cy="7" r=".8"/>',
@@ -39,6 +61,7 @@ const ICON = {
   notifications: '<path d="M3 6.5h2.5L11 3.5v9l-5.5-3H3z"/><path d="M5.5 9.5l1 3.5"/>',
   ui: '<path d="M2.5 4h4M9.5 4h4M2.5 8h7M12.5 8h1M2.5 12h2M7.5 12h6"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="6" cy="12" r="1.5"/>',
   consent: '<rect x="3.5" y="3" width="9" height="11" rx="1"/><path d="M6 2.5h4v1.5H6zM6 9l1.5 1.5L10.5 7"/>',
+  guidance: '<path d="M8 2.5l5.5 5.5L8 13.5 2.5 8z"/><path d="M6.5 8h3M8.5 6.5L10 8l-1.5 1.5"/>',
   privacy: '<circle cx="6" cy="5" r="2.5"/><path d="M1.5 13.5a4.5 4.5 0 017.5-3.4"/><rect x="10" y="10" width="4.5" height="4" rx=".8"/><path d="M11 10V8.8a1.25 1.25 0 012.5 0V10"/>',
 };
 
@@ -47,13 +70,14 @@ const nameChoice = () => (readUiPref('dsg-names') === 'technical' ? 'technical' 
 function sections(): { id: Section; label: string; sub: string }[] {
   return [
     { id: 'account', label: 'User Account', sub: 'Data Architect' },
-    { id: 'appearance', label: 'Appearance', sub: THEMES.find((t) => t.id === themeChoice())!.label },
+    { id: 'appearance', label: 'Appearance', sub: `${THEMES.find((t) => t.id === themeChoice())!.label} · ${FONTS.find((f) => f.id === fontChoice())!.label} font` },
     { id: 'home', label: 'Home Screen', sub: 'Manage cards for your home screen' },
     { id: 'language', label: 'Language & Region', sub: 'English | 24 h | MMM d, yyyy | 1,234.56' },
     { id: 'notifications', label: 'Notifications', sub: '' },
     { id: 'ui', label: 'UI Settings', sub: nameChoice() === 'technical' ? 'Show Technical Name' : 'Show Business Name' },
     { id: 'privacy', label: 'Privacy', sub: '' },
     { id: 'consent', label: 'Authorized Consent Settings', sub: 'Not Authorized' },
+    { id: 'guidance', label: 'Guidance (game)', sub: GUIDANCE_TEXT[ctx.progress.guidance ?? 'self'].label },
   ];
 }
 
@@ -68,8 +92,11 @@ function pane(id: Section) {
       return `<div class="set-hero"><b>Appearance</b></div><div class="set-body"><fieldset class="set-radios"><legend>Theme</legend>
         ${THEMES.map((t) => `<label><input type="radio" name="set-theme" value="${t.id}" ${themeChoice() === t.id ? 'checked' : ''}> ${esc(t.label)}</label>`).join('')}
         </fieldset>
+        <fieldset class="set-radios"><legend>Font Size (game)</legend>
+        ${FONTS.map((f) => `<label><input type="radio" name="set-font" value="${f.id}" ${fontChoice() === f.id ? 'checked' : ''}> ${esc(f.label)}</label>`).join('')}
+        </fieldset>
         <p class="muted">A real tenant offers Horizon, Horizon High Contrast Black and Horizon High Contrast White in a Theme dropdown.
-          The dark theme is an addition of the game.</p></div>`;
+          The dark theme and the font size are additions of the game; in the real tenant the browser zoom changes the text size.</p></div>`;
     case 'ui':
       return `<div class="set-hero"><b>UI Settings</b></div><div class="set-body"><fieldset class="set-radios"><legend>Display Name</legend>
         <label><input type="radio" name="set-names" value="business" ${nameChoice() === 'business' ? 'checked' : ''}> Show Business Name</label>
@@ -89,6 +116,11 @@ function pane(id: Section) {
         <p class="muted">In the game, Home always shows the cards of your learning path; the switches only show what a real tenant offers.</p></div>`;
     case 'notifications':
       return `<div class="set-hero"><b>Notifications</b></div><div class="set-body"><p>Whether failed task chains and finished jobs also send you an e-mail. The game shows them as messages on screen.</p></div>`;
+    case 'guidance':
+      return `<div class="set-hero"><b>Guidance</b></div><div class="set-body"><fieldset class="set-radios"><legend>Tutorial mode</legend>
+        ${(['guided', 'self'] as const).map((g) => `<label><input type="radio" name="set-guidance" value="${g}" ${(ctx.progress.guidance ?? 'self') === g ? 'checked' : ''}> ${esc(GUIDANCE_TEXT[g].label)}</label>
+          <p class="muted">${esc(GUIDANCE_TEXT[g].text)}</p>`).join('')}
+        </fieldset><p class="tour-aid">${esc(GUIDANCE_AID)}</p></div>`;
     case 'consent':
       return `<div class="set-hero"><b>Authorized Consent Settings</b></div><div class="set-body"><p>Scheduled tasks run under your user. A real tenant asks you
         once to authorize this; the consent is valid for 365 days and you get an e-mail before it expires. Without it, schedules you own do not run.</p>
@@ -120,6 +152,20 @@ export function openSettings() {
       r.addEventListener('change', () => {
         applyTheme(r.value as ThemeChoice);
         ctx.track(`theme:${r.value}`);
+        draw();
+      }),
+    );
+    form.querySelectorAll<HTMLInputElement>('[name="set-font"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        applyFont(r.value as FontChoice);
+        ctx.track(`font:${r.value}`);
+        draw();
+      }),
+    );
+    form.querySelectorAll<HTMLInputElement>('[name="set-guidance"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        setGuidance(r.value as 'guided' | 'self');
+        ctx.renderMission();
         draw();
       }),
     );

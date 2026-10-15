@@ -62,6 +62,13 @@ class Game:
                 save = json.load(f)
             save['currentMission'] = current
         if save is not None:
+            # Tutorial mode (14.10.2026): scripts play Self-directed (the tutorial never opens apps or spaces) unless the save or
+            # DSG_MODE sets 'guided' (scripts that walk tutorials with Next); guidance None = a save from before the setting (no key).
+            save = dict(save)
+            if 'guidance' not in save:
+                save['guidance'] = os.environ.get('DSG_MODE', 'self')
+            elif save['guidance'] is None:
+                del save['guidance']
             self.pg.add_init_script(
                 "if(!sessionStorage.getItem('seeded')){localStorage.setItem('dsg-progress-v3', %s);sessionStorage.setItem('seeded','1')}"
                 % json.dumps(json.dumps(save)))

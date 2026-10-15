@@ -1,7 +1,11 @@
 """Chapter 9 (Persistence and Performance): expensive statement tracing, Expensive Statement Logs, View Analyzer, persisting
 the harmonized meter readings, schedule, and the limits (protected source, small view). Plays typical mistakes first.
 Start state: chapter9_data.py."""
+import os
 import sys
+
+# Walks the tutorial with Next, which opens the steps' pages only in Guided mode.
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter9_data import TENANT9

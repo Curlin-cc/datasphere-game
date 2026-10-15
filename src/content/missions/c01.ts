@@ -128,8 +128,8 @@ export const CHAPTER_1: Mission[] = [
     ],
     hints: [
       { label: 'Hint 1: where to look', cost: 5, text: 'Space Management shows the capacity bars on top and an Edit button per space.' },
-      { label: 'Hint 2: the concept', cost: 10, text: 'Free for the two new spaces = capacity − reserve − RHN_ENTRY. Priority 5 is the highest; it must be higher than the priority of every other space.' },
-      { label: 'Hint 3: a skeleton', cost: 20, text: 'Disk: 128 − 16 − 40 = __ GB for DSL + PRES. In-memory: 32 − 4 − 8 = __ GB. Then e.g. DSL priority 3, PRES priority _.' },
+      { label: 'Hint 2: the concept', cost: 10, text: 'Free for the two new spaces = capacity − reserve − RHN_ENTRY. Priority 8 is the highest (default 5); it must be higher than the priority of every other space.' },
+      { label: 'Hint 3: a skeleton', cost: 20, text: 'Disk: 128 − 16 − 40 = __ GB for DSL + PRES. In-memory: 32 − 4 − 8 = __ GB. Then e.g. DSL priority 5, PRES priority _.' },
     ],
     checks: [
       {
@@ -208,7 +208,7 @@ export const CHAPTER_1: Mission[] = [
     ],
     xp: 30,
     realTenant: `In a real tenant: open the space in <b>Space Management</b>. Storage is under <b>Space Storage</b> (disk and in-memory),
-      the priority under <b>Workload Management</b>, where you can also limit threads and memory per space. Changes take effect when you <b>Deploy</b> the space.`,
+      the priority under <b>System &gt; Configuration &gt; Workload Management</b>, where you can also limit threads and memory per space. Click <b>Save</b>; the settings then appear read-only in the space details.`,
     debrief: `<p>Looks good, and we still have a reserve. If a load runs wild at night, the board's dashboards stay responsive.</p>
       <p><i>Calin adds:</i> In-memory is expensive. Give it to the spaces whose data is read often and fast, not to the ones that only store.</p>`,
   },

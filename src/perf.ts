@@ -48,8 +48,8 @@ export interface Tracing {
   thresholdMs: number;
 }
 
-export const DEFAULT_TRACING: Tracing = { enabled: false, thresholdMs: 1000 };
-export const THRESHOLDS = [500, 1000, 5000];
+export const DEFAULT_TRACING: Tracing = { enabled: false, thresholdMs: 50 };
+export const THRESHOLDS = [50, 500, 1000, 5000];
 
 /** Production volume / training tenant volume. */
 export const SCALE = 1000;

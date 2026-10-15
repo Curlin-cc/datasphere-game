@@ -433,7 +433,7 @@ export const CHAPTER_12: Mission[] = [
       },
     ],
     xp: 35,
-    realTenant: `Current tenants show "Welcome to the Business Builder (Deprecated)". Existing business entities, fact models, consumption models
+    realTenant: `Current tenants show "Welcome to the Business Builder (Deprecated)". Note: SAP has deprecated the Business Builder; use analytic models instead. Existing business entities, fact models, consumption models
       and perspectives keep working, and SAP Analytics Cloud still reads perspectives, but new models are analytic models in the Data Builder.
       The semantic usage Analytical Dataset is deprecated; SAP recommends Fact.`,
     debrief: `<p>So the chart I want already exists in a newer form. Then please build me a new story on the invoice model, not a museum piece.</p>

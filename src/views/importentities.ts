@@ -93,7 +93,7 @@ export function renderImportWizard(main: HTMLElement, w: WizardState, done: (log
               <td>${esc(e.label)}</td><td class="mono">${esc(e.id)}</td><td>${esc(PATTERN_LABEL[e.pattern])}</td><td>${esc(e.release)}</td><td>${esc(e.component)}</td></tr>`).join('')
               || '<tr><td colspan="6" class="muted">No entity matches.</td></tr>'}
           </tbody></table></div>
-          <p class="muted">Entities with release contract <b>C1</b> (extraction-enabled) come with their data access and follow associations to texts and dimensions.
+          <p class="muted">Entities with release contract <b>C1</b> (extraction-enabled) can be imported with remote access (Remote Tables). For SAP-delivered views the import also follows associations to texts and dimensions.
             Others can only be imported as local tables, and you load their data yourself with a data flow.</p>
         </section></div>`;
   }

@@ -1,6 +1,10 @@
 """Hands-on tutorials: play the tutorial of several missions by doing each step on the page while the tour is open.
 Checks that clicks reach the page through the tour and that the tour moves on by itself."""
+import os
 import sys
+
+# The tutorials open the pages of their steps only in Guided mode (Self-directed waits for the player).
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before, SPACES
 
@@ -151,7 +155,7 @@ with sync_playwright() as p:
     expect(pg, 'Data Integration'); pg.click('.sub-nav [data-tab="integration"]')
     expect(pg, 'The Cloud Connector'); g.shot('g-c03-cc'); nexts(pg)
     expect(pg, 'Security'); pg.click('.sub-nav [data-tab="security"]')
-    expect(pg, 'Upload'); pg.click('#cert-upload'); pg.check('[name="file"][value="Rheinau Root CA"]'); pg.click('.dialog [type="submit"]')
+    expect(pg, 'Add Certificate'); pg.click('#cert-upload'); pg.check('[name="file"][value="Rheinau Root CA"]'); pg.click('.dialog [type="submit"]')
     pg.wait_for_timeout(1200)
     print('   Show me finished, tour open:', pg.locator('.tour-card').count())
     g.done()
