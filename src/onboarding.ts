@@ -122,7 +122,7 @@ export async function importPackage(t: TenantState, p: ContentPackage, options: 
       add('error', `Import stopped: the space ${p.space.id} needs ${p.space.diskGB} GB disk and ${p.space.memoryGB} GB in-memory, but the tenant has only ${Math.max(0, CAPACITY.diskGB - used.diskGB)} GB and ${Math.max(0, CAPACITY.memoryGB - used.memoryGB)} GB left. Free storage in Space Management first.`);
       return keep(t, log);
     }
-    t.spaces.push({ id: p.space.id, name: p.space.name, diskGB: p.space.diskGB, memoryGB: p.space.memoryGB, priority: 3 });
+    t.spaces.push({ id: p.space.id, name: p.space.name, diskGB: p.space.diskGB, memoryGB: p.space.memoryGB, priority: 5 });
     await exec(`CREATE SCHEMA IF NOT EXISTS "${p.space.id}"`);
     add('ok', `Space ${p.space.id} created (${p.space.diskGB} GB disk, ${p.space.memoryGB} GB in-memory). Add members in Space Management.`);
   } else add('info', `Space ${p.space.id} exists already.`);
