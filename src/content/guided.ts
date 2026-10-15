@@ -55,6 +55,7 @@ const nav = (id: string, label: string, body: string): TourStep => ({
       : `Click <b>${label}</b> in the side navigation.`)
       + (SPACE_CARDS[id] ? ' If it shows the space cards, click the space of the ticket.' : ''),
     check: () => appOpen(id) && !(SPACE_CARDS[id] && $(SPACE_CARDS[id])),
+    autoOpen: id,
   },
 });
 
@@ -97,7 +98,7 @@ const toSpace = (space: string, body: string): TourStep => ({
   view: 'builder:landing',
   target: '#space-picker, #space-switch',
   body,
-  action: { do: `Select the space <b>${space}</b>.`, check: () => builderSpace(space) },
+  action: { do: `Select the space <b>${space}</b>.`, check: () => builderSpace(space), autoOpen: `builder:landing:${space}` },
 });
 
 /** Share one object of the current space with another space. */

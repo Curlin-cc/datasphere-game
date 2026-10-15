@@ -1,7 +1,11 @@
 """Chapter 12, version history (c12-m07): Tim's deployed clean-up drops the legacy contracts. First a check without doing anything,
 then a hand-written fix (works, but not from the history), then the hands-on tutorial: Versions, compare, Restore, Deploy.
 Also checks that the history survives a reload. Start state: chapter12_data.py with c12-m01..m06 solved."""
+import os
 import sys
+
+# Plays a hands-on tutorial whose steps open their pages, which happens only in Guided mode.
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter12_data import TENANT12

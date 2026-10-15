@@ -43,7 +43,14 @@ export interface Progress {
    * Cleared when the tutorial ends (finished, skipped, Escape).
    */
   tourAt?: { mission: string; step: number };
+  /**
+   * How the tutorials lead (asked at the start of a new game, Settings › Guidance): 'guided' moves on and opens apps by itself,
+   * 'self' waits for the player (the behaviour before 14.10.2026). Missing = not asked yet; saves with progress count as 'self'.
+   */
+  guidance?: Guidance;
 }
+
+export type Guidance = 'guided' | 'self';
 
 /** Raise when the tutorials change a lot: every save then sees them again (2 = hands-on tutorials, 2026-10-09; 3 = three-layer architecture, 2026-10-13). */
 export const TUTORIAL_VERSION = 3;
@@ -106,6 +113,8 @@ export function sanitize(data: unknown): Progress | null {
   p.tenant = sanitizeTenant(d.tenant);
   const ta = (d as { tourAt?: { mission?: unknown; step?: unknown } }).tourAt;
   if (ta && typeof ta.mission === 'string' && Number.isInteger(ta.step) && (ta.step as number) >= 0) p.tourAt = { mission: ta.mission, step: ta.step as number };
+  const gm = (d as { guidance?: unknown }).guidance;
+  if (gm === 'guided' || gm === 'self') p.guidance = gm;
   if (typeof d.currentMission === 'string' && MISSIONS.some((m) => m.id === d.currentMission)) p.currentMission = d.currentMission;
   for (const [id, mp] of Object.entries(d.missions)) {
     if (!MISSIONS.some((m) => m.id === id) || !mp || typeof mp !== 'object') continue;

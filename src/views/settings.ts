@@ -1,5 +1,6 @@
 import { ctx } from '../ctx';
 import { CAPACITY } from '../tenant';
+import { GUIDANCE_AID, GUIDANCE_TEXT, setGuidance } from './guidance';
 import { esc, icon, openDialog, readUiPref, writeUiPref } from '../ui';
 
 /**
@@ -10,7 +11,7 @@ import { esc, icon, openDialog, readUiPref, writeUiPref } from '../ui';
  * In the game, Appearance (light/dark theme) and UI Settings (business or technical names) work; the rest explains.
  */
 
-type Section = 'account' | 'appearance' | 'home' | 'language' | 'notifications' | 'ui' | 'privacy' | 'consent';
+type Section = 'account' | 'appearance' | 'home' | 'language' | 'notifications' | 'ui' | 'privacy' | 'consent' | 'guidance';
 let section: Section = 'account';
 
 export type ThemeChoice = 'light' | 'dark' | 'system';
@@ -60,6 +61,7 @@ const ICON = {
   notifications: '<path d="M3 6.5h2.5L11 3.5v9l-5.5-3H3z"/><path d="M5.5 9.5l1 3.5"/>',
   ui: '<path d="M2.5 4h4M9.5 4h4M2.5 8h7M12.5 8h1M2.5 12h2M7.5 12h6"/><circle cx="8" cy="4" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="6" cy="12" r="1.5"/>',
   consent: '<rect x="3.5" y="3" width="9" height="11" rx="1"/><path d="M6 2.5h4v1.5H6zM6 9l1.5 1.5L10.5 7"/>',
+  guidance: '<path d="M8 2.5l5.5 5.5L8 13.5 2.5 8z"/><path d="M6.5 8h3M8.5 6.5L10 8l-1.5 1.5"/>',
   privacy: '<circle cx="6" cy="5" r="2.5"/><path d="M1.5 13.5a4.5 4.5 0 017.5-3.4"/><rect x="10" y="10" width="4.5" height="4" rx=".8"/><path d="M11 10V8.8a1.25 1.25 0 012.5 0V10"/>',
 };
 
@@ -75,6 +77,7 @@ function sections(): { id: Section; label: string; sub: string }[] {
     { id: 'ui', label: 'UI Settings', sub: nameChoice() === 'technical' ? 'Show Technical Name' : 'Show Business Name' },
     { id: 'privacy', label: 'Privacy', sub: '' },
     { id: 'consent', label: 'Authorized Consent Settings', sub: 'Not Authorized' },
+    { id: 'guidance', label: 'Guidance (game)', sub: GUIDANCE_TEXT[ctx.progress.guidance ?? 'self'].label },
   ];
 }
 
@@ -113,6 +116,11 @@ function pane(id: Section) {
         <p class="muted">In the game, Home always shows the cards of your learning path; the switches only show what a real tenant offers.</p></div>`;
     case 'notifications':
       return `<div class="set-hero"><b>Notifications</b></div><div class="set-body"><p>Whether failed task chains and finished jobs also send you an e-mail. The game shows them as messages on screen.</p></div>`;
+    case 'guidance':
+      return `<div class="set-hero"><b>Guidance</b></div><div class="set-body"><fieldset class="set-radios"><legend>Tutorial mode</legend>
+        ${(['guided', 'self'] as const).map((g) => `<label><input type="radio" name="set-guidance" value="${g}" ${(ctx.progress.guidance ?? 'self') === g ? 'checked' : ''}> ${esc(GUIDANCE_TEXT[g].label)}</label>
+          <p class="muted">${esc(GUIDANCE_TEXT[g].text)}</p>`).join('')}
+        </fieldset><p class="tour-aid">${esc(GUIDANCE_AID)}</p></div>`;
     case 'consent':
       return `<div class="set-hero"><b>Authorized Consent Settings</b></div><div class="set-body"><p>Scheduled tasks run under your user. A real tenant asks you
         once to authorize this; the consent is valid for 365 days and you get an e-mail before it expires. Without it, schedules you own do not run.</p>
@@ -151,6 +159,13 @@ export function openSettings() {
       r.addEventListener('change', () => {
         applyFont(r.value as FontChoice);
         ctx.track(`font:${r.value}`);
+        draw();
+      }),
+    );
+    form.querySelectorAll<HTMLInputElement>('[name="set-guidance"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        setGuidance(r.value as 'guided' | 'self');
+        ctx.renderMission();
         draw();
       }),
     );

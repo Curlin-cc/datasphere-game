@@ -8,7 +8,9 @@ import { TUTORIALS, TASK_TOURS } from './content/tutorials';
 import { MISSIONS, missionById, missionsOfChapter } from './content/missions';
 import { checkMission, type CheckReport } from './missions/engine';
 import type { QuestionCheck } from './missions/types';
-import { startTour, TRACK_EVENT, type TourStep } from './tutorial';
+import { startTour, setGuidedOptions, TRACK_EVENT, type TourStep } from './tutorial';
+import { ensureGuidance, guided } from './views/guidance';
+import { initDirtyTracking, pageUnsaved } from './dirty';
 import {
   loadProgress, oldSaveDiscarded, saveProgress, missionProgress, isUnlocked, reachedChapter, unlockedChapter, rankOf,
   exportProgress, importProgress, freshProgress, sandboxProgress, CLEAN_BONUS,
@@ -86,6 +88,7 @@ ctx.track = (event: string) => {
   if (mp.events.length > 300) mp.events.shift();
   save();
 };
+setGuidedOptions({ guided, unsaved: pageUnsaved });
 ctx.setView = setView;
 ctx.renderView = renderView;
 ctx.refreshNav = refreshNav;
@@ -279,6 +282,7 @@ function refreshNav() {
   nav.innerHTML = navHtml();
   bindNav();
   renderShellApp();
+  initDirtyTracking();
 }
 
 /** Switches the app. `force` re-renders even when the app is already open (e.g. back to the Data Builder start). */
@@ -417,6 +421,11 @@ function tourHooks(onFinish: () => void) {
         systemTo(target as Parameters<typeof systemTo>[0]);
         setView('system', true);
       } else setView(view as ViewId);
+    },
+    describeView: (v: string) => {
+      const [view, , space] = v.split(':');
+      const name = view === 'glossary' ? 'Glossary' : appById(view as AppId)?.label ?? view;
+      return `${name}${space ? ` › space ${space}` : ''}`;
     },
     insertExample: (sql: string) => {
       if (ctx.view !== 'builder' || !ctx.editor) {
@@ -662,7 +671,10 @@ function renderHome(main: HTMLElement) {
   });
   main.querySelector('#save-import')!.addEventListener('click', async () => {
     try {
+      const mode = ctx.progress.guidance;
       ctx.progress = await importProgress();
+      // An imported save without a mode (older export) keeps the current one.
+      if (!ctx.progress.guidance && mode) ctx.progress.guidance = mode;
       await afterProgressReplaced();
     } catch (err) {
       note.textContent = err instanceof Error ? err.message : String(err);
@@ -670,7 +682,10 @@ function renderHome(main: HTMLElement) {
   });
   main.querySelector('#save-sandbox')!.addEventListener('click', async () => {
     if (!await ask('Load the sandbox? It replaces your progress with a save in which every mission is solved. Export your save first if you want to keep it.')) return;
+    // The sandbox keeps the mode the player chose (Guided / Self-directed); the sandbox file itself has none.
+    const mode = ctx.progress.guidance;
     ctx.progress = sandboxProgress();
+    if (mode) ctx.progress.guidance = mode;
     await afterProgressReplaced();
   });
   main.querySelector('#save-reset')!.addEventListener('click', async () => {
@@ -691,6 +706,10 @@ async function afterProgressReplaced() {
   await prepareTenant();
   save();
   renderFrame();
+  if (!ctx.progress.guidance) {
+    await ensureGuidance();
+    if (!ctx.progress.tutorialsSeen.includes(ctx.progress.currentMission)) openTutorial(ctx.progress.currentMission);
+  }
 }
 
 // ---------------------------------------------------------------- app info pages and glossary
@@ -878,7 +897,7 @@ function reportHtml() {
     ${notes}
     <div class="real-tenant"><b>In the real tenant</b><p>${m.realTenant}</p></div>
     ${next
-      ? `<button class="btn primary" type="button" id="next-mission">Next mission: ${esc(next.title)}</button>`
+      ? `<button class="btn primary${guided() ? ' guided-pulse' : ''}" type="button" id="next-mission">Next mission: ${esc(next.title)}</button>`
       : `<p class="muted">That was the last mission: the main game and the excursions are complete. Your progress is saved.</p>`}`;
 }
 
@@ -975,6 +994,7 @@ async function boot() {
       await tell('The training tenant was rebuilt with the layers Entry (RHN_ENTRY), Data & Semantic (RHN_DSL) and Presentation (RHN_PRES). '
         + 'Your old save was built on the former spaces and cannot be carried over, so the game starts from the beginning.', 'New layer architecture');
     }
+    await ensureGuidance();
     if (!ctx.progress.tutorialsSeen.includes(id)) openTutorial(id, true);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

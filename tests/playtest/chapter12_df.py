@@ -1,7 +1,11 @@
 """Chapter 12, data flow (c12-m10): projection without aggregation and mode Append first (one row per reading, doubled),
 then aggregated but still Append (every month twice), then Truncate (right after two runs). Reload keeps the table.
 Start state: chapter12_data.py with c12-m01..m09 solved."""
+import os
 import sys
+
+# Plays a hands-on tutorial whose steps open their pages, which happens only in Guided mode.
+os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter12_data import TENANT12
