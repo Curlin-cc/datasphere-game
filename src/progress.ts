@@ -38,6 +38,11 @@ export interface Progress {
   tutorialVersion?: number;
   /** Spaces, storage and shares the player set up (chapter 1+). */
   tenant: TenantState;
+  /**
+   * Where the open mission tutorial is (Bug 1, 14.10.2026): a reload resumes there instead of at step 1.
+   * Cleared when the tutorial ends (finished, skipped, Escape).
+   */
+  tourAt?: { mission: string; step: number };
 }
 
 /** Raise when the tutorials change a lot: every save then sees them again (2 = hands-on tutorials, 2026-10-09; 3 = three-layer architecture, 2026-10-13). */
@@ -99,6 +104,8 @@ export function sanitize(data: unknown): Progress | null {
   // Saves from before the current tutorials see every tutorial again; progress and XP stay.
   p.tutorialsSeen = (d as { tutorialVersion?: number }).tutorialVersion === TUTORIAL_VERSION && Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
   p.tenant = sanitizeTenant(d.tenant);
+  const ta = (d as { tourAt?: { mission?: unknown; step?: unknown } }).tourAt;
+  if (ta && typeof ta.mission === 'string' && Number.isInteger(ta.step) && (ta.step as number) >= 0) p.tourAt = { mission: ta.mission, step: ta.step as number };
   if (typeof d.currentMission === 'string' && MISSIONS.some((m) => m.id === d.currentMission)) p.currentMission = d.currentMission;
   for (const [id, mp] of Object.entries(d.missions)) {
     if (!MISSIONS.some((m) => m.id === id) || !mp || typeof mp !== 'object') continue;

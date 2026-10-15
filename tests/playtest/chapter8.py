@@ -25,6 +25,10 @@ with sync_playwright() as p:
         if 'fail' in t.lower() or 'enter' in t.lower():
             print('   DEPLOY:', t)
 
+    def save_rows():
+        pg.click('#ed-save'); pg.wait_for_timeout(500)
+        print('   SAVE:', g.toast())
+
     def assign(view):
         pg.click(f'#object-list [data-open="{view}"]'); pg.wait_for_selector('#editor')
         pg.click('#run'); pg.wait_for_selector('#dac-assign')
@@ -40,16 +44,19 @@ with sync_playwright() as p:
     pg.fill('[data-col-name="0"]', 'USER_ID'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.click('#tbl-add-col'); pg.fill('[data-col-name="1"]', 'GRID_AREA'); pg.keyboard.press('Tab'); pg.wait_for_timeout(100)
     pg.check('[data-col-key="1"]'); pg.wait_for_timeout(100)
-    add_rows([('MBRANDT', 'NORTH'), ('MBRANDT', 'EAST'), ('ADEMIR', 'SOUTH'), ('ADEMIR', 'WEST')])
     pg.fill('#prop-business', 'Permissions'); pg.fill('#prop-technical', 'RHN_DS_T_PERMISSIONS')
-    deploy()
+    assert pg.locator('#tbl-add-row').count() == 0, 'Data Editor must be read-only before the first deploy'
+    deploy()   # Data Editor only on a deployed table
+    assert pg.locator('#tbl-add-row').count() == 1
+    add_rows([('MBRANDT', 'NORTH'), ('MBRANDT', 'EAST'), ('ADEMIR', 'SOUTH'), ('ADEMIR', 'WEST')])
+    save_rows()
     g.shot('c8-table')
     g.answer('why-area', 1); g.answer('who', 1)
     g.check('m01 Petra missing')
     add_rows([('PLINDNER', 'NORTH'), ('PLINDNER', 'EAST'), ('PLINDNER', 'SOUTH'), ('PLINDNER', 'WEST'), ('ADEMIR', 'WEST')])
-    deploy()   # duplicate key: refused
+    save_rows()   # duplicate key: refused
     pg.click('[data-del-row="8"]'); pg.wait_for_timeout(100)
-    deploy()
+    save_rows()
     pg.click('#run'); pg.wait_for_selector('#results .result-status')
     print('   preview:', pg.inner_text('#results .result-status'))
     g.check('m01 solved')

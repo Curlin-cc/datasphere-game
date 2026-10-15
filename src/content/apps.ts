@@ -87,7 +87,7 @@ export const APPS: AppInfo[] = [
   {
     id: 'monitor', label: 'Data Integration Monitor', section: 'monitoring', navLabel: 'Data Integration', interactive: 3, chapter: 3,
     icon: '<path d="M2 12l3-4 3 2 3-5 3 3"/>',
-    summary: 'Run, schedule and watch everything that moves data.',
+    summary: 'Monitoring > Data Integration: run, schedule and watch everything that moves data.',
     does: ['Remote tables: switch between remote access and snapshot replication, load snapshots, schedule them', 'Views: persist a view as a snapshot, remove it, schedule it, and find the expensive layer with the View Analyzer', 'Flows and task chains: run, schedule, read the messages of each run', 'Remote queries: what this space asked the source systems', 'Find out why last night\'s load failed'],
     who: 'Integrators, operations',
   },
@@ -130,7 +130,7 @@ export const APPS: AppInfo[] = [
     id: 'system', label: 'System', section: 'bottom', interactive: 3, chapter: 3,
     icon: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6L5 5M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4"/>',
     summary: 'Tenant configuration, administration and version.',
-    does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: Cloud Connectors and Data Provisioning Agents', 'IP allowlist, OAuth clients, About: version and URL'],
+    does: ['Configuration: tenant capacity, workload management, audit, task log retention', 'Configuration › Security: trusted certificates for TLS connections', 'Configuration › Data Integration: On-Premise Agents (Data Provisioning Agents)', 'Administration › Data Source Configuration: Cloud Connector location IDs', 'IP allowlist, OAuth clients, About: version and URL'],
     who: 'Administrators',
   },
   // ---- apps that complete the real navigation (docs/design/README.md, section 1); interactive since 2026-10-12 (src/views/sysmon.ts, exchange.ts)
@@ -237,7 +237,7 @@ export const NEW_TILES: NewTile[] = [
     icon: '<rect x="4" y="5" width="24" height="22" rx="2.5"/><path d="M4 12h24M16 15.5v8M12.5 20l3.5 3.5 3.5-3.5"/>' },
   { id: 'validate', label: 'Remote Tables', verb: 'Validate', importTile: true, menuLabel: 'Validate Remote Tables', text: 'Compares remote tables with their source: whether columns were added, removed or changed since the import. Run it after a source system upgrade.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
-  { id: 'permissions', label: 'Permissions', verb: 'Import', importTile: true, menuLabel: 'Import Permissions', text: 'Takes over row-level permissions from an SAP BW or S/4HANA source as permissions tables and data access controls, instead of maintaining them twice.',
+  { id: 'permissions', label: 'Permissions', verb: 'Import', importTile: true, menuLabel: 'Import Permissions', text: 'Imports analysis authorizations from SAP BW or SAP BW/4HANA as permissions tables and data access controls, instead of maintaining them twice.',
     icon: '<path d="M8 4h11l6 6v18H8z"/><path d="M19 4v6h6M16 14v9M12.5 19.5L16 23l3.5-3.5"/>' },
 ];
 

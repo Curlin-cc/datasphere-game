@@ -123,7 +123,7 @@ async function runStep(t: TenantState, step: ChainStep, depth: number): Promise<
   if (step.type === 'Remote Table Replication') {
     const locked = lockError(t, o.space);
     if (locked) {
-      const r = addRun(t, { object: step.object, kind: 'Remote Table', start: now(), status: 'Failed', records: 0, messages: ['Task chain run: Load New Snapshot.', locked] });
+      const r = addRun(t, { object: step.object, kind: 'Remote Table', start: now(), status: 'Failed', records: 0, messages: ['Task chain run: Start Data Replication.', locked] });
       return { ...base, status: 'Failed', records: 0, ms: 0, runId: r.id, message: locked };
     }
     await createRemoteView(t, o);
