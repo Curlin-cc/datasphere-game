@@ -87,7 +87,7 @@ export const APPS: AppInfo[] = [
   {
     id: 'monitor', label: 'Data Integration Monitor', section: 'monitoring', navLabel: 'Data Integration', interactive: 3, chapter: 3,
     icon: '<path d="M2 12l3-4 3 2 3-5 3 3"/>',
-    summary: 'Run, schedule and watch everything that moves data.',
+    summary: 'Monitoring > Data Integration: run, schedule and watch everything that moves data.',
     does: ['Remote tables: switch between remote access and snapshot replication, load snapshots, schedule them', 'Views: persist a view as a snapshot, remove it, schedule it, and find the expensive layer with the View Analyzer', 'Flows and task chains: run, schedule, read the messages of each run', 'Remote queries: what this space asked the source systems', 'Find out why last night\'s load failed'],
     who: 'Integrators, operations',
   },
