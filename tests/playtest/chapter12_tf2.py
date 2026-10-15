@@ -26,8 +26,6 @@ def open_obj(g, space, key):
 
 def solve_m11(g):
     pg = g.pg
-    open_obj(g, 'RHN_ENTRY', P)
-    pg.check('#prop-delta'); pg.click('#ed-deploy'); pg.wait_for_timeout(700)
     g.space('RHN_DSL')
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)

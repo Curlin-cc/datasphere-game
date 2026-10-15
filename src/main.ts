@@ -463,9 +463,16 @@ function tutorialSteps(missionId: string): TourStep[] {
   return tasks.some((s) => s.action) ? [...intro, ...tasks, CHECK_STEP] : intro;
 }
 
-function openTutorial(missionId: string) {
+/**
+ * Opens the mission tutorial. Bug 1 (14.10.2026): the tutorial only counted as seen when it ended, so a reload in the middle
+ * (e.g. c08-m01) started it again at step 1, whose centred card blocks the page until Next or Skip. Now every step is
+ * remembered in the save (`tourAt`), and `resume` continues at that step after a reload.
+ */
+function openTutorial(missionId: string, resume = false) {
   const steps = tutorialSteps(missionId);
   if (!steps.length) return;
+  const at = ctx.progress.tourAt;
+  const start = resume && at?.mission === missionId ? at.step : 0;
   startTour(
     steps,
     tourHooks(() => {
@@ -474,6 +481,15 @@ function openTutorial(missionId: string) {
         save();
       }
     }),
+    undefined,
+    {
+      start,
+      onStep: (i) => {
+        if (i < 0) delete ctx.progress.tourAt;
+        else ctx.progress.tourAt = { mission: missionId, step: i };
+        save();
+      },
+    },
   );
 }
 
@@ -553,7 +569,7 @@ function renderHome(main: HTMLElement) {
       <div class="home-cards">
         <section class="home-card wide" aria-label="Welcome">
           <div class="hc-hero">${MSC_LOGO}<p>Learn SAP Datasphere by building it.</p></div>
-          <div class="hc-body"><h3 class="view-title" style="font-size:20px;margin-top:16px">Welcome to Stadtwerke Rheinau</h3>
+          <div class="hc-body"><h3 class="view-title" style="font-size:calc(20px * var(--fs));margin-top:16px">Welcome to Stadtwerke Rheinau</h3>
             <p class="muted">The board wants one trusted view of revenue, consumption and receivables per grid area.
               You are the new data architect. Build the Datasphere landscape that delivers it, one ticket at a time.</p></div>
         </section>
@@ -979,7 +995,7 @@ async function boot() {
         + 'Your old save was built on the former spaces and cannot be carried over, so the game starts from the beginning.', 'New layer architecture');
     }
     await ensureGuidance();
-    if (!ctx.progress.tutorialsSeen.includes(id)) openTutorial(id);
+    if (!ctx.progress.tutorialsSeen.includes(id)) openTutorial(id, true);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     app.innerHTML = `<div class="boot">The database could not start: ${esc(msg)}. Reload the page; if it keeps failing, try a current Chrome, Edge or Firefox.</div>`;

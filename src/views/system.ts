@@ -43,6 +43,7 @@ const ADMIN_TABS: { id: AdminTab; label: string; sections: [string, string][] }[
   ] },
   { id: 'sources', label: 'Data Source Configuration', sections: [
     ['SAP BTP Core Account', 'The subaccount the Cloud Connectors register in. Needed before any on-premise source can be reached.'],
+    ['Cloud Connectors', 'The location IDs of the Cloud Connectors that reach systems in the company network. In the game they are shown under Configuration › Data Integration.'],
     ['Live Data Sources', 'Which Cloud Connector location carries live connections to on-premise systems.'],
   ] },
   { id: 'security', label: 'Security', sections: [
@@ -60,7 +61,7 @@ const ADMIN_TABS: { id: AdminTab; label: string; sections: [string, string][] }[
 
 /** Configuration tabs in the order of the real tenant (Bild 15). */
 const TABS: { id: Tab; label: string; text: string }[] = [
-  { id: 'integration', label: 'Data Integration', text: 'Cloud Connectors and Data Provisioning Agents that reach systems in the company network.' },
+  { id: 'integration', label: 'Data Integration', text: 'On-Premise Agents (Data Provisioning Agents). In a real tenant the Cloud Connector location IDs are under Administration › Data Source Configuration; the game shows them here.' },
   { id: 'security', label: 'Security', text: 'Trusted certificates for TLS connections to source systems.' },
   { id: 'audit', label: 'Audit', text: 'Which space keeps the audit logs and how long they are kept.' },
   { id: 'monitoring', label: 'Monitoring', text: 'What the monitoring apps record, for example expensive statements: SQL statements that exceed a threshold of runtime or memory.' },
@@ -295,7 +296,7 @@ function body(id: Tab, used: { diskGB: number; memoryGB: number }) {
   const head = `<p class="sys-lead">${esc(info.text)}</p>`;
   if (id === 'security') {
     return `${head}
-      <div class="table-head"><h4>Trusted certificates</h4><button class="btn small primary" type="button" id="cert-upload">Upload Certificate</button></div>
+      <div class="table-head"><h4>Trusted certificates</h4><button class="btn small primary" type="button" id="cert-upload">Add Certificate</button></div>
       <table class="grid" id="cert-list"><thead><tr><th>Name</th><th>Uploaded</th><th></th></tr></thead>
         <tbody>${t.certificates.length ? t.certificates.map((c) => `<tr><td>${esc(c)}</td><td class="muted">by you</td>
           <td><button class="btn small link" type="button" data-cert-delete="${esc(c)}">Delete</button></td></tr>`).join('')

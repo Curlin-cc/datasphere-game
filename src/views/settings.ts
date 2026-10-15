@@ -32,6 +32,27 @@ function applyTheme(choice: ThemeChoice) {
   writeUiPref('dsg-theme', choice === 'system' ? '' : choice);
 }
 
+/** Font size (Curlin, 14.10.2026): a game addition in Appearance; scales every text via --fs in styles.css. */
+export type FontChoice = 'small' | 'normal' | 'large' | 'xlarge';
+export const FONTS: { id: FontChoice; label: string }[] = [
+  { id: 'small', label: 'Small' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'large', label: 'Large' },
+  { id: 'xlarge', label: 'Extra Large' },
+];
+export function fontChoice(): FontChoice {
+  const f = readUiPref('dsg-font');
+  return FONTS.some((x) => x.id === f) ? (f as FontChoice) : 'normal';
+}
+export function applyFont(choice: FontChoice) {
+  const root = document.documentElement;
+  if (choice === 'normal') delete root.dataset.font;
+  else root.dataset.font = choice;
+  writeUiPref('dsg-font', choice === 'normal' ? '' : choice);
+}
+// Also on start, in case the page was loaded without the inline script of index.html (artifact).
+applyFont(fontChoice());
+
 const ICON = {
   account: '<circle cx="6.5" cy="5" r="2.5"/><path d="M2 13.5a4.5 4.5 0 019 0M11 9h3.5M11 11.5h3.5"/>',
   appearance: '<path d="M8 2a6 6 0 100 12c1 0 1.3-.8 1-1.6-.4-.9.2-1.9 1.2-1.9H12a2 2 0 002-2A6 6 0 008 2z"/><circle cx="5" cy="7" r=".8"/><circle cx="8" cy="5" r=".8"/><circle cx="11" cy="7" r=".8"/>',
@@ -49,7 +70,7 @@ const nameChoice = () => (readUiPref('dsg-names') === 'technical' ? 'technical' 
 function sections(): { id: Section; label: string; sub: string }[] {
   return [
     { id: 'account', label: 'User Account', sub: 'Data Architect' },
-    { id: 'appearance', label: 'Appearance', sub: THEMES.find((t) => t.id === themeChoice())!.label },
+    { id: 'appearance', label: 'Appearance', sub: `${THEMES.find((t) => t.id === themeChoice())!.label} · ${FONTS.find((f) => f.id === fontChoice())!.label} font` },
     { id: 'home', label: 'Home Screen', sub: 'Manage cards for your home screen' },
     { id: 'language', label: 'Language & Region', sub: 'English | 24 h | MMM d, yyyy | 1,234.56' },
     { id: 'notifications', label: 'Notifications', sub: '' },
@@ -71,8 +92,11 @@ function pane(id: Section) {
       return `<div class="set-hero"><b>Appearance</b></div><div class="set-body"><fieldset class="set-radios"><legend>Theme</legend>
         ${THEMES.map((t) => `<label><input type="radio" name="set-theme" value="${t.id}" ${themeChoice() === t.id ? 'checked' : ''}> ${esc(t.label)}</label>`).join('')}
         </fieldset>
+        <fieldset class="set-radios"><legend>Font Size (game)</legend>
+        ${FONTS.map((f) => `<label><input type="radio" name="set-font" value="${f.id}" ${fontChoice() === f.id ? 'checked' : ''}> ${esc(f.label)}</label>`).join('')}
+        </fieldset>
         <p class="muted">A real tenant offers Horizon, Horizon High Contrast Black and Horizon High Contrast White in a Theme dropdown.
-          The dark theme is an addition of the game.</p></div>`;
+          The dark theme and the font size are additions of the game; in the real tenant the browser zoom changes the text size.</p></div>`;
     case 'ui':
       return `<div class="set-hero"><b>UI Settings</b></div><div class="set-body"><fieldset class="set-radios"><legend>Display Name</legend>
         <label><input type="radio" name="set-names" value="business" ${nameChoice() === 'business' ? 'checked' : ''}> Show Business Name</label>
@@ -128,6 +152,13 @@ export function openSettings() {
       r.addEventListener('change', () => {
         applyTheme(r.value as ThemeChoice);
         ctx.track(`theme:${r.value}`);
+        draw();
+      }),
+    );
+    form.querySelectorAll<HTMLInputElement>('[name="set-font"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        applyFont(r.value as FontChoice);
+        ctx.track(`font:${r.value}`);
         draw();
       }),
     );

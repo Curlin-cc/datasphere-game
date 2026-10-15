@@ -3,6 +3,7 @@ afterwards, check explains), Initial and Delta without Delta Capture (deploy ref
 and handed over again, Delta Capture on before the first deploy, initial load, bank message only saved (not deployed), then deployed and the delta run.
 Reload keeps the delta table and the target; monitor and task logs list the flow. Second pass: the hands-on tutorial.
 Start state: chapter12_data.py with c12-m01..m10 solved."""
+import json
 import os
 import sys
 
@@ -45,13 +46,11 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1500)
     g.check('m11 nothing done')
 
-    # Mistake: deploy the handed-over table without Delta Capture. Afterwards the switch is locked.
+    # The payments table comes deployed with Delta Capture: the switch is locked, the Data Editor is editable
     open_obj('RHN_ENTRY', P)
-    print('   status before deploy:', pg.inner_text('#prop-delta').strip() or 'switch', '| locked:', pg.is_disabled('#prop-delta'))
-    assert not pg.is_disabled('#prop-delta')
-    deploy()
-    assert pg.is_disabled('#prop-delta'), 'Delta Capture must be locked after the first deploy'
-    g.check('m11 deployed without delta capture')
+    print('   rows:', pg.locator('[data-del-row]').count(), '| delta on:', pg.is_checked('#prop-delta'), '| locked:', pg.is_disabled('#prop-delta'))
+    assert pg.is_checked('#prop-delta') and pg.is_disabled('#prop-delta'), 'RHN_EN_T_PAYMENTS must start deployed with Delta Capture'
+    assert pg.locator('#tbl-add-row').count() == 1 and pg.locator('[data-del-row]').count() == 95, 'Data Editor must be editable from the start'
 
     # The flow, with delta but without Delta Capture on the source
     g.space('RHN_DSL')
@@ -72,16 +71,26 @@ with sync_playwright() as p:
     g.answer('delta-run', 1)
     g.check('m11 initial only')
 
-    # Delete the table: Accounts Receivable hands it over again (saved, not deployed); now Delta Capture before the first deploy
+    # Delete the table: Accounts Receivable hands it over again, deployed with Delta Capture
     g.space('RHN_ENTRY')
     pg.click(f'#object-list [data-delete="{P}"]'); pg.wait_for_timeout(1500)
     print('   handed over again:', g.toast())
     open_obj('RHN_ENTRY', P)
     print('   rows again:', pg.locator('[data-del-row]').count(), '| locked:', pg.is_disabled('#prop-delta'))
-    assert not pg.is_disabled('#prop-delta')
-    pg.check('#prop-delta'); pg.wait_for_timeout(200)
-    deploy()
+    assert pg.is_checked('#prop-delta') and pg.is_disabled('#prop-delta') and pg.locator('#tbl-add-row').count() == 1
     print('   delta section:', pg.inner_text('#tbl-delta .tbl-head').replace('\n', ' '))
+    # Regression: the column objects of the deployed table with another key order still count as the same structure
+    st = json.loads(pg.evaluate("localStorage.getItem('dsg-progress-v3')"))
+    def reorder(o):
+        for obj in o.get('objects', []):
+            if obj.get('space') == 'RHN_ENTRY' and obj.get('name') == 'RHN_EN_T_PAYMENTS':
+                for d in (obj.get('table'), (obj.get('deployed') or {}).get('table')):
+                    if d: d['columns'] = [dict(reversed(list(c.items()))) for c in d['columns']]
+                return True
+        return any(reorder(v) for v in o.values() if isinstance(v, dict))
+    assert reorder(st), 'payments table not found in the saved state'
+    pg.evaluate("s => localStorage.setItem('dsg-progress-v3', s)", json.dumps(st))
+    pg.reload(); pg.wait_for_timeout(2500)
     # Back to the flow: Initial and Delta, deploy (starts over), initial load
     open_obj('RHN_DSL', F)
     load('Initial and Delta')
@@ -90,12 +99,17 @@ with sync_playwright() as p:
     print('   pointer:', pg.inner_text('#tf-props').split('Watermark')[1].split('\n')[1] if 'Watermark' in pg.inner_text('#tf-props') else '?')
     g.check('m11 initial load only')
 
-    # Bank message saved, not deployed
+    # Bank message in the Data Editor: Save writes it (no deploy needed), flow not run yet
     open_obj('RHN_ENTRY', P)
-    bank_message(pg, deploy=False)
+    bank_message(pg)
     print('   saved:', g.toast())
-    g.check('m11 bank message not deployed')
-    deploy()
+    assert 'rows in' in g.toast() or pg.locator('#tbl-delta tbody tr').count() >= 3, 'Save must write the rows (key order of the columns must not matter)'
+    print('   delta records after save:', pg.locator('#tbl-delta tbody tr').count())
+    assert pg.locator('#tbl-delta tbody tr').count() >= 3, 'Save must write the bank message into the deployed table'
+    # Regression: a data save is no deployment
+    ev = pg.evaluate("JSON.stringify(Object.values(JSON.parse(localStorage.getItem('dsg-progress-v3')).missions).flatMap(m => m.events || []))")
+    assert f'deploy:{P}' not in json.loads(ev) and f'table-data:{P}' in json.loads(ev), 'Save of rows must track table-data, not deploy'
+    g.check('m11 bank message saved, flow not run')
     print('   delta table:', pg.inner_text('#tbl-delta tbody').replace('\n', ' | ')[:300])
     g.shot('c12-tf-delta-table')
     open_obj('RHN_DSL', F)
@@ -139,8 +153,7 @@ with sync_playwright() as p:
     g.start(save)
     tour(pg, 'Loading only what changed'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'Open the payments'); pg.click(f'#object-list [data-open="{P}"]')
-    tour(pg, 'Delta Capture'); pg.check('#prop-delta')
-    tour(pg, 'Deploy'); pg.click('#ed-deploy')
+    tour(pg, 'Delta Capture'); assert pg.is_disabled('#prop-delta'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'New Transformation Flow'); pg.click('[data-new="transformation"]')
     tour(pg, 'The view transform'); g.sql(SQL); pg.click('#tf-preview')
     tour(pg, 'Target table'); pg.click('[data-node="target"]'); pg.fill('#tf-target', 'RHN_DS_T_PAYMENTS'); pg.keyboard.press('Tab')
@@ -154,7 +167,7 @@ with sync_playwright() as p:
     for c, v in enumerate(['PAY-0096', 'INV-4000080', '2026-07-15', '874.39']):
         pg.fill(f'[data-cell="95:{c}"]', v)
     pg.click('[data-del-row="6"]')
-    tour(pg, 'Deploy the changes'); pg.click('#ed-deploy')
+    tour(pg, 'Save the changes'); pg.click('#ed-save')
     tour(pg, 'The delta table'); pg.click('.tour-card [data-act="next"]')
     tour(pg, 'Open the flow'); pg.click(f'#object-list [data-open="{F}"]')
     tour(pg, 'The delta run'); pg.click('#tf-run')

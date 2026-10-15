@@ -144,7 +144,7 @@ function remoteTab(host: HTMLElement, redraw: () => void) {
     <section class="panel">
       <div class="table-head"><h3>Remote Tables</h3>
         <div class="toolbar">
-          <button class="btn small" type="button" id="rt-snapshot" ${sel ? '' : 'disabled'}>Load New Snapshot</button>
+          <button class="btn small" type="button" id="rt-snapshot" ${sel ? '' : 'disabled'} title="Data Replication › Start Data Replication">Start Data Replication</button>
           <button class="btn small" type="button" id="rt-remove" ${sel?.remote?.access === 'Replicated (Snapshot)' ? '' : 'disabled'}>Remove Replicated Data</button>
           <button class="btn small" type="button" id="rt-schedule" ${sel ? '' : 'disabled'}>Schedule</button>
         </div></div>
@@ -162,7 +162,7 @@ function remoteTab(host: HTMLElement, redraw: () => void) {
             <td class="num">${o.remote!.records?.toLocaleString('en-US') ?? '–'}</td></tr>`;
         }).join('') : `<tr><td colspan="8" class="muted">No remote tables in this space. Import them in the Data Builder.</td></tr>`}</tbody>
       </table></div>
-      <p class="muted">Remote: every query reads the source live; nothing is stored here. Replicated (Snapshot): a full copy is stored in the space and refreshed when you load a new snapshot or on a schedule.
+      <p class="muted">Remote: every query reads the source live; nothing is stored here. Replicated (Snapshot): a full copy is stored in the space and refreshed when you start data replication or on a schedule.
         Real-time replication depends on source and adapter and is not simulated.</p>
     </section>`;
   host.querySelectorAll<HTMLInputElement>('[name="rt-sel"]').forEach((r) =>

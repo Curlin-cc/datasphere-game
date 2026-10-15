@@ -39,6 +39,11 @@ export interface Progress {
   /** Spaces, storage and shares the player set up (chapter 1+). */
   tenant: TenantState;
   /**
+   * Where the open mission tutorial is (Bug 1, 14.10.2026): a reload resumes there instead of at step 1.
+   * Cleared when the tutorial ends (finished, skipped, Escape).
+   */
+  tourAt?: { mission: string; step: number };
+  /**
    * How the tutorials lead (asked at the start of a new game, Settings › Guidance): 'guided' moves on and opens apps by itself,
    * 'self' waits for the player (the behaviour before 14.10.2026). Missing = not asked yet; saves with progress count as 'self'.
    */
@@ -106,6 +111,8 @@ export function sanitize(data: unknown): Progress | null {
   // Saves from before the current tutorials see every tutorial again; progress and XP stay.
   p.tutorialsSeen = (d as { tutorialVersion?: number }).tutorialVersion === TUTORIAL_VERSION && Array.isArray(d.tutorialsSeen) ? d.tutorialsSeen.map(String) : [];
   p.tenant = sanitizeTenant(d.tenant);
+  const ta = (d as { tourAt?: { mission?: unknown; step?: unknown } }).tourAt;
+  if (ta && typeof ta.mission === 'string' && Number.isInteger(ta.step) && (ta.step as number) >= 0) p.tourAt = { mission: ta.mission, step: ta.step as number };
   const gm = (d as { guidance?: unknown }).guidance;
   if (gm === 'guided' || gm === 'self') p.guidance = gm;
   if (typeof d.currentMission === 'string' && MISSIONS.some((m) => m.id === d.currentMission)) p.currentMission = d.currentMission;

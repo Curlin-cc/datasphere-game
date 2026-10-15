@@ -4,7 +4,7 @@
 cd "$(dirname "$0")"
 OUT=${1:-/tmp}
 shift || true
-SCRIPTS=${*:-"back guided tour chapter0 chapter1 chapter2 chapter3 chapter4 chapter5 chapter5_map chapter6 chapter7 chapter8 chapter9 chapter10 chapter11 chapter12 chapter12_hier chapter12_ver chapter12_odata chapter12_onb chapter12_df chapter12_tf chapter12_tf2 sandbox_check extras translation guided_mode dirty_check"}
+SCRIPTS=${*:-"back guided tour chapter0 chapter1 chapter2 chapter3 chapter4 chapter5 chapter5_map chapter6 chapter7 chapter8 chapter9 chapter10 chapter11 chapter12 chapter12_hier chapter12_ver chapter12_odata chapter12_onb chapter12_df chapter12_tf chapter12_tf2 sandbox_check extras translation intro favicon tour_reload font_size guided_mode dirty_check"}
 fail=0
 for f in $SCRIPTS; do
   out=$(timeout 600 python3 "$f.py" "$OUT" 2>&1)

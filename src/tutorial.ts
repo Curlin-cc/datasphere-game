@@ -1,3 +1,5 @@
+import { MSC_LOGO } from './brand';
+
 /**
  * Step-by-step tutorial ("tour") that walks the player through a mission.
  * Each step can switch the view, spotlight one element and explain it.
@@ -47,6 +49,8 @@ export interface TourStep {
    * readable (grand tour, c00-m00). Once a `stay` action is done, the spotlight moves to the page that opened.
    */
   dock?: boolean;
+  /** Intro window: a large centred card with the MSC logo on top (first steps of the game, c00-m00). Needs no target. */
+  hero?: boolean;
 }
 
 export interface TourHooks {
@@ -91,7 +95,12 @@ let active: { close: () => void } | null = null;
 export const tourRunning = () => active !== null;
 
 /** finishLabel names the last button, e.g. 'Start the mission' or 'Got it'. */
-export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'Start the mission') {
+/**
+ * `start` resumes at a step (after a reload, see openTutorial in main.ts); `onStep` hears every step shown and,
+ * with -1, the end of the tour, so the caller can remember where the player is.
+ */
+export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'Start the mission',
+  opts: { start?: number; onStep?: (index: number) => void } = {}) {
   active?.close();
   let index = 0;
   let timer = 0;
@@ -124,6 +133,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   const close = (finished: boolean) => {
     stopWaiting();
     root.remove();
+    opts.onStep?.(-1);
     window.removeEventListener('resize', place);
     window.removeEventListener(TRACK_EVENT, onTrack);
     document.removeEventListener('keydown', onKey);
@@ -156,6 +166,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     stopWaiting();
     if (i >= steps.length) return close(true);
     index = i;
+    opts.onStep?.(i);
     stepDone = false;
     spotPage = false;
     lastRect = '';
@@ -312,7 +323,9 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     const last = index === steps.length - 1;
     card.classList.remove('done');
     card.classList.toggle('acting', !!step.action);
-    card.innerHTML = `
+    card.classList.toggle('hero', !!step.hero);
+    root.classList.toggle('hero', !!step.hero);
+    card.innerHTML = `${step.hero ? `<div class="tour-hero-logo">${MSC_LOGO}</div>` : ''}
       <div class="tour-count">Step ${index + 1} of ${steps.length}${step.action ? ' · <span class="your-turn">Your turn</span>' : ''}</div>
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
@@ -432,7 +445,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     card.style.top = `${top}px`;
   }
 
-  go(0);
+  go(Math.min(Math.max(0, opts.start ?? 0), steps.length - 1));
 }
 
 /** First visible match. "A || B" tries A first, then B (e.g. a nav entry, else its closed group). */
