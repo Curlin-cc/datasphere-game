@@ -164,7 +164,7 @@ Spielbar (65 Missionen, Hauptspiel und Exkurse komplett):
   Versionshistorie (c12-m07): Tims Version von `RHN_DS_V_CONTRACTS` (nur S4U) per Versions › Restore zurückrollen und deployen;
   OData (c12-m08): Konsum-View `RHN_PR_V_GRID_AREAS` in `RHN_PRES` bauen und freigeben, OAuth-Client *Interactive Usage* mit Redirect URI der Planungs-SAC, Test-Aufruf mit HTTP 200;
   Data Flow (c12-m10, in `RHN_DSL`): `RHN_DS_DF_MONTHLY` (Ablesungen JOIN Verträge, Monat + Netzgebiet, SUM) schreibt `RHN_DS_T_MONTHLY_CONSUMPTION` mit Truncate, zweimal gelaufen;
-  Transformation Flow (c12-m11): Delta Capture auf `RHN_EN_T_PAYMENTS` (95 Zahlungen, vom Setup angelegt und mit RHN_DSL geteilt), `RHN_DS_TF_PAYMENTS` (Initial and Delta, + CONTRACT_ID aus `RHN_DS_V_INVOICES`) → `RHN_DS_T_PAYMENTS`; Erstladung, Bankmeldung (PAY-0096 neu, PAY-0012 = 286.38, PAY-0007 gelöscht), Delta-Lauf mit 3 Schlüsseln;
+  Transformation Flow (c12-m11): `RHN_EN_T_PAYMENTS` kommt deployt mit Delta Capture (95 Zahlungen, mit RHN_DSL geteilt; Data Editor nur auf deployten Tabellen), Delta Capture selbst einschalten auf `RHN_EN_T_DD_RETURNS` vor dem ersten Deploy (seit 15.10.2026), `RHN_DS_TF_PAYMENTS` (Initial and Delta, + CONTRACT_ID aus `RHN_DS_V_INVOICES`) → `RHN_DS_T_PAYMENTS`; Erstladung, Bankmeldung (PAY-0096 neu, PAY-0012 = 286.38, PAY-0007 gelöscht), Delta-Lauf mit 3 Schlüsseln;
   Nachtlauf (c12-m12): Setup löscht die Zahlungen vom 12.02. im Ziel (Tims Test) und fügt PAY-0097 in der Quelle hinzu; Reset Delta im Data Integration Monitor › Flows, Lauf (Erstladung, 96 Zeilen), Flow als letzter Schritt in `RHN_DS_TC_NIGHTLY`, Kette deployt und gelaufen;
   Content Network (c12-m09): Paket *Utilities – Billing Analysis* über Semantic Onboarding in eigenen Space `SAP_UTIL` importieren, Import-Log lesen (Verbindung `SAP_S4H` fehlt), Fact im Repository Explorer
 
@@ -187,6 +187,12 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
+000. **Stand 15.10.2026: alle PRs bis #25 sind auf `main`** (Session-Log in `docs/STATUS.md`). Neu zu beachten:
+   **Geführter Modus** (`guidance` im Spielstand, Settings › Guidance): Tutorial-Schritte mit `view` öffnen die Seite selbst, aber nie über
+   ungespeicherte Arbeit (`src/dirty.ts`, `pageUnsaved()`); Playtests spielen Self-directed, außer Skript oder Spielstand setzen `guided`
+   (`DSG_MODE`). Neue Editoren: Eingaben in `.editor-page` zählen bis Save/Deploy als ungespeichert, auch wenn der Editor neu zeichnet –
+   `dirty_check.py` mitlaufen lassen. **Schriftgröße** über `--fs` (neue Schriftgrößen in CSS als `calc(… * var(--fs, 1))`).
+   Offen: `guided.py` hat seltene 6-s-Timeouts (ca. 1 von 10 Läufen, schon vor #13) – Ursache im Tutorial-Timing oder Testskript klären.
 00. **Grand Tour c00-m00** (13.10.2026, Wunsch von Curlin: „am Anfang alles einmal durchklicken und erklären“): Inhalte in `guided.ts`
    (`visit`/`look`/`tryIt`), App-Liste `TOUR_APPS` in `c00.ts`. **Neue App in der Navigation → auch einen `visit`-Schritt in die Tour
    und die App in `TOUR_APPS`.** Tour-Schritte mit `action.stay` warten nach dem Klick auf *Next*; `dock` legt die Karte aufs Missions-Panel, damit die erklärte App sichtbar bleibt (Engine `src/tutorial.ts`). Nur Funktionen vorstellen, keine Deko (Logo, Banner) – Wunsch von Curlin.
