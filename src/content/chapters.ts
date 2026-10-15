@@ -92,7 +92,7 @@ export const GLOSSARY: GlossaryTerm[] = [
   {
     term: 'Space priority',
     chapter: 1,
-    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 5 (highest). The presentation space usually ranks above loading.',
+    text: 'Decides whose statements are favored when the database is busy, from 1 (lowest) to 8 (highest); new spaces get 5. The presentation space usually ranks above loading.',
     realTenant: 'System > Configuration > Workload Management.',
   },
   {
@@ -198,10 +198,10 @@ export const GLOSSARY: GlossaryTerm[] = [
     realTenant: 'Load type of each replication object in a replication flow.',
   },
   {
-    term: 'Truncate',
+    term: 'Delete All Before Loading',
     chapter: 3,
-    text: 'Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
-    realTenant: 'Option per replication object in a replication flow.',
+    text: 'Formerly called Truncate. Empties the target table before the load. Right when one source owns the whole table; dangerous when a table collects rows from several sources.',
+    realTenant: 'Setting per replication object in a replication flow. Not the same as the Data Flow target mode Truncate.',
   },
   {
     term: 'Data Integration Monitor',
