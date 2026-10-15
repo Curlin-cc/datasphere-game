@@ -42,6 +42,8 @@ const REF_MONTHLY = `SELECT strftime(READING_DATE, '%Y-%m') AS READING_MONTH, GR
 const CONTRACTS = 'RHN_DSL.RHN_DS_V_CONTRACTS';
 /** c12-m11: bank payments with Delta Capture, loaded into the data & semantic layer by a transformation flow. */
 const PAYMENTS = 'RHN_ENTRY.RHN_EN_T_PAYMENTS';
+/** c12-m11: a second table, saved and not deployed, on which the player switches Delta Capture on before the first deploy (Calin, 15.10.2026). */
+const RETURNS = 'RHN_ENTRY.RHN_EN_T_DD_RETURNS';
 const TF_PAYMENTS = 'RHN_DSL.RHN_DS_TF_PAYMENTS';
 const T_PAYMENTS = 'RHN_DSL.RHN_DS_T_PAYMENTS';
 const PAYMENT_COLS = ['PAYMENT_ID', 'INVOICE_ID', 'CONTRACT_ID', 'PAID_ON', 'AMOUNT'];
@@ -822,12 +824,15 @@ export const CHAPTER_12: Mission[] = [
       <p><i>Calin adds:</i> The table will grow to thousands of payments while only a handful change each day. Do not reload everything every night:
       a <b>transformation flow</b> <code>RHN_DS_TF_PAYMENTS</code> in <code>RHN_DSL</code> with load type <b>Initial and Delta</b>. For that the source has to record its
       changes: that is <b>Delta Capture</b>, which Jonas switched on before the table's first deploy; once a table is deployed it can no longer be switched on or off. Run the initial load, then enter today's bank message and run again: the second run must process the changes only.</p>
+      <p><i>Calin adds:</i> Jonas also prepared <code>RHN_EN_T_DD_RETURNS</code> for the returned direct debits (key <code>RETURN_ID</code>), saved but <b>not deployed</b>.
+      Next month it gets a delta flow of its own. That one is yours: switch Delta Capture on <b>before</b> you deploy it.</p>
       <p><b>Today's bank message</b></p>
       <ul><li>New payment <code>PAY-0096</code>: invoice <code>INV-4000080</code>, paid on <code>2026-07-15</code>, <code>874.39</code></li>
         <li>Correction: <code>PAY-0012</code> was a partial payment, the amount is <code>286.38</code></li>
         <li>Returned direct debit: <code>PAY-0007</code> did not go through. Delete the row.</li></ul>`,
     tasks: [
       'In <code>RHN_ENTRY</code>, open <code>RHN_EN_T_PAYMENTS</code> (deployed) and check in its properties that <b>Delta Capture</b> is on: it was chosen before the first deploy and is fixed now.',
+      'Open <code>RHN_EN_T_DD_RETURNS</code> (saved, not deployed), switch on <b>Delta Capture</b>, then deploy it for the first time.',
       'In <code>RHN_DSL</code>, create a <b>New Transformation Flow</b>: a SQL view transform that adds <code>CONTRACT_ID</code> from <code>RHN_DS_V_INVOICES</code>, target <code>RHN_DS_T_PAYMENTS</code>, load type <b>Initial and Delta</b>.',
       'Name it <code>RHN_DS_TF_PAYMENTS</code>, deploy it and <b>Run</b> it: the initial load.',
       'Enter today\'s bank message in the Data Editor of <code>RHN_EN_T_PAYMENTS</code>, press <b>Save</b>, and <b>Run</b> the flow again.',
@@ -838,6 +843,16 @@ export const CHAPTER_12: Mission[] = [
       { label: 'Hint 2: the concept', cost: 15, text: 'Order matters: Delta Capture is fixed at the first deploy of a table and records only changes saved after that; the initial run loads everything up to then. The bank message belongs after the initial run, otherwise the second run finds nothing new.' },
     ],
     setup: (t) => {
+      if (!findObject(t, RETURNS)) {
+        // Handed over saved, not deployed: Delta Capture can still be chosen (SAP sets it at the first deployment, Handbuch 6.4.2).
+        t.objects.push({ space: 'RHN_ENTRY', name: 'RHN_EN_T_DD_RETURNS', kind: 'Local Table', businessName: 'Returned direct debits', semanticUsage: 'Relational Dataset',
+          table: {
+            columns: [{ name: 'RETURN_ID', type: 'String' as const, key: true }, { name: 'PAYMENT_ID', type: 'String' as const, key: false },
+              { name: 'RETURNED_ON', type: 'Date' as const, key: false }, { name: 'REASON', type: 'String' as const, key: false }],
+            rows: [['RET-0001', 'PAY-0007', '2026-07-15', 'AM04']],
+          },
+          status: 'not_deployed', changedAt: new Date(Date.now() - 24 * 3600_000).toISOString() });
+      }
       if (findObject(t, PAYMENTS)) return;
       const table = {
         columns: [{ name: 'PAYMENT_ID', type: 'String' as const, key: true }, { name: 'INVOICE_ID', type: 'String' as const, key: false },
@@ -851,8 +866,8 @@ export const CHAPTER_12: Mission[] = [
       if (!t.shares.some((x) => x.object === PAYMENTS && x.to === 'RHN_DSL')) t.shares.push({ object: PAYMENTS, to: 'RHN_DSL' });
     },
     setupAgain: {
-      when: (t) => !findObject(t, PAYMENTS),
-      note: 'Accounts Receivable handed RHN_EN_T_PAYMENTS over again: deployed with its rows and Delta Capture on.',
+      when: (t) => !findObject(t, PAYMENTS) || !findObject(t, RETURNS),
+      note: 'Accounts Receivable handed the missing table over: RHN_EN_T_PAYMENTS comes deployed with Delta Capture, RHN_EN_T_DD_RETURNS saved and not deployed.',
     },
     setupAsync: async (t) => {
       const o = findObject(t, PAYMENTS);
@@ -874,6 +889,18 @@ export const CHAPTER_12: Mission[] = [
             return 'RHN_EN_T_PAYMENTS was deployed without Delta Capture, and it cannot be switched on afterwards. Delete the table in RHN_ENTRY (Data Builder, Delete in its row): Accounts Receivable hands it over again, deployed with Delta Capture.';
           return o.table?.deltaCapture ? 'Delta Capture is switched on but the table is not deployed yet. Deploy RHN_EN_T_PAYMENTS.'
             : 'RHN_EN_T_PAYMENTS is not deployed yet. Open it in RHN_ENTRY, switch on Delta Capture in its properties first, then deploy.';
+        },
+      },
+      {
+        type: 'rule', label: 'Delta Capture on the returns', ok: 'RHN_EN_T_DD_RETURNS is deployed with Delta Capture.',
+        test: ({ tenant }) => {
+          const o = findObject(tenant, RETURNS);
+          if (!o) return 'RHN_EN_T_DD_RETURNS is missing in RHN_ENTRY.';
+          if (o.deployed?.table?.deltaCapture) return null;
+          if (o.deployed?.table)
+            return 'RHN_EN_T_DD_RETURNS was deployed without Delta Capture, and it cannot be switched on afterwards. Delete the table in RHN_ENTRY (Data Builder, Delete in its row): Jonas hands it over again, saved and not deployed. Then switch Delta Capture on before the first deploy.';
+          return o.table?.deltaCapture ? 'Delta Capture is switched on but RHN_EN_T_DD_RETURNS is not deployed yet. Deploy it.'
+            : 'RHN_EN_T_DD_RETURNS is not deployed yet. Open it in RHN_ENTRY, switch on Delta Capture in its properties first, then deploy.';
         },
       },
       {

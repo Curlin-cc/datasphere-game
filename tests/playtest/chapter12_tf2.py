@@ -10,7 +10,7 @@ os.environ.setdefault('DSG_MODE', 'guided')
 from playwright.sync_api import sync_playwright
 from common import Game, save_before
 from chapter12_data import TENANT12
-from chapter12_tf_data import SQL, F, P, bank_message
+from chapter12_tf_data import SQL, F, P, bank_message, returns_with_delta
 
 S = sys.argv[1] if len(sys.argv) > 1 else '.'
 C = 'RHN_DSL.RHN_DS_TC_NIGHTLY'
@@ -26,6 +26,7 @@ def open_obj(g, space, key):
 
 def solve_m11(g):
     pg = g.pg
+    returns_with_delta(g)
     g.space('RHN_DSL')
     pg.click('[data-new="transformation"]'); pg.wait_for_selector('#tf-canvas')
     g.sql(SQL)
