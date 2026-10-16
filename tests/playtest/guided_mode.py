@@ -92,6 +92,24 @@ with sync_playwright() as p:
     g.shot('gm-auto-open')
     g.b.close()
 
+    # 3b. Regression (15.10.2026): guided mode does not open a page while the player is clicking on it (the redraw swallowed a click
+    # in progress, e.g. in an open space picker). Busy on the page: nothing opens; idle: it opens and the tour moves on.
+    g = Game(p, S); pg = g.pg
+    g.start(m02('guided'))
+    wait_title(pg, 'Spaces first'); pg.click('.tour-card [data-act="next"]')
+    wait_title(pg, 'Open Data Builder')
+    for _ in range(8):
+        pg.mouse.click(700, 140); pg.wait_for_timeout(300)  # the page header: clicks that change nothing
+    ok(title(pg) == 'Open Data Builder' and pg.locator('.nav [data-view="builder"][aria-current="page"]').count() == 0,
+       'guided: nothing opens while the player clicks on the page')
+    wait_title(pg, 'Select RHN_ENTRY', timeout=6000)
+    ok(pg.locator('.nav [data-view="builder"][aria-current="page"]').count() == 1, 'guided: opens once the player pauses')
+    # A late Next on a card the tour already left does not skip a step.
+    pg.evaluate("""() => { const b = document.querySelector('.tour-card [data-act="back"]'); b.click(); b.click(); }""")
+    pg.wait_for_timeout(400)
+    ok(title(pg) == 'Open Data Builder', f'guided: a double Back moves one step, not two ({title(pg)})')
+    g.b.close()
+
     # 4. Guided, editor with unsaved changes: the game opens nothing over it, the text stays, the step waits.
     g = Game(p, S); pg = g.pg
     s = save_before(5, 'c05-m01', TENANT5); s['guidance'] = 'guided'
@@ -236,6 +254,34 @@ with sync_playwright() as p:
         ok(pg.locator('[data-new="sqlview"]').count() == 1 and pg.locator('.tour-aid.unsaved').count() == 0,
            f'source table without changes is not unsaved (run {n + 1})')
         g.b.close()
+
+    # 10. Regression (15.10.2026): the tutorial card stands still beside its target. Near the right edge it used to be measured at a
+    # shrunken width, placed by it, grew back over the target and flipped every 250 ms (swallowed the click on View Analyzer).
+    from chapter9_data import TENANT9
+    g = Game(p, S); pg = g.pg
+    s9 = save_before(9, 'c09-m02', TENANT9); s9['guidance'] = 'guided'
+    s9['missions']['c09-m01'] = DONE
+    g.start(s9)
+    wait_title(pg, 'The View Analyzer'); pg.click('.tour-card [data-act="next"]')
+    wait_title(pg, 'Views in RHN_DSL'); pg.click('[data-vw="RHN_DS_F_CONSUMPTION"]')
+    wait_title(pg, 'View Analyzer')
+    # From the moment the step shows: the button is always the element under its own centre (the card may slide past, but lets
+    # clicks through while it moves); after the slide the card stands still.
+    samples = []
+    for _ in range(12):
+        samples.append(pg.evaluate("""() => { const c = document.querySelector('.tour-card').getBoundingClientRect();
+            const b = document.querySelector('#vw-analyzer'); const t = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(t.left + t.width / 2, t.top + t.height / 2);
+            return [Math.round(c.left), Math.round(c.top), Math.round(c.width), Math.round(c.height), !!hit && b.contains(hit),
+                    hit ? (hit.id || hit.className || hit.tagName) + ' ' + document.querySelector('.tour-card').className : 'none']; }"""))
+        pg.wait_for_timeout(110)
+    ok(all(r[4] for r in samples), f'View Analyzer stays clickable while the card moves ({[r[5] for r in samples if not r[4]]})')
+    still = {tuple(r[:4]) for r in samples[4:]}
+    ok(len(still) == 1, f'card stands still beside its target ({sorted(still)})')
+    pg.click('#vw-analyzer')
+    wait_title(pg, 'Read the stack')
+    ok(True, 'click on View Analyzer reaches the page')
+    g.b.close()
 
 print('guided_mode:', 'all passed' if not fails else f'FAILED {fails}')
 if not fails:

@@ -848,6 +848,8 @@ td.small, .mono.small { font-size: calc(11.5px * var(--fs)); white-space: normal
 @keyframes tour-pulse { 50% { box-shadow: 0 0 0 6px var(--accent), 0 0 0 9999px rgba(11, 21, 36, .32); } }
 @media (prefers-reduced-motion: reduce) { .tour.acting .tour-spot { animation: none; } }
 .tour-card { transition: left .2s, top .2s; }
+/* While the card slides to its new place it may pass over the next target: let clicks through until it stands still. */
+.tour .tour-card.moving, .tour.acting .tour-card.moving, .tour.guided .tour-card.moving { pointer-events: none; }
 .tour-card.acting { border: 2px solid var(--accent); }
 .your-turn { color: var(--warning); text-transform: uppercase; letter-spacing: .05em; }
 .tour-do { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 4px; padding: 10px 12px; border-radius: var(--radius-s);
