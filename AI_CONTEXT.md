@@ -195,9 +195,14 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
    Gelöst (#26): die seltenen 6-s-Timeouts von `guided.py` kamen von verlorenen Klicks im Tutorial (automatisches Öffnen während des Klickens,
    zappelnde/gleitende Karte); automatisches Öffnen wartet jetzt 0,9 s nach der letzten Eingabe, Back/Next gelten nur für ihren eigenen Schritt.
    `dirty_check.py` lädt `/src/dirty.ts` und läuft daher nur gegen den Dev-Server, nicht gegen den Build.
+   **Tutorial seit 16.10.2026 (Meldung Curlin):** jeder erledigte Aktionsschritt geht in **beiden** Modi von selbst weiter; *Back* auf einen
+   erledigten Schritt bleibt dort stehen („Done · press Next to go on“, `revisit` in `src/tutorial.ts`). Offene Dialoge rücken während eines
+   Tutorials nach links (`.guide-overlay.tour-room`), damit die Karte rechts sie nie verdeckt. Playtests: nach Code-Änderungen den Dev-Server
+   neu starten (sonst lädt `dirty_check.py` veraltete Module); `run_all.sh` zählt auch `FAIL`-Zeilen; `chain.sh` speichert `chain_<skript>.log`
+   und jedes Skript spielt dort in seinem eigenen Modus (`DSG_MODE`, sonst Self-directed).
 00. **Grand Tour c00-m00** (13.10.2026, Wunsch von Curlin: „am Anfang alles einmal durchklicken und erklären“): Inhalte in `guided.ts`
    (`visit`/`look`/`tryIt`), App-Liste `TOUR_APPS` in `c00.ts`. **Neue App in der Navigation → auch einen `visit`-Schritt in die Tour
-   und die App in `TOUR_APPS`.** Tour-Schritte mit `action.stay` warten nach dem Klick auf *Next*; `dock` legt die Karte aufs Missions-Panel, damit die erklärte App sichtbar bleibt (Engine `src/tutorial.ts`). Nur Funktionen vorstellen, keine Deko (Logo, Banner) – Wunsch von Curlin.
+   und die App in `TOUR_APPS`.** Tour-Schritte mit `action.stay` gehen nach dem Klick nach 1,5 s von selbst weiter (seit 16.10.2026, sonst 0,75 s); `dock` legt die Karte aufs Missions-Panel, damit die erklärte App sichtbar bleibt (Engine `src/tutorial.ts`). Nur Funktionen vorstellen, keine Deko (Logo, Banner) – Wunsch von Curlin.
    Alte Spielstände bekommen c00-m00 automatisch als gelöst (`sanitize` in `progress.ts`), die Sandbox ebenso.
 0. **Layer-Umbau vom 13.10.2026** (Entry / Data & Semantic / Presentation, Import Entities c03-m07) ist gebaut. Offene Abgleichfragen zum
    Projekt (Namen, wo DACs liegen, Modelle auf geteilten Facts, Import-Namen) stehen in `docs/FRAGEN_AN_CURLIN.md`; Antworten einarbeiten.
