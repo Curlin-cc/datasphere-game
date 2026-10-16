@@ -438,6 +438,9 @@ table.grid td.null { color: var(--ink-faint); font-style: italic; }
 .guide-steps b { display: block; font-weight: 600; }
 .guide-steps p { margin: 2px 0 0; color: var(--ink-soft); font-size: calc(13px * var(--fs)); }
 .guide-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgba(11, 21, 36, .55); }
+/* A tutorial card sits at the right: the dialog moves into the room left of it and narrows instead of being covered. */
+.guide-overlay.tour-room { padding-right: var(--tour-room, 448px); }
+.guide-overlay.tour-room > .dialog.dialog { max-width: 100%; }
 .guide { width: min(720px, 100%); max-height: 100%; overflow: auto; padding: 22px 24px; }
 .guide h2 { margin: 0 0 6px; font-size: calc(19px * var(--fs)); letter-spacing: -0.01em; }
 .guide-lead { margin: 0 0 16px; color: var(--ink-soft); max-width: 62ch; }
@@ -1494,10 +1497,14 @@ td.act { color: var(--link); }
 .user-menu button { font: inherit; text-align: left; background: none; border: 0; padding: 9px 16px; color: var(--ink); cursor: pointer; }
 .user-menu button:hover:not(:disabled) { background: var(--surface-sunk); }
 .user-menu button:disabled { color: var(--ink-faint); cursor: default; }
-.dialog.settings-dlg { width: min(930px, 94vw); max-width: none; padding: 0; overflow: hidden; }
+.dialog.settings-dlg { width: min(930px, 94vw); max-width: none; padding: 0; overflow: hidden;
+  /* Small screens (16.10.2026): the dialog fits the window, the list and the pane scroll, Close stays visible. */
+  max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+.settings-dlg > h2, .settings-dlg .guide-actions { flex: none; }
 .settings-dlg > h2 { margin: 0; padding: 14px 16px; font-size: calc(16px * var(--fs)); border-bottom: 1px solid var(--line); }
 .settings-dlg .guide-actions { margin: 0; padding: 10px 20px; border-top: 1px solid var(--line); justify-content: flex-end; }
-.set-wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 520px; }
+.set-wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); flex: 0 1 520px; min-height: 0; }
+.set-wrap > .set-list, .set-wrap > .set-pane { overflow-y: auto; }
 .set-list { list-style: none; margin: 0; padding: 0; border-right: 1px solid var(--line); background: var(--surface-sunk); }
 .set-list li { border-bottom: 1px solid var(--line); background: var(--surface); }
 .set-list button { width: 100%; display: flex; gap: 14px; align-items: center; text-align: left; font: inherit; color: var(--ink);

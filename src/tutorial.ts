@@ -21,8 +21,8 @@ export interface TourAction {
   /** Done when this returns true. Checked several times a second. */
   check?: () => boolean;
   /**
-   * After it is done, wait for Next instead of moving on by itself: the player reads the rest of the card
-   * next to what the click opened (the grand tour, c00-m00).
+   * The click opens a page that the card explains (the grand tour, c00-m00): after it is done the card stays a little
+   * longer (STAY_DONE_MS) so the player sees what opened, then moves on like every other action step.
    */
   stay?: boolean;
   /**
@@ -62,9 +62,9 @@ export interface TourHooks {
 }
 
 /**
- * Guided mode (chosen at the start, changeable in Settings): steps with a condition always go on by themselves, including
- * `stay` steps after a reading pause; the target pulses also in passive steps, the page stays clickable; navigation steps
- * open the app or space by themselves. Every automatic move is labelled as a learning aid of the game.
+ * Guided mode (chosen at the start, changeable in Settings): the target pulses also in passive steps, the page stays
+ * clickable; navigation steps open the app or space by themselves. Every automatic opening is labelled as a learning aid.
+ * In both modes a done action step moves on by itself (Curlin, 16.10.2026); Back returns to it without moving on again.
  */
 export interface GuidedOptions {
   guided: () => boolean;
@@ -83,8 +83,11 @@ export const AID_NOTE = 'Learning aid of the game: in the real SAP Datasphere yo
 /** Shown while unsaved work keeps the tutorial from opening a page (both modes). */
 const UNSAVED_NOTE = 'You have unsaved changes (editor or form), so the game did not open the next page. Save or close your work; it opens then.';
 
-/** Delay before guided mode opens the app/space of a navigation step, and the reading pause of a done `stay` step. */
+/** Delay before guided mode opens the app/space of a navigation step. */
 export const GUIDED_OPEN_MS = 900;
+/** A done action step moves on after this pause (the ✓ is visible); a `stay` step a bit later, so the opened page shows. */
+export const DONE_MS = 750;
+export const STAY_DONE_MS = 1500;
 /**
  * When the player last clicked or typed on the page (not on the tutorial card). Guided mode does not open a page while the player
  * is busy there: the redraw would swallow a click in progress (an open space picker, a button about to be pressed).
@@ -94,7 +97,6 @@ const notePageInput = (e: Event) => {
   if (!(e.target instanceof Element) || !e.target.closest('.tour-card')) lastPageInput = performance.now();
 };
 const playerBusy = () => performance.now() - lastPageInput < GUIDED_OPEN_MS;
-const readingPause = (step: TourStep) => Math.min(12000, Math.max(4000, step.body.replace(/<[^>]+>/g, '').length * 45));
 
 /** Fired by ctx.track for every action, also repeated ones. */
 export const TRACK_EVENT = 'dsg:track';
@@ -120,7 +122,11 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   let spotPage = false;
   let openTimer = 0;
   let guardTimer = 0;
-  let stayTimer = 0;
+  /**
+   * Reached with Back: the player wants to see this step again. An action step that is already done shows ✓ and waits for
+   * Next instead of moving on at once (otherwise Back would bounce straight forward again).
+   */
+  let revisit = false;
   /** Ends the click-through while the card slides to a new place (CSS transition .2s). */
   let moveTimer = 0;
 
@@ -136,7 +142,6 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     clearInterval(timer);
     clearTimeout(doneTimer);
     clearTimeout(openTimer);
-    clearTimeout(stayTimer);
     clearInterval(guardTimer);
     timer = 0;
   };
@@ -147,6 +152,8 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     opts.onStep?.(-1);
     window.removeEventListener('resize', place);
     window.removeEventListener(TRACK_EVENT, onTrack);
+    document.querySelectorAll('.guide-overlay.tour-room').forEach((o) => o.classList.remove('tour-room'));
+    document.documentElement.style.removeProperty('--tour-room');
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('pointerdown', notePageInput, true);
     document.removeEventListener('keydown', notePageInput, true);
@@ -161,7 +168,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     if (e.key === 'Escape' && !document.querySelector('.guide-overlay')) close(true);
     if (acting) return;
     if (e.key === 'ArrowRight') go(index + 1);
-    if (e.key === 'ArrowLeft') go(index - 1);
+    if (e.key === 'ArrowLeft') go(index - 1, true);
   };
   const onTrack = (e: Event) => {
     const a = steps[index]?.action;
@@ -176,11 +183,12 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   window.addEventListener('resize', place);
   window.addEventListener(TRACK_EVENT, onTrack);
 
-  async function go(i: number) {
+  async function go(i: number, back = false) {
     if (i < 0) return;
     stopWaiting();
     if (i >= steps.length) return close(true);
     index = i;
+    revisit = back;
     opts.onStep?.(i);
     stepDone = false;
     spotPage = false;
@@ -302,42 +310,27 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   function complete() {
     if (stepDone) return;
     stepDone = true;
+    const step = steps[index];
     card.classList.add('done');
     const status = card.querySelector('.tour-do');
-    if (status) status.innerHTML = `<span class="tour-check">✓</span> Done`;
-    const at = index;
-    if (steps[index]?.action?.stay) {
-      if (steps[index].dock) {
-        spotPage = true;
-        lastRect = '';
-        place();
-      }
-      card.querySelector('.tour-wait')?.remove();
-      const next = card.querySelector<HTMLButtonElement>('[data-act="next"]');
-      if (next) {
-        next.classList.add('primary');
-        next.textContent = index === steps.length - 1 ? finishLabel : 'Next';
-        next.removeAttribute('title');
-      }
-      if (guidedOpts.guided()) {
-        // Guided: the card goes on by itself after a reading pause; Stay here keeps it.
-        stayTimer = window.setTimeout(() => index === at && go(index + 1), readingPause(steps[index]));
-        aid(`Goes on by itself in a moment. ${AID_NOTE}`);
-        const keep = document.createElement('button');
-        keep.type = 'button';
-        keep.className = 'btn link';
-        keep.dataset.act = 'stay';
-        keep.textContent = 'Stay here';
-        keep.addEventListener('click', () => {
-          clearTimeout(stayTimer);
-          keep.remove();
-          card.querySelector('.tour-aid')?.remove();
-        });
-        next?.before(keep);
-      }
-      return;
+    if (status) status.innerHTML = `<span class="tour-check">✓</span> Done${revisit ? ' · press Next to go on' : ''}`;
+    card.querySelector('.tour-wait')?.remove();
+    const next = card.querySelector<HTMLButtonElement>('[data-act="next"]');
+    if (next) {
+      next.classList.add('primary');
+      next.textContent = index === steps.length - 1 ? finishLabel : 'Next';
+      next.removeAttribute('title');
     }
-    doneTimer = window.setTimeout(() => index === at && go(index + 1), 750);
+    if (step?.action?.stay && step.dock) {
+      // The page that opened is what the card talks about: light it up instead of the navigation entry.
+      spotPage = true;
+      lastRect = '';
+      place();
+    }
+    // Both modes (Curlin, 16.10.2026): a done action step moves on by itself. Not when the player came back with Back.
+    if (revisit) return;
+    const at = index;
+    doneTimer = window.setTimeout(() => index === at && go(index + 1), step?.action?.stay ? STAY_DONE_MS : DONE_MS);
   }
 
   function render(step: TourStep) {
@@ -351,7 +344,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
       <h2 id="tour-title">${step.title}</h2>
       <div class="tour-body">${step.body}</div>
       ${step.action ? `<div class="tour-do" role="status"><span class="tour-arrow">▶</span><span>${step.action.do}</span></div>
-        <p class="tour-wait">${step.action.stay ? (guidedOpts.guided() ? 'Then read on here; the tutorial goes on by itself.' : 'Then read on here and press Next.') : 'The tutorial goes on by itself when you have done it.'}</p>` : ''}
+        <p class="tour-wait">The tutorial goes on by itself when you have done it; Back brings you here again.</p>` : ''}
       ${step.example ? `<pre class="tour-example"><code></code></pre>
         <button class="btn" type="button" data-act="example">Put this example in the editor</button>` : ''}
       <div class="tour-actions">
@@ -366,13 +359,25 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
     card.querySelector('[data-act="skip"]')!.addEventListener('click', () => close(true));
     // Back/Next belong to the step this card shows: if the tour already moved on (auto-advance), a late click must not skip a step.
     const shown = index;
-    card.querySelector('[data-act="back"]')!.addEventListener('click', () => index === shown && go(shown - 1));
+    card.querySelector('[data-act="back"]')!.addEventListener('click', () => index === shown && go(shown - 1, true));
     card.querySelector('[data-act="next"]')!.addEventListener('click', () => index === shown && go(shown + 1));
     card.querySelector('[data-act="example"]')?.addEventListener('click', (e) => {
       hooks.insertExample(step.example!);
       (e.currentTarget as HTMLButtonElement).textContent = 'Added. Press Run after the tutorial';
     });
     if (!step.action) card.querySelector<HTMLButtonElement>('[data-act="next"]')!.focus();
+  }
+
+  /**
+   * An open dialog (Settings, Upload …) moves left and gets narrower so the card at the right never covers it (Curlin,
+   * 16.10.2026: on screens below ~1450 px the docked card lay over the right part of Settings, Close included).
+   */
+  function makeRoom(dockEl: HTMLElement | null) {
+    const overlay = document.querySelector<HTMLElement>('.guide-overlay');
+    if (!overlay) return;
+    const room = dockEl ? window.innerWidth - dockEl.getBoundingClientRect().left + 8 : Math.min(card.offsetWidth, 400) + 48;
+    document.documentElement.style.setProperty('--tour-room', `${Math.round(room)}px`);
+    overlay.classList.add('tour-room');
   }
 
   /** Grand tour: the card lies on the mission panel at the right. */
@@ -387,6 +392,7 @@ export function startTour(steps: TourStep[], hooks: TourHooks, finishLabel = 'St
   function place() {
     const step = steps[index];
     const dockEl = step?.dock ? firstVisible('#mission') : null;
+    makeRoom(dockEl);
     if (spotPage && dockEl) {
       // Done: no spotlight, no dimming. The page that opened is fully visible; the card waits on the mission panel.
       spot.hidden = true;

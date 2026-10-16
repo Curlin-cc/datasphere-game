@@ -67,6 +67,8 @@ export function openDialog(title: string, body: string, cls = '') {
   overlay.className = 'guide-overlay';
   overlay.innerHTML = `<form class="guide panel dialog ${cls}" role="dialog" aria-modal="true" aria-labelledby="dlg-title" novalidate>
       <h2 id="dlg-title">${esc(title)}</h2>${body}</form>`;
+  // A tutorial is running: leave room for its card at the right from the first frame (tutorial.ts makeRoom keeps it fitting).
+  if (document.querySelector('.tour')) overlay.classList.add('tour-room');
   document.body.append(overlay);
   const close = () => {
     overlay.remove();

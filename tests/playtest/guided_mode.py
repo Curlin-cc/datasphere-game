@@ -283,6 +283,81 @@ with sync_playwright() as p:
     ok(True, 'click on View Analyzer reaches the page')
     g.b.close()
 
+    # 11. Curlin (16.10.2026): "Die Dialoge gehen nicht automatisch durch". In both modes a done action step moves on by itself,
+    # also the grand-tour steps that open an app (before: 12 s reading pause in guided, Next in self-directed). Back to a done step
+    # stays there (it used to bounce forward at once, the condition still held) until Next.
+    # And: the Settings dialog is never covered by the docked card, on small screens too (it covered the right part and Close).
+    from tour import act
+
+    def tour_until(g, stop):
+        """Plays the grand tour like tour.py until the card shows `stop`."""
+        pg = g.pg
+        for _ in range(80):
+            t = title(pg)
+            if t == stop:
+                return
+            if 'your turn' in pg.inner_text('.tour-count').lower():
+                c = pg.inner_text('.tour-count')
+                act(g, t)
+                pg.wait_for_function("([t, c]) => document.querySelector('.tour-card h2')?.textContent !== t"
+                                     " || document.querySelector('.tour-count')?.innerText !== c", arg=[t, c], timeout=4000)
+            else:
+                pg.click('.tour-card [data-act="next"]')
+            pg.wait_for_timeout(200)
+        raise AssertionError(f'never reached {stop!r}')
+
+    def moves_on(pg, t, within):
+        try:
+            pg.wait_for_function("t => document.querySelector('.tour-card h2')?.textContent !== t", arg=t, timeout=within)
+            return True
+        except Exception:
+            return False
+
+    for mode in ('self', 'guided'):
+        g = Game(p, S, expanded_nav=False); pg = g.pg
+        if mode == 'guided':
+            pg.add_init_script("""new MutationObserver(() => { const dlg = document.querySelector('.mode-dlg');
+                if (dlg && !dlg.dataset.seen) { dlg.dataset.seen = '1'; dlg.querySelector('[type="submit"]').dataset.auto = '1';
+                  setTimeout(() => dlg.querySelector('[data-mode="guided"]').click(), 100); } })
+                .observe(document, { childList: true, subtree: true });""")
+        g.start()
+        pg.wait_for_selector('.tour-card', timeout=15000)
+        tour_until(g, 'Home')
+        act(g, 'Home')
+        pg.wait_for_selector('.tour-card.done', timeout=4000)
+        ok(moves_on(pg, 'Home', 3000), f'{mode}: app step of the grand tour moves on by itself after the click')
+        # Back to the done step: it stays, says so, and Next goes on.
+        pg.click('.tour-card [data-act="back"]')
+        wait_title(pg, 'Home'); pg.wait_for_timeout(2500)
+        ok(title(pg) == 'Home' and pg.locator('.tour-card.done').count() == 1, f'{mode}: Back to a done step stays there')
+        ok('press Next' in pg.inner_text('.tour-do'), f'{mode}: the revisited step says Next goes on')
+        pg.click('.tour-card [data-act="next"].primary')
+        pg.wait_for_timeout(300)
+        ok(title(pg) != 'Home', f'{mode}: Next leaves the revisited step')
+        g.b.close()
+
+    for w, h in ((1280, 720), (1366, 768), (1500, 950)):
+        g = Game(p, S, expanded_nav=False); pg = g.pg
+        pg.set_viewport_size({'width': w, 'height': h})
+        g.start()
+        pg.wait_for_selector('.tour-card', timeout=15000)
+        tour_until(g, 'Your settings')
+        pg.wait_for_timeout(500)
+        r = pg.evaluate("""() => { const d = document.querySelector('.guide-overlay .dialog').getBoundingClientRect();
+            const c = document.querySelector('.tour-card').getBoundingClientRect();
+            const x = document.querySelector('.guide-overlay [data-act="cancel"]'); const xr = x.getBoundingClientRect();
+            const hit = document.elementFromPoint(xr.left + xr.width / 2, xr.top + xr.height / 2);
+            return { overlap: d.right > c.left && c.right > d.left && d.bottom > c.top && c.bottom > d.top,
+                     close: !!hit && x.contains(hit), dl: Math.round(d.left), dr: Math.round(d.right), cl: Math.round(c.left),
+                     scroll: document.documentElement.scrollWidth > innerWidth }; }""")
+        ok(not r['overlap'] and r['close'] and not r['scroll'], f'{w}x{h}: Settings not covered by the tutorial card ({r})')
+        g.shot(f'gm-settings-{w}')
+        act(g, 'Your settings')
+        wait_title(pg, 'Close Settings', timeout=4000)
+        act(g, 'Close Settings')
+        ok(moves_on(pg, 'Close Settings', 3000), f'{w}x{h}: Close in Settings reachable, tour goes on')
+        g.b.close()
+
 print('guided_mode:', 'all passed' if not fails else f'FAILED {fails}')
 if not fails:
     print('   GAIN guided_mode')

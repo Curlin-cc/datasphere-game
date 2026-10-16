@@ -86,10 +86,10 @@ def play_grand_tour(g, shots=True):
                 pg.wait_for_timeout(300)
                 if shots and title in ('Data Integration', 'Data Builder', 'Security', 'Glossary', 'The glossary', 'Your settings', 'Data Preview'):
                     g.shot(f'tour-{APPS[title]}')
-            nxt = pg.locator('.tour-card [data-act="next"].primary')
-            if nxt.count():
-                nxt.click()  # stay steps wait for Next
-            pg.wait_for_timeout(900)
+            # Since 16.10.2026 every done action step moves on by itself (stay steps after 1.5 s): wait, never press Next.
+            pg.wait_for_function("([t, c]) => !document.querySelector('.tour-card') || document.querySelector('.tour-card h2')?.textContent !== t"
+                                 " || document.querySelector('.tour-count')?.innerText !== c", arg=[title, count], timeout=4000)
+            pg.wait_for_timeout(250)
         else:
             pg.wait_for_timeout(300)
             if shots and title in ('The project in one picture', 'The editor toolbar', 'Create something', 'Monitoring'):
