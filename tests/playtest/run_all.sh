@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs every playtest in order and prints one line per script: missions gained, tracebacks, page errors.
 # Needs the dev server: npx vite --port 5199 --strictPort &   Usage: bash run_all.sh [screenshot folder] [script ...]
+# dirty_check.py imports /src/dirty.ts from the dev server, so it fails against a built version (vite preview, artifact) - always use the dev server.
 cd "$(dirname "$0")"
 OUT=${1:-/tmp}
 shift || true

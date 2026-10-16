@@ -187,12 +187,14 @@ Playtest in `tests/playtest/` ergänzen und laufen lassen.
 
 ## Nächster Schritt
 
-000. **Stand 15.10.2026: alle PRs bis #25 sind auf `main`** (Session-Log in `docs/STATUS.md`). Neu zu beachten:
+000. **Stand 16.10.2026: alle PRs bis #26 sind auf `main`** (Session-Log in `docs/STATUS.md`). Neu zu beachten:
    **Geführter Modus** (`guidance` im Spielstand, Settings › Guidance): Tutorial-Schritte mit `view` öffnen die Seite selbst, aber nie über
    ungespeicherte Arbeit (`src/dirty.ts`, `pageUnsaved()`); Playtests spielen Self-directed, außer Skript oder Spielstand setzen `guided`
    (`DSG_MODE`). Neue Editoren: Eingaben in `.editor-page` zählen bis Save/Deploy als ungespeichert, auch wenn der Editor neu zeichnet –
    `dirty_check.py` mitlaufen lassen. **Schriftgröße** über `--fs` (neue Schriftgrößen in CSS als `calc(… * var(--fs, 1))`).
-   Offen: `guided.py` hat seltene 6-s-Timeouts (ca. 1 von 10 Läufen, schon vor #13) – Ursache im Tutorial-Timing oder Testskript klären.
+   Gelöst (#26): die seltenen 6-s-Timeouts von `guided.py` kamen von verlorenen Klicks im Tutorial (automatisches Öffnen während des Klickens,
+   zappelnde/gleitende Karte); automatisches Öffnen wartet jetzt 0,9 s nach der letzten Eingabe, Back/Next gelten nur für ihren eigenen Schritt.
+   `dirty_check.py` lädt `/src/dirty.ts` und läuft daher nur gegen den Dev-Server, nicht gegen den Build.
 00. **Grand Tour c00-m00** (13.10.2026, Wunsch von Curlin: „am Anfang alles einmal durchklicken und erklären“): Inhalte in `guided.ts`
    (`visit`/`look`/`tryIt`), App-Liste `TOUR_APPS` in `c00.ts`. **Neue App in der Navigation → auch einen `visit`-Schritt in die Tour
    und die App in `TOUR_APPS`.** Tour-Schritte mit `action.stay` warten nach dem Klick auf *Next*; `dock` legt die Karte aufs Missions-Panel, damit die erklärte App sichtbar bleibt (Engine `src/tutorial.ts`). Nur Funktionen vorstellen, keine Deko (Logo, Banner) – Wunsch von Curlin.
