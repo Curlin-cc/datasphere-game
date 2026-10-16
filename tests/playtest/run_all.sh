@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs every playtest in order and prints one line per script: missions gained, tracebacks, page errors.
+# Runs every playtest in order and prints one line per script: missions gained, tracebacks, failed checks, page errors.
 # Needs the dev server: npx vite --port 5199 --strictPort &   Usage: bash run_all.sh [screenshot folder] [script ...]
 # dirty_check.py imports /src/dirty.ts from the dev server, so it fails against a built version (vite preview, artifact) - always use the dev server.
 cd "$(dirname "$0")"
@@ -11,7 +11,9 @@ for f in $SCRIPTS; do
   out=$(timeout 600 python3 "$f.py" "$OUT" 2>&1)
   tb=$(echo "$out" | grep -c Traceback)
   err=$(echo "$out" | grep ERRORS | grep -v "ERRORS \[\]" | head -1)
-  echo "$f: $(echo "$out" | grep -c 'GAIN\|gain:') solved, $tb tracebacks ${err}"
-  [ "$tb" != "0" ] || [ -n "$err" ] && fail=1
+  # Scripts with PASS/FAIL checks (guided_mode, dirty_check …) report failed checks without a traceback: count them too.
+  fl=$(echo "$out" | grep -c '^ *FAIL ')
+  echo "$f: $(echo "$out" | grep -c 'GAIN\|gain:') solved, $tb tracebacks, $fl failed checks ${err}"
+  [ "$tb" != "0" ] || [ "$fl" != "0" ] || [ -n "$err" ] && fail=1
 done
 exit $fail
