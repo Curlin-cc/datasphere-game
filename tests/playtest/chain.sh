@@ -10,6 +10,7 @@ fail=0
 for f in chapter0 chapter1 chapter2 chapter3 chapter4 chapter5 chapter6 chapter7 chapter8 chapter9 chapter10 chapter11 \
          chapter12 chapter12_hier chapter12_ver chapter12_odata chapter12_onb chapter12_df chapter12_tf2; do
   out=$(DSG_CHAIN=$CHAIN timeout 900 python3 "$f.py" "$OUT" 2>&1)
+  echo "$out" > "$OUT/chain_$f.log"  # full output per chapter, for the traceback when a step fails
   tb=$(echo "$out" | grep -c Traceback)
   err=$(echo "$out" | grep ERRORS | grep -v "ERRORS \[\]" | head -1)
   echo "$f: $(echo "$out" | grep -c 'GAIN') solved, $tb tracebacks ${err}"
