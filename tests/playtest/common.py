@@ -61,6 +61,10 @@ class Game:
             with open(CHAIN) as f:
                 save = json.load(f)
             save['currentMission'] = current
+            # The chained save carries the mode of the script before it. Each script plays in its own mode, as when run alone:
+            # DSG_MODE if it sets one (scripts that walk tutorials with Next), else self-directed. Chapter 9 hung in the chain at
+            # "Go to System yourself" because it inherited self-directed from chapter 0.
+            save['guidance'] = os.environ.get('DSG_MODE', 'self')
         if save is not None:
             # Tutorial mode (14.10.2026): scripts play Self-directed (the tutorial never opens apps or spaces) unless the save or
             # DSG_MODE sets 'guided' (scripts that walk tutorials with Next); guidance None = a save from before the setting (no key).
